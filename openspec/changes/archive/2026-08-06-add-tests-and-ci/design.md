@@ -110,7 +110,7 @@ shellcheck test/helpers/*.bash test/lib/*.bats
 - [Risk] `push` と `pull_request` を両方 `on:` に設定すると、同一リポジトリ内で feature ブランチに push するたびに(open な PR があれば)同じ commit に対して matrix が二重実行される → [Mitigation] `push` トリガーを `branches: [main]` に限定し、feature ブランチへの push は `pull_request` イベントのみで検証する(コードレビューで指摘され修正)
 - [Risk] TTL 境界値テストで `date +%s` をテスト側と `bwqa_session_ttl_expired` 内部側の2箇所で個別に評価しているため、境界に近い秒数(TTL-1秒)だと実行タイミングの秒またぎでフレーキーになりうる → [Mitigation] 「TTL未満」ケースの余裕を TTL-5秒に広げてレース耐性を持たせた(コードレビューで指摘され修正。「TTLちょうど」「TTL超過」側は秒またぎが起きても方向的に安全なため対応不要)
 - [Risk] shellcheck のバージョンによって関数スタブ(cross-file 経由でのみ呼ばれる)への誤検知の報告名が異なる(ローカルの 0.11.0 は SC2329、GitHub Actions ubuntu-latest 標準搭載版は SC2317)ため、片方だけ無効化すると CI 環境で新たに失敗しうる → [Mitigation] 実際に PR の CI で SC2317 の発生を確認し、`.shellcheckrc` に SC2329 と併せて追加した
-- [Risk] `test/lib/*.bats` のテスト名に日本語(マルチバイト文字)を使っているため、実行環境のロケールが UTF-8 でないと bats が `unknown test name` で全テストを実行できずに失敗する(macos-latest ランナーで実際に発生。開発機はローカルロケールが `en_US.UTF-8` のため気づけなかった)→ [Mitigation] `.github/workflows/ci.yml` のジョブ全体に `LANG=en_US.UTF-8` / `LC_ALL=en_US.UTF-8` を明示的に設定した
+- [Risk] `test/lib/*.bats` のテスト名に日本語(マルチバイト文字)を使っているため、macos-latest ランナーで `bats` が `unknown test name` で全テストを実行できずに失敗する問題が発生した。当初 UTF-8 ロケール未設定が原因と推測して `LANG`/`LC_ALL=en_US.UTF-8` を設定したが解消せず、CI 上でデバッグステップを追加して調査した結果、真因はロケールではなく **bash のバージョン**だった。macOS ランナーの `/bin/bash` は Apple 標準搭載の bash 3.2(2007年、GPLv2最終版でマルチバイト文字列処理に非互換がある)で、`bats` 自身の `#!/usr/bin/env bash` シェバンがこれを解決してしまっていた(開発機はシェル起動時に Homebrew の新しい bash が PATH 優先で解決されるため気づけなかった)→ [Mitigation] macOS ジョブで `brew install bash` した上で Homebrew の bin ディレクトリを `$GITHUB_PATH` に追加し、以降のステップで `env bash` が新しい bash を解決するようにした(UTF-8 ロケール設定自体は無害なので残した)
 
 ## Migration Plan
 

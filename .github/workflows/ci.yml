@@ -22,9 +22,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install bats-core and shellcheck (macOS)
+      - name: Install bats-core, shellcheck and modern bash (macOS)
         if: runner.os == 'macOS'
-        run: brew install bats-core shellcheck
+        run: |
+          brew install bats-core shellcheck bash
+          # macOS の /bin/bash は Apple 標準搭載の bash 3.2(2007年、GPLv2最終版)で、
+          # マルチバイト文字列処理に非互換がある。bats の `#!/usr/bin/env bash`
+          # シェバンがこれを解決すると、日本語のテスト名が壊れて
+          # "unknown test name" で全テストが失敗する(実際に CI で確認した問題)。
+          # Homebrew でインストールした新しい bash を PATH の先頭に置き、
+          # 以降のステップで `env bash` がそちらを解決するようにする。
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
 
       - name: Install bats-core (Linux)
         if: runner.os == 'Linux'
@@ -44,19 +52,6 @@ jobs:
 
       - name: shellcheck (test code)
         run: shellcheck test/helpers/*.bash test/lib/*.bats
-
-      - name: Debug locale and bats version
-        run: |
-          locale
-          bats --version
-          echo "LANG=$LANG LC_ALL=$LC_ALL"
-          echo "--- bash ---"
-          command -v bash
-          bash --version | head -1
-          head -1 "$(command -v bats)"
-          echo "--- env bash ---"
-          command -v env
-          /usr/bin/env bash --version | head -1
 
       - name: Run bats tests
         run: bats test/lib/*.bats
