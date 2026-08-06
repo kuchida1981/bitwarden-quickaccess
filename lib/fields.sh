@@ -9,6 +9,7 @@
 
 bwqa_get_item_summary() {
   local item_id="$1" raw
+  bwqa_log "アイテム情報を取得しています..."
   raw="$(bwqa_bw get item "$item_id")" || return 1
   jq -c '{
     name: (.name // ""),
@@ -96,6 +97,7 @@ bwqa_copy_field_internal() {
   fi
 
   local value=""
+  bwqa_log "値を取得しています..."
   case "$field" in
     username) value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
     password) value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;

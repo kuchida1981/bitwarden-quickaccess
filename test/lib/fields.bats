@@ -81,7 +81,9 @@ teardown() {
 @test "bwqa_get_item_summary: 全フィールドありのアイテムを正しく整形する" {
   bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
 
-  run bwqa_get_item_summary "11111111-1111-1111-1111-111111111111"
+  local output status
+  output="$(bwqa_get_item_summary "11111111-1111-1111-1111-111111111111" 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local summary
@@ -95,7 +97,9 @@ teardown() {
 @test "bwqa_get_item_summary: フィールドが無いアイテムは has_* がすべて false になる" {
   bwqa_bw() { jq -c '.no_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
 
-  run bwqa_get_item_summary "55555555-5555-5555-5555-555555555555"
+  local output status
+  output="$(bwqa_get_item_summary "55555555-5555-5555-5555-555555555555" 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local summary
@@ -175,3 +179,29 @@ esac
   run grep -q "item_id/session/field のいずれかが不足しています" "$BWQA_ERROR_LOG_FILE"
   [ "$status" -eq 0 ]
 }
+
+@test "bwqa_get_item_summary: ローディングメッセージが stderr に出力されること" {
+  bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
+
+  local err
+  err="$(bwqa_get_item_summary "11111111-1111-1111-1111-111111111111" 2>&1 1>/dev/null)"
+  [[ "$err" == *"アイテム情報を取得しています..."* ]]
+}
+
+@test "bwqa_copy_field_internal: ローディングメッセージが stderr に出力され、実際の値が含まれないこと" {
+  _stub_bw_get_all_fields
+
+  local err
+  err="$(BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" bwqa_copy_field_internal password 2>&1 1>/dev/null)"
+  [[ "$err" == *"値を取得しています..."* ]]
+  [[ "$err" != *"correct horse"* ]]
+
+  err="$(BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" bwqa_copy_field_internal username 2>&1 1>/dev/null)"
+  [[ "$err" == *"値を取得しています..."* ]]
+  [[ "$err" != *"alice@example.com"* ]]
+
+  err="$(BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" bwqa_copy_field_internal totp 2>&1 1>/dev/null)"
+  [[ "$err" == *"値を取得しています..."* ]]
+  [[ "$err" != *"123456"* ]]
+}
+

@@ -21,7 +21,9 @@ teardown() {
 }
 
 @test "bwqa_fetch_items: type==1 のアイテムのみに絞り込む" {
-  run bwqa_fetch_items
+  local output status
+  output="$(bwqa_fetch_items 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local count
@@ -34,7 +36,9 @@ teardown() {
 }
 
 @test "bwqa_fetch_items: 各エントリは id/label フィールドを持つ" {
-  run bwqa_fetch_items
+  local output status
+  output="$(bwqa_fetch_items 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local keys
@@ -43,7 +47,9 @@ teardown() {
 }
 
 @test "bwqa_fetch_items: username がある場合は label に括弧付きで付与する" {
-  run bwqa_fetch_items
+  local output status
+  output="$(bwqa_fetch_items 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local label
@@ -52,7 +58,9 @@ teardown() {
 }
 
 @test "bwqa_fetch_items: username が無い場合は label に括弧を付与しない" {
-  run bwqa_fetch_items
+  local output status
+  output="$(bwqa_fetch_items 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local label
@@ -61,7 +69,9 @@ teardown() {
 }
 
 @test "bwqa_fetch_items: name に含まれるタブ/改行/CR をスペースに正規化する" {
-  run bwqa_fetch_items
+  local output status
+  output="$(bwqa_fetch_items 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local label
@@ -73,3 +83,10 @@ teardown() {
   [[ "$label" != *$'\n'* ]]
   [[ "$label" != *$'\r'* ]]
 }
+
+@test "bwqa_fetch_items: vault読み込み中のメッセージが stderr に出力されること" {
+  local err
+  err="$(bwqa_fetch_items 2>&1 1>/dev/null)"
+  [[ "$err" == *"vaultのアイテム一覧を読み込んでいます..."* ]]
+}
+
