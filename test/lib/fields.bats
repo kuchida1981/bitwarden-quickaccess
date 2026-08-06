@@ -188,20 +188,3 @@ esac
   [[ "$err" == *"アイテム情報を取得しています..."* ]]
 }
 
-@test "bwqa_copy_field_internal: ローディングメッセージが stderr に出力され、実際の値が含まれないこと" {
-  _stub_bw_get_all_fields
-
-  local err
-  err="$(BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" bwqa_copy_field_internal password 2>&1 1>/dev/null)"
-  [[ "$err" == *"値を取得しています..."* ]]
-  [[ "$err" != *"correct horse"* ]]
-
-  err="$(BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" bwqa_copy_field_internal username 2>&1 1>/dev/null)"
-  [[ "$err" == *"値を取得しています..."* ]]
-  [[ "$err" != *"alice@example.com"* ]]
-
-  err="$(BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" bwqa_copy_field_internal totp 2>&1 1>/dev/null)"
-  [[ "$err" == *"値を取得しています..."* ]]
-  [[ "$err" != *"123456"* ]]
-}
-

@@ -10,20 +10,20 @@
   - `lib/session.sh` `bwqa_unlock()`(`bw unlock`)
   - `lib/search.sh` `bwqa_fetch_items()`(`bw list items`)
   - `lib/fields.sh` `bwqa_get_item_summary()`(`bw get item`)
-  - `lib/fields.sh` `bwqa_copy_field_internal()`(`bw get username/password/totp`)
+- `lib/fields.sh` `bwqa_copy_field_internal()`(`bw get username/password/totp`)への追加は実装中に見送った。この関数は fzf の `execute-silent` 経由でのみ呼ばれ、その子プロセスの出力はターミナルに表示されないため、stderr メッセージでは実効性がないと判明した(詳細は design.md 参照)
 - 非同期ロード(fzf 起動後の `reload` によるプログレッシブ表示)や fzf 側のスピナー表示は本 change のスコープ外とする。まずは呼び出し前のメッセージ出力のみ対応する
 
 ## Capabilities
 
 ### New Capabilities
-- `loading-feedback`: `bw` CLI 呼び出し中(session unlock、vault一覧取得、アイテム詳細取得、フィールド値取得)に、処理中であることを示すメッセージを表示する
+- `loading-feedback`: `bw` CLI 呼び出し中(session unlock、vault一覧取得、アイテム詳細取得)に、処理中であることを示すメッセージを表示する
 
 ### Modified Capabilities
 - `credential-clipboard-copy`: フィールド選択画面の表示順序を「ユーザー名→パスワード→TOTP」に固定する要件を追加する(現状は順序が spec 上未規定で、実装(`lib/fields.sh`)がパスワード優先の順序になっていた)
 
 ## Impact
 
-- `lib/fields.sh`: `bwqa_build_field_rows()` の順序変更、`bwqa_get_item_summary()` / `bwqa_copy_field_internal()` へのローディングメッセージ追加
+- `lib/fields.sh`: `bwqa_build_field_rows()` の順序変更、`bwqa_get_item_summary()` へのローディングメッセージ追加(`bwqa_copy_field_internal()` への追加は見送り、理由をコメントで明記)
 - `lib/search.sh`: `bwqa_fetch_items()` へのローディングメッセージ追加
 - `lib/session.sh`: `bwqa_unlock()` へのローディングメッセージ追加
 - `test/lib/fields.bats`, `test/lib/search.bats`, `test/lib/session.bats`: 上記変更に対応するテストの追加・更新

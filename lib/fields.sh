@@ -97,7 +97,10 @@ bwqa_copy_field_internal() {
   fi
 
   local value=""
-  bwqa_log "値を取得しています..."
+  # この関数は fzf の execute-silent 経由でのみ呼ばれ、execute-silent は子プロセスの
+  # stdout/stderr を一切ターミナルに表示しない(fzf(1) COMMAND EXECUTION 参照)ため、
+  # ここで bwqa_log を呼んでもユーザーには見えない。ローディング表示が必要な場合は
+  # fzf のヘッダーを書き換える仕組み(別 change で検討)が必要になる。
   case "$field" in
     username) value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
     password) value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
