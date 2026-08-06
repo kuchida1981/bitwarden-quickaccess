@@ -37,6 +37,8 @@
 
 **実装時の補足(「コマンドが存在しない」ケースの決定性)**: `bwqa_test_stub_setup` は既存 PATH の先頭に stub dir を追加するだけなので、実行機に本物の `bw`/`jq`/`fzf`/`pbcopy` 等が実際にインストールされていると「存在しない」ケースを正しく再現できない(実際、開発機・CI ランナーいずれも `jq` 等が別 PATH に既に入っている)。このため `test/helpers/stub.bash` に `bwqa_test_stub_path_only()` を追加し、PATH を stub dir のみに制限しつつ `awk`(`bwqa_check_fzf_version` が内部で使用)は実体へのパススルースタブとして用意することで、ホスト環境に依存しない決定的な「存在しない」テストを実現した。呼び出し順序の制約(`bwqa_test_stub_cmd` 自体が `chmod` を要するため、必要なダミーコマンドを先にすべて作ってから `bwqa_test_stub_path_only` を呼ぶ)はヘルパーのコメントに明記した。
 
+**実装時に発見・修正したバグ(コードレビュー指摘)**: `bwqa_test_stub_cmd` が生成するダミー実行ファイルは当初 `#!/usr/bin/env bash` シェバンを使っていたが、`bwqa_test_stub_path_only` で PATH を stub dir のみに制限すると `env` が `bash` を解決できず `env: bash: No such file or directory`(exit 127)で失敗することが判明した(`bwqa_test_stub_path_only` を実際に使うテストは当時すべて `command -v` ベースの判定のみで、スタブスクリプトの実行そのものを経由していなかったため潜在化していた)。修正として、`bwqa_test_stub_cmd` はテスト開始時点で解決した bash の絶対パス(`BWQA_TEST_BASH_PATH`)をシェバンに直接埋め込むよう変更し、PATH 制限下でも `env` を経由せず確実に起動できるようにした。あわせて `bwqa_test_stub_path_only` のパススルー対象コマンドを `awk` 固定から可変長引数で追加できる形に一般化し(`bwqa_test_stub_path_only sed cut` のように呼べる)、`preflight.bats` の「bw/jq/fzf が揃っていれば成功する」テストを `bwqa_test_stub_path_only` 経由の実行に変更してこの経路(スタブスクリプトの実行)を実際に踏む回帰テストにした。
+
 ### 2. bats-core / shellcheck の導入: パッケージマネージャ経由(vendoring しない)
 
 **決定**: ローカルは `brew install bats-core shellcheck`(macOS 前提。README にコマンドを明記)。CI は `macos-latest` ランナーで `brew install bats-core shellcheck`、`ubuntu-latest` ランナーは `shellcheck` が標準搭載済みのためインストール不要、`bats` は `apt-get install -y bats` または公式 GitHub Action(`bats-core/bats-action` 等)を使う。
@@ -80,15 +82,24 @@ test/
 
 **理由**: この関数は `bw get username|password|totp` を直接呼んでおり `bwqa_bw()` を経由しない。関数境界がないため PATH モックが最も自然。エラーログ(`BWQA_ERROR_LOG_FILE`)への書き込み内容を検証することで、値取得失敗時・不正な field 名指定時の挙動を確認する。
 
-### 6. shellcheck の除外ルール: `.shellcheckrc` + ピンポイントのインライン disable
+### 6. shellcheck の除外ルール: `.shellcheckrc`(`SC2034` は除く)+ ピンポイントのインライン disable
 
-**決定**: リポジトリ直下に `.shellcheckrc`(`shell=bash`、`disable=SC1091,SC2034,SC2016,SC2329`)を追加する。`lib/*.sh` と `test/helpers/stub.bash`・`test/lib/*.bats` は他ファイルから source される前提の設計であり、単体で shellcheck にかけると shebang 不在(SC2148。`shell=bash` で解消)・動的パスによる追跡不可(SC1091)・他ファイルで消費される定数の誤検知(SC2034)・意図的なシングルクォート(`bwqa_test_stub_cmd` の遅延展開設計、SC2016)・関数スタブが他ファイル側から間接的に呼ばれることによる「未使用関数」誤検知(SC2329)が構造的に発生することを実装時に確認した。これらはプロジェクトの sourcing アーキテクチャ・テスト用モック設計に起因する既知の誤検知としてグローバルに無効化する。
+**決定**: リポジトリ直下に `.shellcheckrc`(`shell=bash`、`disable=SC1091,SC2016,SC2329`)を追加する。`lib/*.sh` と `test/helpers/stub.bash`・`test/lib/*.bats` は他ファイルから source される前提の設計であり、単体で shellcheck にかけると shebang 不在(SC2148。`shell=bash` で解消)・動的パスによる追跡不可(SC1091)・意図的なシングルクォート(`bwqa_test_stub_cmd` の遅延展開設計、SC2016)・関数スタブが他ファイル側から間接的に呼ばれることによる「未使用関数」誤検知(SC2329)が構造的に発生することを実装時に確認した。これらはプロジェクトの sourcing アーキテクチャ・テスト用モック設計に起因する既知の誤検知としてグローバルに無効化する。
+
+`SC2034`(未使用変数)はグローバル無効化の対象から外した(コードレビューで「design.md 自身が『将来の本当の unused variable バグ等を検知する能力をなるべく損なわないように』と明言しているのに、その検知能力そのものを丸ごと殺す SC2034 のグローバル無効化を追加していて矛盾している」と指摘され、妥当と判断して修正)。代わりに:
+- プロダクションコード(`bin/bw-quickaccess` + `lib/*.sh`)は `shellcheck -x bin/bw-quickaccess` で単一エントリポイント経由のクロスファイル解析を行う。`-x` はソースされた全ファイルを実際に辿って解析するため、cross-file で消費される定数(`BWQA_SESSION_TTL_SECONDS` 等)を正しく「使用済み」と認識でき、`SC2034` を無効化しなくても誤検知なく通る(実装時に確認済み)。これにより、将来 lib/*.sh に本当の unused variable(タイポ等)が紛れ込んだ場合は CI で検知できる。
+- `test/helpers/stub.bash` は `export` している変数群(`BWQA_LIB_DIR`/`BWQA_CACHE_DIR` 等)については、shellcheck が export を「ファイル外での使用」とみなして自動的に `SC2034` を出さないため、追加対応不要だった。
+- `test/lib/fields.bats` の関数スタブ内で設定する `BWQA_OS_KIND`/`BWQA_CLIPBOARD_CMD_ARR`(`bwqa_copy_field_internal` 側からのみ間接参照され、export もされていない)は、該当行に `# shellcheck disable=SC2034` をピンポイントで付与した。
 
 一方、`lib/fields.sh` の `bwqa_run_field_screen`/`bwqa_copy_field_internal` にあった `export BW_SESSION`/`BWQA_ITEM_ID` を subshell 内で行うパターン(fzf の `execute-silent` 経由で再起動される子プロセスへ環境変数を継承させる意図的な設計)は SC2030/SC2031/SC2153 を発火させたが、これは特定関数に固有の設計判断であり誤検知の性質もプロジェクト全体には一般化できないため、該当箇所にのみ `# shellcheck disable=...` を付与した(`.shellcheckrc` には追加しない)。
 
-**理由**: `.shellcheckrc` でのグローバル無効化は、sourcing アーキテクチャに起因して全ファイルで一様に発生する誤検知(SC1091/SC2034)に限定し、個別関数のロジックに起因する誤検知(SC2030/SC2031/SC2153)はインライン disable で局所化することで、将来の本当の unused variable バグ等を検知する能力をなるべく損なわないようにした。
+**理由**: `.shellcheckrc` でのグローバル無効化は、sourcing アーキテクチャに起因して全ファイルで一様に発生する誤検知(SC1091/SC2016/SC2329)に限定し、`SC2034` のような「本当のバグを検知できる」チェックは可能な限り有効なまま保つ(`-x` によるクロスファイル解析、export の活用、少数箇所のインライン disable で対応する)ことで、将来の unused variable バグ等を検知する能力をなるべく損なわないようにした。
 
-**CI/ローカルでの呼び出し方**: `shellcheck bin/bw-quickaccess lib/*.sh test/helpers/*.bash test/lib/*.bats` のように対象ファイルを列挙して一括実行する(`-x` フラグは不要。`.shellcheckrc` の設定のみで解決する)。
+**CI/ローカルでの呼び出し方**: プロダクションコードとテストコードで呼び出しを分ける。
+```
+shellcheck -x bin/bw-quickaccess
+shellcheck test/helpers/*.bash test/lib/*.bats
+```
 
 ## Risks / Trade-offs
 
@@ -96,6 +107,8 @@ test/
 - [Risk] PATH ダミーコマンド方式は bats の `setup`/`teardown` の実装漏れがあると他テストに影響(PATH 汚染)しうる → [Mitigation] `test/helpers/stub.bash` に PATH 復元を一元化し、各 `.bats` は個別に PATH 操作を書かない
 - [Risk] macOS ランナーは起動・キューが Linux より遅く、CI のフィードバック速度が落ちる → [Mitigation] 許容(課金面の懸念がないため速度は許容範囲とする)
 - [Risk] 将来 private 化した場合、macOS ランナーの消費レートが 10 倍になり無料枠を圧迫する → [Mitigation] private 化を検討する際に CI matrix 構成(macOS 除外や実行頻度の見直し)を再検討する
+- [Risk] `push` と `pull_request` を両方 `on:` に設定すると、同一リポジトリ内で feature ブランチに push するたびに(open な PR があれば)同じ commit に対して matrix が二重実行される → [Mitigation] `push` トリガーを `branches: [main]` に限定し、feature ブランチへの push は `pull_request` イベントのみで検証する(コードレビューで指摘され修正)
+- [Risk] TTL 境界値テストで `date +%s` をテスト側と `bwqa_session_ttl_expired` 内部側の2箇所で個別に評価しているため、境界に近い秒数(TTL-1秒)だと実行タイミングの秒またぎでフレーキーになりうる → [Mitigation] 「TTL未満」ケースの余裕を TTL-5秒に広げてレース耐性を持たせた(コードレビューで指摘され修正。「TTLちょうど」「TTL超過」側は秒またぎが起きても方向的に安全なため対応不要)
 
 ## Migration Plan
 

@@ -27,6 +27,11 @@ BWQA_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../lib" && pwd)"
 BWQA_TEST_FIXTURES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../fixtures" && pwd)"
 export BWQA_LIB_DIR BWQA_TEST_FIXTURES_DIR
 
+# ダミー実行ファイルのシェバンドに埋め込む bash の絶対パス。テスト開始時点の
+# PATH で解決しておくことで、bwqa_test_stub_path_only で PATH を制限した後も
+# ダミースクリプト自体は(env 経由の PATH 解決を経ずに)確実に起動できる。
+BWQA_TEST_BASH_PATH="$(command -v bash)"
+
 BWQA_TEST_STUB_DIR=""
 BWQA_TEST_CACHE_DIR=""
 BWQA_TEST_ORIG_PATH=""
@@ -65,7 +70,7 @@ bwqa_test_stub_cmd() {
   local name="$1" body="$2"
   local path="$BWQA_TEST_STUB_DIR/$name"
   {
-    printf '#!/usr/bin/env bash\n'
+    printf '#!%s\n' "$BWQA_TEST_BASH_PATH"
     printf '%s\n' "$body"
   } >"$path"
   chmod +x "$path"
@@ -80,15 +85,19 @@ bwqa_test_stub_remove_cmd() {
 # 「コマンドが存在しない」ケースを厳密に検証するため、PATH を stub ディレクトリのみに
 # 制限する。通常の bwqa_test_stub_setup は既存 PATH の先頭に stub dir を追加するだけ
 # なので、実行環境に本物のコマンド(bw/jq/fzf 等)がインストールされていると
-# 「存在しない」状態を再現できない。制限後も lib/*.sh が内部で使う awk は、
-# 呼び出し時点の実体へのパススルースタブとして stub ディレクトリに用意しておく。
+# 「存在しない」状態を再現できない。制限後も lib/*.sh が内部で使う実ユーティリティ
+# (デフォルトで awk)は、呼び出し時点の実体へのパススルースタブとして stub
+# ディレクトリに用意しておく。awk 以外にも実体を通したいコマンドがあれば
+# 引数で追加できる(例: bwqa_test_stub_path_only sed cut)。
 #
 # 注意: bwqa_test_stub_cmd 自体が chmod を必要とするため、このディレクティブは
 # 各テストで必要なダミーコマンドをすべて bwqa_test_stub_cmd で作り終えた後、
 # 最後に呼び出すこと(先に呼ぶと以降の bwqa_test_stub_cmd が chmod 不在で失敗する)。
 bwqa_test_stub_path_only() {
-  local real_awk
-  real_awk="$(command -v awk)"
-  bwqa_test_stub_cmd awk "exec '$real_awk' \"\$@\""
+  local cmd real_path
+  for cmd in awk "$@"; do
+    real_path="$(command -v "$cmd")"
+    bwqa_test_stub_cmd "$cmd" "exec '$real_path' \"\$@\""
+  done
   PATH="$BWQA_TEST_STUB_DIR"
 }

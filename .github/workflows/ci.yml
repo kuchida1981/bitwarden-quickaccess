@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -32,8 +33,11 @@ jobs:
             bash -n "$f"
           done
 
-      - name: shellcheck
-        run: shellcheck bin/bw-quickaccess lib/*.sh test/helpers/*.bash test/lib/*.bats
+      - name: shellcheck (production code)
+        run: shellcheck -x bin/bw-quickaccess
+
+      - name: shellcheck (test code)
+        run: shellcheck test/helpers/*.bash test/lib/*.bats
 
       - name: Run bats tests
         run: bats test/lib/*.bats

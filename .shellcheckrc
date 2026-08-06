@@ -1,7 +1,7 @@
 # lib/*.sh・test/helpers/*.bash はすべて他ファイルから source される前提で書かれており、
-# 単体で shellcheck にかけると shebang 不在(SC2148)、動的パスによる追跡不可(SC1091)、
-# 他ファイルで消費される定数の誤検知(SC2034)が構造的に発生する。
-# これらはこのプロジェクトの sourcing アーキテクチャ上の既知の誤検知として無効化する。
+# 単体で shellcheck にかけると shebang 不在(SC2148)、動的パスによる追跡不可(SC1091)が
+# 構造的に発生する。これらはこのプロジェクトの sourcing アーキテクチャ上の既知の
+# 誤検知として無効化する。
 #
 # SC2016: test/helpers/stub.bash の bwqa_test_stub_cmd は、PATH ダミー実行ファイルの
 # 中身をシングルクォート文字列で受け取り、そのスクリプトが「後で・別プロセスとして」
@@ -11,8 +11,14 @@
 # SC2329: test/lib/*.bats では、他ファイル(lib/*.sh)の関数を上書きする関数スタブ
 # (例: bwqa_bw()、bwqa_detect_platform())を定義するが、実際の呼び出しは source
 # された別ファイル側で行われるため、単体解析では「呼ばれていない」と誤検知される。
+#
+# SC2034(他ファイルで消費される定数の誤検知)はここでは無効化しない。プロダクション
+# コード(bin/bw-quickaccess・lib/*.sh)は `shellcheck -x bin/bw-quickaccess` として
+# 単一エントリポイント経由でクロスファイル解析することで誤検知を避けており、これなら
+# 本当に未使用な変数の typo バグ等を CI で検知する能力を失わずに済む(design.md
+# Decision 6 参照)。test/helpers/stub.bash 側の少数の該当箇所のみ、個別にインライン
+# `# shellcheck disable=SC2034` を付与している。
 shell=bash
 disable=SC1091
-disable=SC2034
 disable=SC2016
 disable=SC2329

@@ -72,8 +72,9 @@ sudo apt-get install -y bats shellcheck
 bash -n bin/bw-quickaccess
 for f in lib/*.sh; do bash -n "$f"; done
 
-# 静的解析
-shellcheck bin/bw-quickaccess lib/*.sh test/helpers/*.bash test/lib/*.bats
+# 静的解析(プロダクションコードは -x でクロスファイル解析、テストコードは単体で解析)
+shellcheck -x bin/bw-quickaccess
+shellcheck test/helpers/*.bash test/lib/*.bats
 
 # 単体テスト
 bats test/lib/*.bats

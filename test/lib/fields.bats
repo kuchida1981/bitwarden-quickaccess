@@ -14,8 +14,11 @@ setup() {
   # bwqa_copy_field_internal は無条件に platform/clipboard 検出を呼ぶため、
   # ホスト環境(特に GUI の無い Linux CI ランナー)に依存しないよう関数スタブで
   # 差し替える。実際に使うクリップボードコマンドは PATH ダミーの clipboard-capture。
-  # (SC2329 は .shellcheckrc でグローバルに無効化済み)
+  # BWQA_OS_KIND/BWQA_CLIPBOARD_CMD_ARR は lib/fields.sh 側の bwqa_copy_field_internal
+  # から間接的に参照される(SC2034/SC2329 は静的解析の誤検知のためインラインで無効化)。
+  # shellcheck disable=SC2034
   bwqa_detect_platform() { BWQA_OS_KIND="macos"; }
+  # shellcheck disable=SC2034
   bwqa_detect_clipboard_cmd() { BWQA_CLIPBOARD_CMD_ARR=(clipboard-capture); }
 
   bwqa_test_stub_cmd clipboard-capture 'cat >"$BWQA_TEST_CACHE_DIR/clipboard-output"'
@@ -86,7 +89,8 @@ teardown() {
 
 # --- 5.3 bwqa_copy_field_internal: 正常系 ----------------------------------
 
-@test "bwqa_copy_field_internal: password 取得成功時にクリップボードへコピーする" {
+# password/username/totp すべてに値を返す bw スタブ。5.3 の複数テストで共用する。
+_stub_bw_get_all_fields() {
   bwqa_test_stub_cmd bw '
 case "$2" in
   password) printf "correct horse battery staple\n" ;;
@@ -95,6 +99,11 @@ case "$2" in
   *) exit 1 ;;
 esac
 '
+}
+
+@test "bwqa_copy_field_internal: password 取得成功時にクリップボードへコピーする" {
+  _stub_bw_get_all_fields
+
   BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
     run bwqa_copy_field_internal password
   [ "$status" -eq 0 ]
@@ -102,14 +111,8 @@ esac
 }
 
 @test "bwqa_copy_field_internal: username/totp もそれぞれ正しくコピーする" {
-  bwqa_test_stub_cmd bw '
-case "$2" in
-  password) printf "correct horse battery staple\n" ;;
-  username) printf "alice@example.com\n" ;;
-  totp) printf "123456\n" ;;
-  *) exit 1 ;;
-esac
-'
+  _stub_bw_get_all_fields
+
   BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
     run bwqa_copy_field_internal username
   [ "$status" -eq 0 ]

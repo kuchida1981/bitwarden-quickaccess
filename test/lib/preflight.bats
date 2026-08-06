@@ -7,6 +7,13 @@ setup() {
   bwqa_test_stub_setup
   source "$BWQA_LIB_DIR/common.sh"
   source "$BWQA_LIB_DIR/preflight.sh"
+
+  # bwqa_check_core_tools 系のテストが共通で使う既定スタブ。陰性系のテストは
+  # bwqa_test_stub_remove_cmd で個別に取り除いてから bwqa_test_stub_path_only
+  # を呼ぶ(この2つの組み合わせで「他は揃っているが特定の1つだけ無い」を再現する)。
+  bwqa_test_stub_cmd bw 'exit 0'
+  bwqa_test_stub_cmd jq 'exit 0'
+  bwqa_test_stub_cmd fzf '[ "$1" = "--version" ] && printf "0.35.0\n"'
 }
 
 teardown() {
@@ -16,17 +23,14 @@ teardown() {
 # --- 6.1 bwqa_check_core_tools ---------------------------------------------
 
 @test "bwqa_check_core_tools: bw/jq/fzf が揃っていれば成功する" {
-  bwqa_test_stub_cmd bw 'exit 0'
-  bwqa_test_stub_cmd jq 'exit 0'
-  bwqa_test_stub_cmd fzf '[ "$1" = "--version" ] && printf "0.35.0\n"'
+  bwqa_test_stub_path_only
 
   run bwqa_check_core_tools
   [ "$status" -eq 0 ]
 }
 
 @test "bwqa_check_core_tools: bw が無い場合はエラー終了する" {
-  bwqa_test_stub_cmd jq 'exit 0'
-  bwqa_test_stub_cmd fzf '[ "$1" = "--version" ] && printf "0.35.0\n"'
+  bwqa_test_stub_remove_cmd bw
   bwqa_test_stub_path_only
 
   run bwqa_check_core_tools
@@ -35,8 +39,7 @@ teardown() {
 }
 
 @test "bwqa_check_core_tools: jq が無い場合はエラー終了する" {
-  bwqa_test_stub_cmd bw 'exit 0'
-  bwqa_test_stub_cmd fzf '[ "$1" = "--version" ] && printf "0.35.0\n"'
+  bwqa_test_stub_remove_cmd jq
   bwqa_test_stub_path_only
 
   run bwqa_check_core_tools
@@ -45,8 +48,7 @@ teardown() {
 }
 
 @test "bwqa_check_core_tools: fzf が無い場合はエラー終了する" {
-  bwqa_test_stub_cmd bw 'exit 0'
-  bwqa_test_stub_cmd jq 'exit 0'
+  bwqa_test_stub_remove_cmd fzf
   bwqa_test_stub_path_only
 
   run bwqa_check_core_tools

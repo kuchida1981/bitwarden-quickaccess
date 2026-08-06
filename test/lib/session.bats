@@ -19,7 +19,9 @@ teardown() {
 }
 
 @test "bwqa_session_ttl_expired: TTL 未満の経過時間では期限内" {
-  printf '%s' "$(( $(date +%s) - (BWQA_SESSION_TTL_SECONDS - 1) ))" >"$BWQA_SESSION_ISSUED_AT_FILE"
+  # bwqa_session_ttl_expired 内部で再度 date +%s を評価するため、境界の1秒差
+  # だとテスト実行時の秒またぎでフレーキーになりうる。余裕を持って TTL-5 秒とする。
+  printf '%s' "$(( $(date +%s) - (BWQA_SESSION_TTL_SECONDS - 5) ))" >"$BWQA_SESSION_ISSUED_AT_FILE"
   run bwqa_session_ttl_expired
   [ "$status" -ne 0 ]
 }
