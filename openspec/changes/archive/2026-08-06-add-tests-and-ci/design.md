@@ -109,6 +109,8 @@ shellcheck test/helpers/*.bash test/lib/*.bats
 - [Risk] 将来 private 化した場合、macOS ランナーの消費レートが 10 倍になり無料枠を圧迫する → [Mitigation] private 化を検討する際に CI matrix 構成(macOS 除外や実行頻度の見直し)を再検討する
 - [Risk] `push` と `pull_request` を両方 `on:` に設定すると、同一リポジトリ内で feature ブランチに push するたびに(open な PR があれば)同じ commit に対して matrix が二重実行される → [Mitigation] `push` トリガーを `branches: [main]` に限定し、feature ブランチへの push は `pull_request` イベントのみで検証する(コードレビューで指摘され修正)
 - [Risk] TTL 境界値テストで `date +%s` をテスト側と `bwqa_session_ttl_expired` 内部側の2箇所で個別に評価しているため、境界に近い秒数(TTL-1秒)だと実行タイミングの秒またぎでフレーキーになりうる → [Mitigation] 「TTL未満」ケースの余裕を TTL-5秒に広げてレース耐性を持たせた(コードレビューで指摘され修正。「TTLちょうど」「TTL超過」側は秒またぎが起きても方向的に安全なため対応不要)
+- [Risk] shellcheck のバージョンによって関数スタブ(cross-file 経由でのみ呼ばれる)への誤検知の報告名が異なる(ローカルの 0.11.0 は SC2329、GitHub Actions ubuntu-latest 標準搭載版は SC2317)ため、片方だけ無効化すると CI 環境で新たに失敗しうる → [Mitigation] 実際に PR の CI で SC2317 の発生を確認し、`.shellcheckrc` に SC2329 と併せて追加した
+- [Risk] `test/lib/*.bats` のテスト名に日本語(マルチバイト文字)を使っているため、実行環境のロケールが UTF-8 でないと bats が `unknown test name` で全テストを実行できずに失敗する(macos-latest ランナーで実際に発生。開発機はローカルロケールが `en_US.UTF-8` のため気づけなかった)→ [Mitigation] `.github/workflows/ci.yml` のジョブ全体に `LANG=en_US.UTF-8` / `LC_ALL=en_US.UTF-8` を明示的に設定した
 
 ## Migration Plan
 

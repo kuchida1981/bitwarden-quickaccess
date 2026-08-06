@@ -12,6 +12,12 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      # bats のテスト名に日本語(マルチバイト文字)を使っているため、ロケールが
+      # UTF-8 でないと "unknown test name" で全テストが実行されずに失敗する
+      # (macos-latest ランナーで実際に発生を確認)。明示的に UTF-8 ロケールを指定する。
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
     steps:
       - name: Checkout
         uses: actions/checkout@v4
