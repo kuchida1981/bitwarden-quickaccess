@@ -18,13 +18,13 @@ bwqa_get_item_summary() {
   }' <<<"$raw"
 }
 
-# password を先頭行にして、Enter(先頭行選択)がパスワードコピーになりやすくする
+# username を先頭にすることで、Enterによる誤ったパスワードコピーの事故を減らす
 bwqa_build_field_rows() {
   local summary_json="$1"
   jq -r '
     [
-      (if .has_password then ["password", "パスワードをコピー (ctrl-p)"] else empty end),
       (if .has_username then ["username", "ユーザー名をコピー (ctrl-u)"] else empty end),
+      (if .has_password then ["password", "パスワードをコピー (ctrl-p)"] else empty end),
       (if .has_totp then ["totp", "TOTP をコピー (ctrl-t)"] else empty end)
     ] | .[] | @tsv
   ' <<<"$summary_json"

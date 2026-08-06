@@ -30,8 +30,22 @@ teardown() {
 
 # --- 5.1 bwqa_build_field_rows -------------------------------------------
 
-@test "bwqa_build_field_rows: password/username/totp すべてある場合、password を先頭行にする" {
+@test "bwqa_build_field_rows: password/username/totp すべてある場合、username を先頭行にする" {
   local summary='{"has_password":true,"has_username":true,"has_totp":true}'
+  run bwqa_build_field_rows "$summary"
+  [ "$status" -eq 0 ]
+
+  local first_field
+  first_field="$(echo "$output" | head -n1 | cut -f1)"
+  [ "$first_field" = "username" ]
+
+  local line_count
+  line_count="$(echo "$output" | wc -l | tr -d ' ')"
+  [ "$line_count" -eq 3 ]
+}
+
+@test "bwqa_build_field_rows: username が無く、password と totp のみがあるアイテムでは、password → totp の順で出力される" {
+  local summary='{"has_password":true,"has_username":false,"has_totp":true}'
   run bwqa_build_field_rows "$summary"
   [ "$status" -eq 0 ]
 
@@ -39,9 +53,13 @@ teardown() {
   first_field="$(echo "$output" | head -n1 | cut -f1)"
   [ "$first_field" = "password" ]
 
+  local second_field
+  second_field="$(echo "$output" | sed -n '2p' | cut -f1)"
+  [ "$second_field" = "totp" ]
+
   local line_count
   line_count="$(echo "$output" | wc -l | tr -d ' ')"
-  [ "$line_count" -eq 3 ]
+  [ "$line_count" -eq 2 ]
 }
 
 @test "bwqa_build_field_rows: password が無い場合は password 行を出力しない" {
