@@ -50,6 +50,10 @@ bwqa_run_field_screen() {
   fi
 
   local key
+  # この subshell 内での export は fzf の execute-silent 経由で起動する
+  # __copy-field 子プロセスへ環境変数を継承させるためのもので、subshell の
+  # 外に値を戻す意図はない(SC2030/SC2031 は意図した挙動への誤検知)。
+  # shellcheck disable=SC2030,SC2031,SC2153
   key="$(
     export BW_SESSION="$BWQA_SESSION"
     export BWQA_ITEM_ID="$item_id"
@@ -73,6 +77,10 @@ bwqa_run_field_screen() {
 
 # __copy-field サブコマンドの実体。BWQA_ITEM_ID / BW_SESSION は環境変数から受け取る。
 # 機密情報は標準出力へは一切出さず、クリップボードへのみ渡す。失敗はログファイルにのみ記録する。
+# この関数は bwqa_run_field_screen 内の subshell とは別の(fzf 経由で再起動される)
+# プロセスとして実行されるため、値は subshell 内での export ではなく実際の環境変数
+# 経由で渡ってくる(SC2031 は静的解析上の誤検知)。
+# shellcheck disable=SC2031
 bwqa_copy_field_internal() {
   local field="${1:-}"
   local item_id="${BWQA_ITEM_ID:-}"
