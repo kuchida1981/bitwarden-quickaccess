@@ -215,3 +215,13 @@ esac
   [ "$(cat "$BWQA_COPY_STATUS_FILE")" = "コピーに失敗しました" ]
 }
 
+@test "bwqa_copy_field_internal: クリップボードコマンド自体が失敗した場合もステータスファイルに失敗メッセージが書き込まれること" {
+  _stub_bw_get_all_fields
+  bwqa_test_stub_cmd clipboard-capture 'exit 1'
+
+  BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
+    run bwqa_copy_field_internal password
+  [ "$status" -ne 0 ]
+  [ "$(cat "$BWQA_COPY_STATUS_FILE")" = "コピーに失敗しました" ]
+}
+
