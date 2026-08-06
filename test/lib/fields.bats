@@ -188,3 +188,40 @@ esac
   [[ "$err" == *"アイテム情報を取得しています..."* ]]
 }
 
+@test "bwqa_copy_field_internal: コピー成功時にステータスファイルに成功メッセージが書き込まれること" {
+  _stub_bw_get_all_fields
+
+  BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
+    run bwqa_copy_field_internal password
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BWQA_COPY_STATUS_FILE")" = "パスワードをコピーしました" ]
+}
+
+@test "bwqa_copy_field_internal: 値取得結果が空の場合にステータスファイルに未設定メッセージが書き込まれること" {
+  bwqa_test_stub_cmd bw 'printf ""'
+
+  BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
+    run bwqa_copy_field_internal password
+  [ "$status" -ne 0 ]
+  [ "$(cat "$BWQA_COPY_STATUS_FILE")" = "パスワードは設定されていません" ]
+}
+
+@test "bwqa_copy_field_internal: bwコマンドが失敗した場合にステータスファイルに失敗メッセージが書き込まれること" {
+  bwqa_test_stub_cmd bw 'exit 1'
+
+  BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
+    run bwqa_copy_field_internal password
+  [ "$status" -ne 0 ]
+  [ "$(cat "$BWQA_COPY_STATUS_FILE")" = "コピーに失敗しました" ]
+}
+
+@test "bwqa_copy_field_internal: クリップボードコマンド自体が失敗した場合もステータスファイルに失敗メッセージが書き込まれること" {
+  _stub_bw_get_all_fields
+  bwqa_test_stub_cmd clipboard-capture 'exit 1'
+
+  BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
+    run bwqa_copy_field_internal password
+  [ "$status" -ne 0 ]
+  [ "$(cat "$BWQA_COPY_STATUS_FILE")" = "コピーに失敗しました" ]
+}
+
