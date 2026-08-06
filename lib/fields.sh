@@ -62,11 +62,12 @@ bwqa_run_field_screen() {
       --delimiter='\t' --with-nth=2 \
       --prompt="${item_name} > " --height=80% --reverse \
       --header='Enter: 選択中の項目をコピー  ctrl-p: password  ctrl-u: username  ctrl-t: totp  Esc: 検索へ戻る  q: 終了' \
+      --border=rounded --border-label='' \
       --expect='esc,q' \
-      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})" \
-      --bind="ctrl-p:execute-silent(\"$BWQA_SELF\" __copy-field password)" \
-      --bind="ctrl-u:execute-silent(\"$BWQA_SELF\" __copy-field username)" \
-      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp)" \
+      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
+      --bind="ctrl-p:execute-silent(\"$BWQA_SELF\" __copy-field password)+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
+      --bind="ctrl-u:execute-silent(\"$BWQA_SELF\" __copy-field username)+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
+      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp)+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
       | head -n1
   )" || true
 
