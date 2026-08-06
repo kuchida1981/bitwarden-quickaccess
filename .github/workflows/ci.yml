@@ -45,5 +45,11 @@ jobs:
       - name: shellcheck (test code)
         run: shellcheck test/helpers/*.bash test/lib/*.bats
 
+      - name: Debug locale and bats version
+        run: |
+          locale
+          bats --version
+          echo "LANG=$LANG LC_ALL=$LC_ALL"
+
       - name: Run bats tests
         run: bats test/lib/*.bats
