@@ -39,7 +39,7 @@
 
 ## 8. ドキュメント更新
 
-- [ ] 8.1 README.md に開発者向けセクションを追加し、ローカルでのテスト実行方法(`bats-core`/`shellcheck` のインストールコマンド、`bats test/lib/*.bats` の実行方法)を記載する
+- [x] 8.1 README.md に開発者向けセクションを追加し、ローカルでのテスト実行方法(`bats-core`/`shellcheck` のインストールコマンド、`bats test/lib/*.bats` の実行方法)を記載する
 
 ## 9. 検証
 

@@ -51,4 +51,34 @@ bin/bw-quickaccess lock
 - クリップボードの自動クリア
 - Linux のヘッドレス/SSH 専用環境のサポート
 
+## 開発者向け: テストの実行
+
+`lib/*.sh` の単体テストは [bats-core](https://github.com/bats-core/bats-core) で書かれています。静的解析には [shellcheck](https://www.shellcheck.net/) を使用しています(除外ルールはリポジトリ直下の `.shellcheckrc` を参照)。
+
+### セットアップ
+
+```sh
+# macOS
+brew install bats-core shellcheck
+
+# Linux(Debian/Ubuntu 系)
+sudo apt-get install -y bats shellcheck
+```
+
+### 実行
+
+```sh
+# 構文チェック
+bash -n bin/bw-quickaccess
+for f in lib/*.sh; do bash -n "$f"; done
+
+# 静的解析
+shellcheck bin/bw-quickaccess lib/*.sh test/helpers/*.bash test/lib/*.bats
+
+# 単体テスト
+bats test/lib/*.bats
+```
+
+GitHub Actions(`.github/workflows/ci.yml`)で `macos-latest` / `ubuntu-latest` の両方に対して push・pull request のたびに同じチェックを自動実行しています。
+
 詳細な要件・設計は `openspec/changes/add-quickaccess-cli/` を参照してください。
