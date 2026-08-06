@@ -10,7 +10,7 @@
 
 ## 3. lib/session.sh のテスト
 
-- [ ] 3.1 `test/lib/session.bats` を作成し、`bwqa_session_ttl_expired()` の「ファイル無し」「TTL未満」「TTL境界」「TTL超過」「不正な内容(非数値)」のケースを検証する
+- [x] 3.1 `test/lib/session.bats` を作成し、`bwqa_session_ttl_expired()` の「ファイル無し」「TTL未満」「TTL境界」「TTL超過」「不正な内容(非数値)」のケースを検証する
 
 ## 4. lib/search.sh のテスト
 
