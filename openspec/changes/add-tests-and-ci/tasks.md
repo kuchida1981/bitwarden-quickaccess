@@ -1,12 +1,12 @@
 ## 1. テスト基盤のセットアップ
 
-- [ ] 1.1 `test/fixtures/bw-list-items.json`(type==1/type!=1 混在、username 有無違いを含む複数アイテム)を作成する
-- [ ] 1.2 `test/fixtures/bw-get-item.json`(password/username/totp の有無パターン違いを複数用意)を作成する
-- [ ] 1.3 `test/helpers/stub.bash`(一時 PATH ディレクトリの作成・ダミー実行ファイル生成・setup/teardown での PATH 復元を行う共通ヘルパー)を作成する
+- [x] 1.1 `test/fixtures/bw-list-items.json`(type==1/type!=1 混在、username 有無違いを含む複数アイテム)を作成する
+- [x] 1.2 `test/fixtures/bw-get-item.json`(password/username/totp の有無パターン違いを複数用意)を作成する
+- [x] 1.3 `test/helpers/stub.bash`(一時 PATH ディレクトリの作成・ダミー実行ファイル生成・setup/teardown での PATH 復元を行う共通ヘルパー)を作成する
 
 ## 2. lib/common.sh のテスト
 
-- [ ] 2.1 `test/lib/common.bats` を作成し、`bwqa_version_ge()` の桁上がり・等値・不足桁(例: "0.35" vs "0.35.0")のケースを検証する
+- [x] 2.1 `test/lib/common.bats` を作成し、`bwqa_version_ge()` の桁上がり・等値・不足桁(例: "0.35" vs "0.35.0")のケースを検証する
 
 ## 3. lib/session.sh のテスト
 

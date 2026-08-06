@@ -1,0 +1,7 @@
+# lib/*.sh・test/helpers/*.bash はすべて他ファイルから source される前提で書かれており、
+# 単体で shellcheck にかけると shebang 不在(SC2148)、動的パスによる追跡不可(SC1091)、
+# 他ファイルで消費される定数の誤検知(SC2034)が構造的に発生する。
+# これらはこのプロジェクトの sourcing アーキテクチャ上の既知の誤検知として無効化する。
+shell=bash
+disable=SC1091
+disable=SC2034

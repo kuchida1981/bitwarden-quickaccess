@@ -78,6 +78,16 @@ test/
 
 **理由**: この関数は `bw get username|password|totp` を直接呼んでおり `bwqa_bw()` を経由しない。関数境界がないため PATH モックが最も自然。エラーログ(`BWQA_ERROR_LOG_FILE`)への書き込み内容を検証することで、値取得失敗時・不正な field 名指定時の挙動を確認する。
 
+### 6. shellcheck の除外ルール: `.shellcheckrc` + ピンポイントのインライン disable
+
+**決定**: リポジトリ直下に `.shellcheckrc`(`shell=bash`、`disable=SC1091,SC2034`)を追加する。`lib/*.sh` と `test/helpers/stub.bash` は他ファイルから source される前提の設計であり、単体で shellcheck にかけると shebang 不在(SC2148。`shell=bash` で解消)・動的パスによる追跡不可(SC1091)・他ファイルで消費される定数の誤検知(SC2034)が構造的に発生することを実装時に確認した。これらはプロジェクトの sourcing アーキテクチャに起因する既知の誤検知としてグローバルに無効化する。
+
+一方、`lib/fields.sh` の `bwqa_run_field_screen`/`bwqa_copy_field_internal` にあった `export BW_SESSION`/`BWQA_ITEM_ID` を subshell 内で行うパターン(fzf の `execute-silent` 経由で再起動される子プロセスへ環境変数を継承させる意図的な設計)は SC2030/SC2031/SC2153 を発火させたが、これは特定関数に固有の設計判断であり誤検知の性質もプロジェクト全体には一般化できないため、該当箇所にのみ `# shellcheck disable=...` を付与した(`.shellcheckrc` には追加しない)。
+
+**理由**: `.shellcheckrc` でのグローバル無効化は、sourcing アーキテクチャに起因して全ファイルで一様に発生する誤検知(SC1091/SC2034)に限定し、個別関数のロジックに起因する誤検知(SC2030/SC2031/SC2153)はインライン disable で局所化することで、将来の本当の unused variable バグ等を検知する能力をなるべく損なわないようにした。
+
+**CI/ローカルでの呼び出し方**: `shellcheck bin/bw-quickaccess lib/*.sh test/helpers/*.bash test/lib/*.bats` のように対象ファイルを列挙して一括実行する(`-x` フラグは不要。`.shellcheckrc` の設定のみで解決する)。
+
 ## Risks / Trade-offs
 
 - [Risk] `bw` の実出力フォーマット変更を fixtures が追従できず、テストは通るが実環境で壊れる sync 漏れが起きうる → [Mitigation] fixtures 作成時に実際の `bw list items --pretty` 等の出力を参考にする旨をテストコード内コメントで明記し、大きな bw バージョンアップ時は fixtures の見直しをタスク化する
@@ -91,5 +101,4 @@ test/
 
 ## Open Questions
 
-- fixtures の JSON は実際の `bw` CLI から手動でサンプルを採取するか、issue/design から手で作文するか(採取できる Bitwarden テストアカウントが無い場合は手作文でよいか)
-- `shellcheck` の除外ルール(`SC2034` 等、意図的な未使用変数がある場合)は `.shellcheckrc` で一元管理するか、各ファイルにインラインディレクティブを書くか
+(実装時に解消済み。fixtures は Bitwarden テストアカウントが無いため `bw list items`/`bw get item` の実際のフィールド構成を参考に手作文し、`test/fixtures/` にコミットした。shellcheck の除外ルールは Decision 6 の通り確定した)
