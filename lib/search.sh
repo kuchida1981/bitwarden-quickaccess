@@ -22,7 +22,13 @@ bwqa_run_search_screen() {
   items_json="$(bwqa_fetch_items)" || bwqa_die "vault アイテムの取得に失敗しました。"
 
   local status_feedback
-  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)"
+  # transform-border-label 側にも {1} を参照させ、execute-silent のコピー処理と
+  # 同じ「0件マッチ時は該当 bind action 全体をスキップする」という fzf の挙動を
+  # 適用させる。{1} がないと、0件時に execute-silent(コピー本体)だけがスキップされ
+  # transform-border-label だけが実行されてしまい、直前のコピー結果メッセージが
+  # 「たった今コピーしたかのように」再表示される不具合になる(design.md が想定する
+  # 「実質無反応」という前提を満たせない)。`: {1}` は no-op で処理結果には影響しない。
+  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null; : {1})"
 
   local selected_id
   # この subshell 内での export は fzf の execute-silent 経由で起動する
