@@ -44,4 +44,4 @@
 ## 9. 検証
 
 - [x] 9.1 ローカルで `bash -n bin/bw-quickaccess lib/*.sh`、`shellcheck bin/bw-quickaccess lib/*.sh`、`bats test/lib/*.bats` をすべて実行し、パスすることを確認する(46/46 テスト成功)
-- [ ] 9.2 CI ワークフローが GitHub Actions 上で `macos-latest` / `ubuntu-latest` 双方で成功することを確認する(PR 作成後 `gh pr checks --watch` で確認)
+- [x] 9.2 CI ワークフローが GitHub Actions 上で `macos-latest` / `ubuntu-latest` 双方で成功することを確認する(PR #9 で確認。過程で shellcheck バージョン差(SC2317)と macOS の bash 3.2 起因の bats 日本語テスト名破損の2件を発見・修正した)
