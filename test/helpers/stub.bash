@@ -76,3 +76,19 @@ bwqa_test_stub_remove_cmd() {
   local name="$1"
   rm -f "$BWQA_TEST_STUB_DIR/$name"
 }
+
+# 「コマンドが存在しない」ケースを厳密に検証するため、PATH を stub ディレクトリのみに
+# 制限する。通常の bwqa_test_stub_setup は既存 PATH の先頭に stub dir を追加するだけ
+# なので、実行環境に本物のコマンド(bw/jq/fzf 等)がインストールされていると
+# 「存在しない」状態を再現できない。制限後も lib/*.sh が内部で使う awk は、
+# 呼び出し時点の実体へのパススルースタブとして stub ディレクトリに用意しておく。
+#
+# 注意: bwqa_test_stub_cmd 自体が chmod を必要とするため、このディレクティブは
+# 各テストで必要なダミーコマンドをすべて bwqa_test_stub_cmd で作り終えた後、
+# 最後に呼び出すこと(先に呼ぶと以降の bwqa_test_stub_cmd が chmod 不在で失敗する)。
+bwqa_test_stub_path_only() {
+  local real_awk
+  real_awk="$(command -v awk)"
+  bwqa_test_stub_cmd awk "exec '$real_awk' \"\$@\""
+  PATH="$BWQA_TEST_STUB_DIR"
+}

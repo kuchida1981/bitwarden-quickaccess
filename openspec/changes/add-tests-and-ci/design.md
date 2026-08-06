@@ -35,6 +35,8 @@
 
 **代替案として却下**: 全面 PATH モック(issue 本文の示唆に近い)。`bw` の実際の出力形式を模倣するフェイクスクリプトが必要になり、Bitwarden CLI のバージョンアップで出力形式が変わるたびにテストが壊れるリスクが高い。
 
+**実装時の補足(「コマンドが存在しない」ケースの決定性)**: `bwqa_test_stub_setup` は既存 PATH の先頭に stub dir を追加するだけなので、実行機に本物の `bw`/`jq`/`fzf`/`pbcopy` 等が実際にインストールされていると「存在しない」ケースを正しく再現できない(実際、開発機・CI ランナーいずれも `jq` 等が別 PATH に既に入っている)。このため `test/helpers/stub.bash` に `bwqa_test_stub_path_only()` を追加し、PATH を stub dir のみに制限しつつ `awk`(`bwqa_check_fzf_version` が内部で使用)は実体へのパススルースタブとして用意することで、ホスト環境に依存しない決定的な「存在しない」テストを実現した。呼び出し順序の制約(`bwqa_test_stub_cmd` 自体が `chmod` を要するため、必要なダミーコマンドを先にすべて作ってから `bwqa_test_stub_path_only` を呼ぶ)はヘルパーのコメントに明記した。
+
 ### 2. bats-core / shellcheck の導入: パッケージマネージャ経由(vendoring しない)
 
 **決定**: ローカルは `brew install bats-core shellcheck`(macOS 前提。README にコマンドを明記)。CI は `macos-latest` ランナーで `brew install bats-core shellcheck`、`ubuntu-latest` ランナーは `shellcheck` が標準搭載済みのためインストール不要、`bats` は `apt-get install -y bats` または公式 GitHub Action(`bats-core/bats-action` 等)を使う。

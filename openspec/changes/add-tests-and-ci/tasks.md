@@ -26,10 +26,10 @@
 
 ## 6. lib/preflight.sh のテスト
 
-- [ ] 6.1 `test/lib/preflight.bats` を作成し、PATH ダミー実行ファイルの有無を切り替えて `bwqa_check_core_tools`(bw/jq/fzf 不足時のエラー終了)を検証する
-- [ ] 6.2 PATH ダミー `fzf --version` の出力を差し替え、`bwqa_check_fzf_version()` の境界値(0.34.9 で失敗 / 0.35.0 で成功 / バージョン取得不可で失敗)を検証する
-- [ ] 6.3 `uname` のダミー化と `WAYLAND_DISPLAY`/`DISPLAY` 環境変数の差し替えで、`bwqa_detect_platform()` の macOS/Linux(Wayland/X11)/非対応OS/ディスプレイ未検出のケースを検証する
-- [ ] 6.4 PATH ダミー実行ファイル(`wl-copy`/`xclip`/`xsel`/`pbcopy`)の有無を切り替えて `bwqa_detect_clipboard_cmd()` の各分岐を検証する
+- [x] 6.1 `test/lib/preflight.bats` を作成し、PATH ダミー実行ファイルの有無を切り替えて `bwqa_check_core_tools`(bw/jq/fzf 不足時のエラー終了)を検証する
+- [x] 6.2 PATH ダミー `fzf --version` の出力を差し替え、`bwqa_check_fzf_version()` の境界値(0.34.9 で失敗 / 0.35.0 で成功 / バージョン取得不可で失敗)を検証する
+- [x] 6.3 `uname` のダミー化と `WAYLAND_DISPLAY`/`DISPLAY` 環境変数の差し替えで、`bwqa_detect_platform()` の macOS/Linux(Wayland/X11)/非対応OS/ディスプレイ未検出のケースを検証する
+- [x] 6.4 PATH ダミー実行ファイル(`wl-copy`/`xclip`/`xsel`/`pbcopy`)の有無を切り替えて `bwqa_detect_clipboard_cmd()` の各分岐を検証する
 
 ## 7. CI ワークフロー
 
