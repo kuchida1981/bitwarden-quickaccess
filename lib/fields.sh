@@ -76,6 +76,15 @@ bwqa_run_field_screen() {
   esac
 }
 
+bwqa_field_label() {
+  case "$1" in
+    username) printf 'ユーザー名' ;;
+    password) printf 'パスワード' ;;
+    totp) printf 'TOTP' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 # __copy-field サブコマンドの実体。BWQA_ITEM_ID / BW_SESSION は環境変数から受け取る。
 # 機密情報は標準出力へは一切出さず、クリップボードへのみ渡す。失敗はログファイルにのみ記録する。
 # この関数は bwqa_run_field_screen 内の subshell とは別の(fzf 経由で再起動される)
@@ -97,24 +106,45 @@ bwqa_copy_field_internal() {
   fi
 
   local value=""
+  local exit_code=0
   # この関数は fzf の execute-silent 経由でのみ呼ばれ、execute-silent は子プロセスの
   # stdout/stderr を一切ターミナルに表示しない(fzf(1) COMMAND EXECUTION 参照)ため、
   # ここで bwqa_log を呼んでもユーザーには見えない。ローディング表示が必要な場合は
   # fzf のヘッダーを書き換える仕組み(別 change で検討)が必要になる。
   case "$field" in
-    username) value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
-    password) value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
-    totp) value="$(BW_SESSION="$session" bw get totp "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
+    username)
+      value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")"
+      exit_code=$?
+      ;;
+    password)
+      value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")"
+      exit_code=$?
+      ;;
+    totp)
+      value="$(BW_SESSION="$session" bw get totp "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")"
+      exit_code=$?
+      ;;
     *)
       printf '%s __copy-field: 不明な field です: %s\n' "$(date '+%F %T')" "$field" >>"$BWQA_ERROR_LOG_FILE"
       exit 1
       ;;
   esac
 
+  if [[ $exit_code -ne 0 ]]; then
+    printf 'コピーに失敗しました\n' >"$BWQA_COPY_STATUS_FILE"
+    exit 1
+  fi
+
   if [[ -z "$value" ]]; then
+    local label
+    label="$(bwqa_field_label "$field")"
+    printf '%sは設定されていません\n' "$label" >"$BWQA_COPY_STATUS_FILE"
     printf '%s __copy-field: field=%s item=%s の値が空でした\n' "$(date '+%F %T')" "$field" "$item_id" >>"$BWQA_ERROR_LOG_FILE"
     exit 1
   fi
 
   printf '%s' "$value" | bwqa_copy_to_clipboard
+  local label
+  label="$(bwqa_field_label "$field")"
+  printf '%sをコピーしました\n' "$label" >"$BWQA_COPY_STATUS_FILE"
 }
