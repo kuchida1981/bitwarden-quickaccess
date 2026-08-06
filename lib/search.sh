@@ -21,12 +21,24 @@ bwqa_run_search_screen() {
   local items_json
   items_json="$(bwqa_fetch_items)" || bwqa_die "vault アイテムの取得に失敗しました。"
 
+  local status_feedback
+  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)"
+
   local selected_id
+  # この subshell 内での export は fzf の execute-silent 経由で起動する
+  # __copy-field 子プロセスへ BW_SESSION を継承させるためのもので、subshell の
+  # 外に値を戻す意図はない(SC2030/SC2031 は意図した挙動への誤検知)。
+  # shellcheck disable=SC2030,SC2031,SC2153
   selected_id="$(
+    export BW_SESSION="$BWQA_SESSION"
     jq -r '.[] | [.id, .label] | @tsv' <<<"$items_json" \
       | fzf --delimiter='\t' --with-nth=2 \
         --prompt='vault> ' --height=80% --reverse \
-        --header='Enter: アイテムを選択  Esc: 終了' \
+        --header='Enter: アイテムを選択  ctrl-u: ユーザー名  ctrl-p: パスワード  ctrl-t: TOTP を直接コピー  Esc: 終了' \
+        --border=rounded --border-label='' \
+        --bind="ctrl-u:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username)${status_feedback}" \
+        --bind="ctrl-p:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password)${status_feedback}" \
+        --bind="ctrl-t:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
       | cut -f1
   )" || true
 
