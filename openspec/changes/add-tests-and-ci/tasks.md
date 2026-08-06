@@ -14,8 +14,8 @@
 
 ## 4. lib/search.sh のテスト
 
-- [ ] 4.1 `test/lib/search.bats` を作成し、`bwqa_bw()` を関数スタブでオーバーライドして `test/fixtures/bw-list-items.json` を返させ、`bwqa_fetch_items()` が type==1 のみを id/label 形式に整形することを検証する
-- [ ] 4.2 `bwqa_fetch_items()` の label 生成ロジック(username 有無での括弧付与、改行/タブのサニタイズ)を検証するケースを追加する
+- [x] 4.1 `test/lib/search.bats` を作成し、`bwqa_bw()` を関数スタブでオーバーライドして `test/fixtures/bw-list-items.json` を返させ、`bwqa_fetch_items()` が type==1 のみを id/label 形式に整形することを検証する
+- [x] 4.2 `bwqa_fetch_items()` の label 生成ロジック(username 有無での括弧付与、改行/タブのサニタイズ)を検証するケースを追加する
 
 ## 5. lib/fields.sh のテスト
 
