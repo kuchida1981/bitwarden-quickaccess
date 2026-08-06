@@ -30,8 +30,22 @@ teardown() {
 
 # --- 5.1 bwqa_build_field_rows -------------------------------------------
 
-@test "bwqa_build_field_rows: password/username/totp すべてある場合、password を先頭行にする" {
+@test "bwqa_build_field_rows: password/username/totp すべてある場合、username を先頭行にする" {
   local summary='{"has_password":true,"has_username":true,"has_totp":true}'
+  run bwqa_build_field_rows "$summary"
+  [ "$status" -eq 0 ]
+
+  local first_field
+  first_field="$(echo "$output" | head -n1 | cut -f1)"
+  [ "$first_field" = "username" ]
+
+  local line_count
+  line_count="$(echo "$output" | wc -l | tr -d ' ')"
+  [ "$line_count" -eq 3 ]
+}
+
+@test "bwqa_build_field_rows: username が無く、password と totp のみがあるアイテムでは、password → totp の順で出力される" {
+  local summary='{"has_password":true,"has_username":false,"has_totp":true}'
   run bwqa_build_field_rows "$summary"
   [ "$status" -eq 0 ]
 
@@ -39,9 +53,13 @@ teardown() {
   first_field="$(echo "$output" | head -n1 | cut -f1)"
   [ "$first_field" = "password" ]
 
+  local second_field
+  second_field="$(echo "$output" | sed -n '2p' | cut -f1)"
+  [ "$second_field" = "totp" ]
+
   local line_count
   line_count="$(echo "$output" | wc -l | tr -d ' ')"
-  [ "$line_count" -eq 3 ]
+  [ "$line_count" -eq 2 ]
 }
 
 @test "bwqa_build_field_rows: password が無い場合は password 行を出力しない" {
@@ -63,7 +81,9 @@ teardown() {
 @test "bwqa_get_item_summary: 全フィールドありのアイテムを正しく整形する" {
   bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
 
-  run bwqa_get_item_summary "11111111-1111-1111-1111-111111111111"
+  local output status
+  output="$(bwqa_get_item_summary "11111111-1111-1111-1111-111111111111" 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local summary
@@ -77,7 +97,9 @@ teardown() {
 @test "bwqa_get_item_summary: フィールドが無いアイテムは has_* がすべて false になる" {
   bwqa_bw() { jq -c '.no_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
 
-  run bwqa_get_item_summary "55555555-5555-5555-5555-555555555555"
+  local output status
+  output="$(bwqa_get_item_summary "55555555-5555-5555-5555-555555555555" 2>/dev/null)"
+  status=$?
   [ "$status" -eq 0 ]
 
   local summary
@@ -157,3 +179,12 @@ esac
   run grep -q "item_id/session/field のいずれかが不足しています" "$BWQA_ERROR_LOG_FILE"
   [ "$status" -eq 0 ]
 }
+
+@test "bwqa_get_item_summary: ローディングメッセージが stderr に出力されること" {
+  bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
+
+  local err
+  err="$(bwqa_get_item_summary "11111111-1111-1111-1111-111111111111" 2>&1 1>/dev/null)"
+  [[ "$err" == *"アイテム情報を取得しています..."* ]]
+}
+

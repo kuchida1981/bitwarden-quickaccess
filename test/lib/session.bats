@@ -49,3 +49,14 @@ teardown() {
   run bwqa_session_ttl_expired
   [ "$status" -eq 0 ]
 }
+
+@test "bwqa_unlock: ロック解除中のメッセージが stderr に出力されること" {
+  bwqa_test_stub_cmd bw 'printf "dummy-session-token\n"'
+  # shellcheck disable=SC2034
+  BWQA_KEYCHAIN_AVAILABLE="false"
+
+  local err
+  err="$(bwqa_unlock 2>&1 1>/dev/null)"
+  [[ "$err" == *"vaultのロックを解除しています..."* ]]
+}
+

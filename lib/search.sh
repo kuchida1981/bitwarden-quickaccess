@@ -3,6 +3,7 @@
 # ログインタイプ(type == 1)のアイテムのみを対象に、fzf 向けの id/label ペアを作る
 bwqa_fetch_items() {
   local raw
+  bwqa_log "vaultのアイテム一覧を読み込んでいます..."
   raw="$(bwqa_bw list items)" || return 1
   jq -c '
     [.[] | select(.type == 1)]

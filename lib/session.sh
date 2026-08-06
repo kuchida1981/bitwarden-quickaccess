@@ -61,6 +61,7 @@ bwqa_session_ttl_expired() {
 # 取得した token は標準出力に出さず、内部変数・(可能なら)keychain にのみ保持する。
 bwqa_unlock() {
   local token
+  bwqa_log "vaultのロックを解除しています..."
   token="$(bw unlock --raw)" || bwqa_die "bw unlock に失敗しました。マスターパスワードを確認してください。"
   [[ -n "$token" ]] || bwqa_die "bw unlock が空の session を返しました。"
 

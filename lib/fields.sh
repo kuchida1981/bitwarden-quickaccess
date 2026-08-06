@@ -9,6 +9,7 @@
 
 bwqa_get_item_summary() {
   local item_id="$1" raw
+  bwqa_log "アイテム情報を取得しています..."
   raw="$(bwqa_bw get item "$item_id")" || return 1
   jq -c '{
     name: (.name // ""),
@@ -18,13 +19,13 @@ bwqa_get_item_summary() {
   }' <<<"$raw"
 }
 
-# password を先頭行にして、Enter(先頭行選択)がパスワードコピーになりやすくする
+# username を先頭にすることで、Enterによる誤ったパスワードコピーの事故を減らす
 bwqa_build_field_rows() {
   local summary_json="$1"
   jq -r '
     [
-      (if .has_password then ["password", "パスワードをコピー (ctrl-p)"] else empty end),
       (if .has_username then ["username", "ユーザー名をコピー (ctrl-u)"] else empty end),
+      (if .has_password then ["password", "パスワードをコピー (ctrl-p)"] else empty end),
       (if .has_totp then ["totp", "TOTP をコピー (ctrl-t)"] else empty end)
     ] | .[] | @tsv
   ' <<<"$summary_json"
@@ -96,6 +97,10 @@ bwqa_copy_field_internal() {
   fi
 
   local value=""
+  # この関数は fzf の execute-silent 経由でのみ呼ばれ、execute-silent は子プロセスの
+  # stdout/stderr を一切ターミナルに表示しない(fzf(1) COMMAND EXECUTION 参照)ため、
+  # ここで bwqa_log を呼んでもユーザーには見えない。ローディング表示が必要な場合は
+  # fzf のヘッダーを書き換える仕組み(別 change で検討)が必要になる。
   case "$field" in
     username) value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
     password) value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || true ;;
