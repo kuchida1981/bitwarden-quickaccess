@@ -50,6 +50,13 @@ jobs:
           locale
           bats --version
           echo "LANG=$LANG LC_ALL=$LC_ALL"
+          echo "--- bash ---"
+          command -v bash
+          bash --version | head -1
+          head -1 "$(command -v bats)"
+          echo "--- env bash ---"
+          command -v env
+          /usr/bin/env bash --version | head -1
 
       - name: Run bats tests
         run: bats test/lib/*.bats
