@@ -112,18 +112,9 @@ bwqa_copy_field_internal() {
   # ここで bwqa_log を呼んでもユーザーには見えない。ローディング表示が必要な場合は
   # fzf のヘッダーを書き換える仕組み(別 change で検討)が必要になる。
   case "$field" in
-    username)
-      value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")"
-      exit_code=$?
-      ;;
-    password)
-      value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")"
-      exit_code=$?
-      ;;
-    totp)
-      value="$(BW_SESSION="$session" bw get totp "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")"
-      exit_code=$?
-      ;;
+    username) value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;
+    password) value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;
+    totp) value="$(BW_SESSION="$session" bw get totp "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;
     *)
       printf '%s __copy-field: 不明な field です: %s\n' "$(date '+%F %T')" "$field" >>"$BWQA_ERROR_LOG_FILE"
       exit 1
