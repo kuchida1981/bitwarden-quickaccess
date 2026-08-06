@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# bw-quickaccess: bw / jq / fzf を組み合わせた 1Password Quick Access 相当のターミナルツール
+set -euo pipefail
+
+BWQA_SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+BWQA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=lib/common.sh
+source "$BWQA_ROOT/lib/common.sh"
+# shellcheck source=lib/preflight.sh
+source "$BWQA_ROOT/lib/preflight.sh"
+# shellcheck source=lib/clipboard.sh
+source "$BWQA_ROOT/lib/clipboard.sh"
+# shellcheck source=lib/session.sh
+source "$BWQA_ROOT/lib/session.sh"
+# shellcheck source=lib/search.sh
+source "$BWQA_ROOT/lib/search.sh"
+# shellcheck source=lib/fields.sh
+source "$BWQA_ROOT/lib/fields.sh"
+
+bwqa_print_usage() {
+  cat <<'EOF'
+使い方: bw-quickaccess [lock]
+
+  (引数なし)   vault アイテムを検索し、フィールドをクリップボードへコピーする
+  lock         キャッシュされた session を破棄する(次回起動時に再度マスターパスワードを要求する)
+  -h, --help   このヘルプを表示する
+EOF
+}
+
+bwqa_main() {
+  bwqa_run_preflight
+  bwqa_ensure_cache_dir
+  bwqa_get_session
+
+  while true; do
+    local item_id
+    item_id="$(bwqa_read_last_item)"
+
+    if [[ -z "$item_id" ]]; then
+      item_id="$(bwqa_run_search_screen)"
+      if [[ -z "$item_id" ]]; then
+        # 検索画面で Esc 等によりキャンセルされた
+        break
+      fi
+      bwqa_write_last_item "$item_id"
+    fi
+
+    local screen_status=0
+    bwqa_run_field_screen "$item_id" || screen_status=$?
+
+    case "$screen_status" in
+      1)
+        # Esc: 検索画面へ戻る
+        bwqa_clear_last_item
+        continue
+        ;;
+      2)
+        # コピー可能フィールドがない: 検索へ戻す
+        bwqa_clear_last_item
+        continue
+        ;;
+      *)
+        # q または想定外: ツールを終了する
+        break
+        ;;
+    esac
+  done
+}
+
+bwqa_run_lock_subcommand() {
+  bwqa_ensure_cache_dir
+  bwqa_detect_platform
+  bwqa_cmd_lock
+}
+
+case "${1:-}" in
+  __copy-field)
+    shift
+    bwqa_copy_field_internal "${1:-}"
+    ;;
+  lock)
+    bwqa_run_lock_subcommand
+    ;;
+  -h | --help)
+    bwqa_print_usage
+    ;;
+  "")
+    bwqa_main
+    ;;
+  *)
+    bwqa_log "不明な引数です: $1"
+    bwqa_print_usage >&2
+    exit 1
+    ;;
+esac
