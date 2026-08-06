@@ -43,5 +43,5 @@
 
 ## 9. 検証
 
-- [ ] 9.1 ローカルで `bash -n bin/bw-quickaccess lib/*.sh`、`shellcheck bin/bw-quickaccess lib/*.sh`、`bats test/lib/*.bats` をすべて実行し、パスすることを確認する
+- [x] 9.1 ローカルで `bash -n bin/bw-quickaccess lib/*.sh`、`shellcheck bin/bw-quickaccess lib/*.sh`、`bats test/lib/*.bats` をすべて実行し、パスすることを確認する(46/46 テスト成功)
 - [ ] 9.2 CI ワークフローが GitHub Actions 上で `macos-latest` / `ubuntu-latest` 双方で成功することを確認する(PR 作成後 `gh pr checks --watch` で確認)
