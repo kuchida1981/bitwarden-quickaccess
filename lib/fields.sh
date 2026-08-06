@@ -51,6 +51,8 @@ bwqa_run_field_screen() {
   fi
 
   local key
+  local status_feedback
+  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)"
   # この subshell 内での export は fzf の execute-silent 経由で起動する
   # __copy-field 子プロセスへ環境変数を継承させるためのもので、subshell の
   # 外に値を戻す意図はない(SC2030/SC2031 は意図した挙動への誤検知)。
@@ -64,10 +66,10 @@ bwqa_run_field_screen() {
       --header='Enter: 選択中の項目をコピー  ctrl-p: password  ctrl-u: username  ctrl-t: totp  Esc: 検索へ戻る  q: 終了' \
       --border=rounded --border-label='' \
       --expect='esc,q' \
-      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
-      --bind="ctrl-p:execute-silent(\"$BWQA_SELF\" __copy-field password)+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
-      --bind="ctrl-u:execute-silent(\"$BWQA_SELF\" __copy-field username)+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
-      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp)+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)" \
+      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})${status_feedback}" \
+      --bind="ctrl-p:execute-silent(\"$BWQA_SELF\" __copy-field password)${status_feedback}" \
+      --bind="ctrl-u:execute-silent(\"$BWQA_SELF\" __copy-field username)${status_feedback}" \
+      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
       | head -n1
   )" || true
 
@@ -91,6 +93,11 @@ bwqa_field_label() {
 # この関数は bwqa_run_field_screen 内の subshell とは別の(fzf 経由で再起動される)
 # プロセスとして実行されるため、値は subshell 内での export ではなく実際の環境変数
 # 経由で渡ってくる(SC2031 は静的解析上の誤検知)。
+#
+# コピー結果(成功/フィールド未設定/bw コマンド失敗)は BWQA_COPY_STATUS_FILE に1行
+# 上書きで書き込む。fzf の execute-silent は子プロセスの標準出力/標準エラー出力を
+# 一切ターミナルに表示しないため、fzf 側は別バインド(transform-border-label)経由で
+# このファイルを読み出し、画面上にフィードバックとして表示する。
 # shellcheck disable=SC2031
 bwqa_copy_field_internal() {
   local field="${1:-}"
@@ -118,6 +125,7 @@ bwqa_copy_field_internal() {
     totp) value="$(BW_SESSION="$session" bw get totp "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;
     *)
       printf '%s __copy-field: 不明な field です: %s\n' "$(date '+%F %T')" "$field" >>"$BWQA_ERROR_LOG_FILE"
+      printf 'コピーに失敗しました\n' >"$BWQA_COPY_STATUS_FILE"
       exit 1
       ;;
   esac
@@ -127,16 +135,19 @@ bwqa_copy_field_internal() {
     exit 1
   fi
 
+  local label
+  label="$(bwqa_field_label "$field")"
+
   if [[ -z "$value" ]]; then
-    local label
-    label="$(bwqa_field_label "$field")"
     printf '%sは設定されていません\n' "$label" >"$BWQA_COPY_STATUS_FILE"
     printf '%s __copy-field: field=%s item=%s の値が空でした\n' "$(date '+%F %T')" "$field" "$item_id" >>"$BWQA_ERROR_LOG_FILE"
     exit 1
   fi
 
-  printf '%s' "$value" | bwqa_copy_to_clipboard
-  local label
-  label="$(bwqa_field_label "$field")"
+  if ! printf '%s' "$value" | bwqa_copy_to_clipboard; then
+    printf 'コピーに失敗しました\n' >"$BWQA_COPY_STATUS_FILE"
+    exit 1
+  fi
+
   printf '%sをコピーしました\n' "$label" >"$BWQA_COPY_STATUS_FILE"
 }
