@@ -19,10 +19,10 @@
 
 ## 5. lib/fields.sh のテスト
 
-- [ ] 5.1 `test/lib/fields.bats` を作成し、`bwqa_build_field_rows()` が has_password/has_username/has_totp の組み合わせごとに正しい行を生成し、password が存在する場合は先頭行になることを検証する
-- [ ] 5.2 `bwqa_bw()` を関数スタブでオーバーライドして `test/fixtures/bw-get-item.json` を返させ、`bwqa_get_item_summary()` の JSON 整形を検証する
-- [ ] 5.3 PATH ダミー `bw` を用意し、`bwqa_copy_field_internal()` の正常系(値取得成功 → クリップボードコピー成功)を検証する。クリップボードコマンドはダミー実行ファイルまたは `BWQA_CLIPBOARD_CMD_ARR` の差し替えでモックする
-- [ ] 5.4 `bwqa_copy_field_internal()` の異常系(値取得失敗時に `BWQA_ERROR_LOG_FILE` へ記録、不正な field 名指定時のエラー、item_id/session/field 不足時のエラー)を検証する
+- [x] 5.1 `test/lib/fields.bats` を作成し、`bwqa_build_field_rows()` が has_password/has_username/has_totp の組み合わせごとに正しい行を生成し、password が存在する場合は先頭行になることを検証する
+- [x] 5.2 `bwqa_bw()` を関数スタブでオーバーライドして `test/fixtures/bw-get-item.json` を返させ、`bwqa_get_item_summary()` の JSON 整形を検証する
+- [x] 5.3 PATH ダミー `bw` を用意し、`bwqa_copy_field_internal()` の正常系(値取得成功 → クリップボードコピー成功)を検証する。クリップボードコマンドはダミー実行ファイルまたは `BWQA_CLIPBOARD_CMD_ARR` の差し替えでモックする
+- [x] 5.4 `bwqa_copy_field_internal()` の異常系(値取得失敗時に `BWQA_ERROR_LOG_FILE` へ記録、不正な field 名指定時のエラー、item_id/session/field 不足時のエラー)を検証する
 
 ## 6. lib/preflight.sh のテスト
 

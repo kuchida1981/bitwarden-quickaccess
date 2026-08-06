@@ -80,7 +80,7 @@ test/
 
 ### 6. shellcheck の除外ルール: `.shellcheckrc` + ピンポイントのインライン disable
 
-**決定**: リポジトリ直下に `.shellcheckrc`(`shell=bash`、`disable=SC1091,SC2034`)を追加する。`lib/*.sh` と `test/helpers/stub.bash` は他ファイルから source される前提の設計であり、単体で shellcheck にかけると shebang 不在(SC2148。`shell=bash` で解消)・動的パスによる追跡不可(SC1091)・他ファイルで消費される定数の誤検知(SC2034)が構造的に発生することを実装時に確認した。これらはプロジェクトの sourcing アーキテクチャに起因する既知の誤検知としてグローバルに無効化する。
+**決定**: リポジトリ直下に `.shellcheckrc`(`shell=bash`、`disable=SC1091,SC2034,SC2016,SC2329`)を追加する。`lib/*.sh` と `test/helpers/stub.bash`・`test/lib/*.bats` は他ファイルから source される前提の設計であり、単体で shellcheck にかけると shebang 不在(SC2148。`shell=bash` で解消)・動的パスによる追跡不可(SC1091)・他ファイルで消費される定数の誤検知(SC2034)・意図的なシングルクォート(`bwqa_test_stub_cmd` の遅延展開設計、SC2016)・関数スタブが他ファイル側から間接的に呼ばれることによる「未使用関数」誤検知(SC2329)が構造的に発生することを実装時に確認した。これらはプロジェクトの sourcing アーキテクチャ・テスト用モック設計に起因する既知の誤検知としてグローバルに無効化する。
 
 一方、`lib/fields.sh` の `bwqa_run_field_screen`/`bwqa_copy_field_internal` にあった `export BW_SESSION`/`BWQA_ITEM_ID` を subshell 内で行うパターン(fzf の `execute-silent` 経由で再起動される子プロセスへ環境変数を継承させる意図的な設計)は SC2030/SC2031/SC2153 を発火させたが、これは特定関数に固有の設計判断であり誤検知の性質もプロジェクト全体には一般化できないため、該当箇所にのみ `# shellcheck disable=...` を付与した(`.shellcheckrc` には追加しない)。
 

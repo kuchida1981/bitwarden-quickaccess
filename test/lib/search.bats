@@ -9,9 +9,8 @@ setup() {
   source "$BWQA_LIB_DIR/session.sh"
   source "$BWQA_LIB_DIR/search.sh"
 
-  # lib/search.sh の bwqa_fetch_items() から間接的に呼ばれる(shellcheck の
-  # 静的解析は動的 source を追えないため未使用と誤検知する)。
-  # shellcheck disable=SC2329
+  # lib/search.sh の bwqa_fetch_items() から間接的に呼ばれる
+  # (SC2329 は .shellcheckrc でグローバルに無効化済み)。
   bwqa_bw() {
     cat "$BWQA_TEST_FIXTURES_DIR/bw-list-items.json"
   }

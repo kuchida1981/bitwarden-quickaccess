@@ -25,12 +25,15 @@
 
 BWQA_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../lib" && pwd)"
 BWQA_TEST_FIXTURES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../fixtures" && pwd)"
+export BWQA_LIB_DIR BWQA_TEST_FIXTURES_DIR
 
 BWQA_TEST_STUB_DIR=""
 BWQA_TEST_CACHE_DIR=""
 BWQA_TEST_ORIG_PATH=""
 
 # PATH モック用の一時ディレクトリと、テスト専用キャッシュディレクトリを用意する。
+# PATH 上のダミー実行ファイルは別プロセスとして起動されるため、それらが参照する
+# 変数は export しておく必要がある(BWQA_TEST_CACHE_DIR 等)。
 bwqa_test_stub_setup() {
   BWQA_TEST_STUB_DIR="$(mktemp -d)"
   BWQA_TEST_ORIG_PATH="$PATH"
@@ -41,6 +44,8 @@ bwqa_test_stub_setup() {
   BWQA_SESSION_ISSUED_AT_FILE="$BWQA_CACHE_DIR/session-issued-at"
   BWQA_LAST_ITEM_FILE="$BWQA_CACHE_DIR/last-item-id"
   BWQA_ERROR_LOG_FILE="$BWQA_CACHE_DIR/last-error.log"
+  export BWQA_TEST_STUB_DIR BWQA_TEST_CACHE_DIR BWQA_CACHE_DIR \
+    BWQA_SESSION_ISSUED_AT_FILE BWQA_LAST_ITEM_FILE BWQA_ERROR_LOG_FILE
 }
 
 # PATH とキャッシュディレクトリを元に戻し、一時ディレクトリを削除する。
