@@ -33,9 +33,9 @@
 
 ## 7. CI ワークフロー
 
-- [ ] 7.1 `.github/workflows/ci.yml` を作成し、`macos-latest` / `ubuntu-latest` の matrix で `bash -n bin/bw-quickaccess lib/*.sh` による構文チェックを実行するジョブを定義する
-- [ ] 7.2 同ワークフローに `shellcheck` による静的解析ステップを追加する(macOS ランナーは `brew install shellcheck`、Ubuntu ランナーは標準搭載を利用)
-- [ ] 7.3 同ワークフローに bats-core のインストール(macOS: `brew install bats-core`、Linux: `apt-get install -y bats` または `bats-core/bats-action`)と `bats test/lib/*.bats` の実行ステップを追加する
+- [x] 7.1 `.github/workflows/ci.yml` を作成し、`macos-latest` / `ubuntu-latest` の matrix で `bash -n bin/bw-quickaccess lib/*.sh` による構文チェックを実行するジョブを定義する
+- [x] 7.2 同ワークフローに `shellcheck` による静的解析ステップを追加する(macOS ランナーは `brew install shellcheck`、Ubuntu ランナーは標準搭載を利用)
+- [x] 7.3 同ワークフローに bats-core のインストール(macOS: `brew install bats-core`、Linux: `apt-get install -y bats` または `bats-core/bats-action`)と `bats test/lib/*.bats` の実行ステップを追加する
 
 ## 8. ドキュメント更新
 
