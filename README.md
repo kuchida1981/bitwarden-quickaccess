@@ -7,7 +7,7 @@
 - macOS、または デスクトップ GUI 環境(GNOME Keyring / KWallet 等が動作している)の Linux
 - [`bw`(Bitwarden CLI)](https://bitwarden.com/help/cli/) — `bw login` 済みであること
 - `jq`
-- `fzf`(0.35.0 以上)
+- `fzf`(0.37.0 以上)
 - クリップボードコピーコマンド
   - macOS: `pbcopy`(標準搭載)
   - Linux(Wayland): `wl-copy`
