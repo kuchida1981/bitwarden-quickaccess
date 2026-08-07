@@ -66,7 +66,7 @@ teardown() {
   local summary='{"has_password":false,"has_username":true,"has_totp":false}'
   run bwqa_build_field_rows "$summary"
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'username\tユーザー名をコピー (ctrl-u)')" ]
+  [ "$output" = "$(printf 'username\tユーザー名をコピー (alt-u)')" ]
 }
 
 @test "bwqa_build_field_rows: コピー可能なフィールドが無い場合は空行を出力する" {
