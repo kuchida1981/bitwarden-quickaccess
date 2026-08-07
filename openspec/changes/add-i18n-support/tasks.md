@@ -8,17 +8,17 @@
 
 - [x] 2.1 `lib/i18n/en.sh` に全 `BWQA_MSG_*` の英語訳を追加する
 - [x] 2.2 `lib/common.sh`(`bwqa_die` 内のエラープレフィックス)を `BWQA_MSG_*` 参照に置き換える
-- [ ] 2.3 `lib/preflight.sh` の `bwqa_log`/`bwqa_die` 呼び出し(必須コマンド未検出・fzf バージョン不足・OS非対応・ディスプレイ未検出・clipboard/keychain ツール未検出・keyring 疎通失敗の警告)を `BWQA_MSG_*` 参照に置き換える
-- [ ] 2.4 `lib/session.sh` の `bwqa_log`/`bwqa_die` 呼び出し(unlock中・unlock失敗・session空・再認証・bw失敗・キャッシュ破棄)を `BWQA_MSG_*` 参照に置き換える
-- [ ] 2.5 `lib/search.sh` の `bwqa_log`/`bwqa_die` 呼び出し(アイテム読み込み中・取得失敗)および fzf `--prompt`/`--header` の文言を `BWQA_MSG_*` 参照に置き換える
-- [ ] 2.6 `lib/fields.sh` の `bwqa_log`/`bwqa_die` 呼び出し(アイテム情報取得中・取得失敗・コピー可能フィールドなし)および fzf `--prompt`/`--header` の文言を `BWQA_MSG_*` 参照に置き換える
+- [x] 2.3 `lib/preflight.sh` の `bwqa_log`/`bwqa_die` 呼び出し(必須コマンド未検出・fzf バージョン不足・OS非対応・ディスプレイ未検出・clipboard/keychain ツール未検出・keyring 疎通失敗の警告)を `BWQA_MSG_*` 参照に置き換える(agy)
+- [x] 2.4 `lib/session.sh` の `bwqa_log`/`bwqa_die` 呼び出し(unlock中・unlock失敗・session空・再認証・bw失敗・キャッシュ破棄)を `BWQA_MSG_*` 参照に置き換える(agy)
+- [x] 2.5 `lib/search.sh` の `bwqa_log`/`bwqa_die` 呼び出し(アイテム読み込み中・取得失敗)および fzf `--header` の文言を `BWQA_MSG_*` 参照に置き換える(`--prompt='vault> '` は記号のみのため対象外)(agy)
+- [x] 2.6 `lib/fields.sh` の `bwqa_log`/`bwqa_die` 呼び出し・fzf `--header`・jq 行ラベル(`jq --arg` 経由)・`bwqa_field_label`・コピー結果ステータス文言を `BWQA_MSG_*` 参照に置き換える(範囲を拡張: 当初想定していなかった行ラベル/ステータスファイル文言も対象に含めた)(agy)
 - [x] 2.7 `bin/bw-quickaccess` の `bwqa_print_usage`(ヘルプ文言)と、範囲を広げて「不明な引数です」メッセージも `BWQA_MSG_*` 参照に置き換える
-- [ ] 2.8 動的な埋め込み値(コマンド名・バージョン番号等)を含むメッセージは `printf` テンプレート形式で `BWQA_MSG_*` を定義し、呼び出し側で `printf` 展開するように統一する
+- [x] 2.8 動的な埋め込み値(コマンド名・バージョン番号等)を含むメッセージは `printf` テンプレート形式で `BWQA_MSG_*` を定義し、呼び出し側で `printf` 展開するように統一する(`# shellcheck disable=SC2059` を付与)
 
 ## 3. テスト
 
-- [ ] 3.1 `test/lib/common.bats` に `bwqa_detect_lang` の判定ロジック(`BWQA_LANG` 優先・`LANG`/`LC_ALL` 判定・フォールバック)のテストケースを追加する
-- [ ] 3.2 既存の `test/lib/*.bats` で `BWQA_LANG=en`(または `ja`)を明示的に設定し、メッセージ言語に依存せずテストが安定して通ることを確認する(ハードコードされた日本語文字列の assertion があれば `BWQA_MSG_*` 参照に置き換える)
+- [x] 3.1 `test/lib/common.bats` に `bwqa_detect_lang` の判定ロジック(`BWQA_LANG` 優先・`LC_ALL`/`LANG` 判定・フォールバック)のテストケースを追加する(agy)
+- [x] 3.2 `test/helpers/stub.bash` の `bwqa_test_stub_setup()` で `BWQA_LANG="${BWQA_LANG:-ja}"` をデフォルト設定し、CI のロケールに依存せず既存テスト(日本語文字列の assertion)が安定して通るようにした(既存 assertion の書き換えは不要だった)
 
 ## 4. ドキュメント
 
