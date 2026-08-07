@@ -9,7 +9,7 @@ A terminal quick-access tool equivalent to 1Password Quick Access, built on top 
 - macOS, or Linux with a desktop GUI environment (with GNOME Keyring / KWallet or similar running)
 - [`bw` (Bitwarden CLI)](https://bitwarden.com/help/cli/) — must already be logged in via `bw login`
 - `jq`
-- `fzf` (0.37.0 or later)
+- `fzf` (0.73.0 or later)
 - A clipboard copy command
   - macOS: `pbcopy` (built in)
   - Linux (Wayland): `wl-copy`
@@ -25,6 +25,8 @@ Depending on how you install it, you'll also need:
   - `git`
 
 If any required tool is missing, the tool prints installation instructions and exits with an error at startup.
+
+The search screen and field-selection screen run fullscreen (using the terminal's alternate screen buffer). Your terminal scrollback is temporarily hidden while either screen is open, and the original screen content is restored when you exit.
 
 ## Installation
 

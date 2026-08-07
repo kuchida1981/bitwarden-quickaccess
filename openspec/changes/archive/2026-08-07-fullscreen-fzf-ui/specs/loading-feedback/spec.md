@@ -1,10 +1,4 @@
-# loading-feedback
-
-## Purpose
-
-bw CLIの応答待ち中にユーザーへ処理中であることを示すローディングメッセージを表示する。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: bw CLI呼び出し中のローディングメッセージ表示
 システムは、`bw` CLI を呼び出して応答を待つ間、処理内容が分かるメッセージを標準エラー出力へ表示しなければならない(SHALL)。メッセージには、アイテム名・フィールド値などの機密情報を含めてはならない(SHALL NOT)。

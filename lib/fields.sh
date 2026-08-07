@@ -53,8 +53,6 @@ bwqa_run_field_screen() {
   local rows
   rows="$(bwqa_build_field_rows "$summary")"
   if [[ -z "$rows" ]]; then
-    # BWQA_MSG_* はこのプロジェクトが定義する固定テンプレート(lib/i18n/*.sh)であり、
-    # ユーザー入力ではないため、変数を printf の書式文字列として使う設計を許容する。
     # shellcheck disable=SC2059
     bwqa_log "$(printf "$BWQA_MSG_FIELDS_NO_COPYABLE_FIELDS" "$item_name")"
     return 2
@@ -62,7 +60,14 @@ bwqa_run_field_screen() {
 
   local key
   local status_feedback
-  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)"
+  # __copy-status サブコマンドは、コピー処理中はスピナーを、完了後は
+  # BWQA_COPY_STATUS_FILE の内容を返す(bwqa_render_copy_status 参照)。
+  # 各 execute-silent の先頭で `: >"$BWQA_COPY_LOCK_FILE"` を同期的に実行しているのは、
+  # 直後に連結される transform-border-label(__copy-status)が、バックグラウンド化した
+  # __copy-field 本体(bash 起動・複数ファイルの source を経てからロックファイルを
+  # 作成する)より先にロックファイルの有無を判定してしまい、スピナーの代わりに
+  # 直前のコピー結果が一瞬再表示される競合を防ぐため。
+  status_feedback="+transform-border-label(\"$BWQA_SELF\" __copy-status)"
   # この subshell 内での export は fzf の execute-silent 経由で起動する
   # __copy-field 子プロセスへ環境変数を継承させるためのもので、subshell の
   # 外に値を戻す意図はない(SC2030/SC2031 は意図した挙動への誤検知)。
@@ -72,14 +77,15 @@ bwqa_run_field_screen() {
     export BWQA_ITEM_ID="$item_id"
     printf '%s\n' "$rows" | fzf \
       --delimiter='\t' --with-nth=2 \
-      --prompt="${item_name} > " --height=80% --reverse \
+      --prompt="${item_name} > " --reverse \
       --header="$BWQA_MSG_FIELDS_FZF_HEADER" \
       --border=rounded --border-label='' \
       --expect='esc,q' \
-      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})${status_feedback}" \
-      --bind="ctrl-r:execute-silent(\"$BWQA_SELF\" __copy-field password)${status_feedback}" \
-      --bind="ctrl-o:execute-silent(\"$BWQA_SELF\" __copy-field username)${status_feedback}" \
-      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
+      --bind="enter:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field {1} &)${status_feedback}" \
+      --bind="ctrl-r:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field password &)${status_feedback}" \
+      --bind="ctrl-o:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field username &)${status_feedback}" \
+      --bind="ctrl-t:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field totp &)${status_feedback}" \
+      --bind="every(0.15):bg-transform-border-label(\"$BWQA_SELF\" __copy-status)" \
       | head -n1
   )" || true
 
@@ -96,6 +102,39 @@ bwqa_field_label() {
     totp) printf '%s' "$BWQA_MSG_FIELDS_LABEL_TOTP" ;;
     *) printf '%s' "$1" ;;
   esac
+}
+
+# ツール起動時に呼ぶ。BWQA_COPY_STATUS_FILE は前回セッションのコピー結果を
+# 保持したまま永続化されるため、これを呼ばずに起動すると、検索画面が表示された
+# 直後(every(0.15) の最初のティック)に前回セッションの古い結果メッセージが
+# 一瞬ボーダーラベルに表示されてしまう。
+bwqa_reset_copy_status() {
+  : >"$BWQA_COPY_STATUS_FILE"
+}
+
+# __copy-status サブコマンドの実体。fzf の every(N):bg-transform-border-label
+# 経由で定期的に呼ばれ、ボーダーラベルに表示する1行を標準出力へ返す。
+# BWQA_COPY_LOCK_FILE が存在する間(= bwqa_copy_field_internal がバックグラウンドで
+# 実行中)はスピナーを、存在しなければ BWQA_COPY_STATUS_FILE の最終結果を返す。
+# フレーム位置は時刻ではなく BWQA_COPY_SPIN_FRAME_FILE に保存したカウンタを
+# 呼び出しごとに進める方式にしている。サブ秒精度の時刻取得(date +%N 等)は
+# macOS の BSD date で使えないため、この方式の方が両OSで確実に動く。
+bwqa_render_copy_status() {
+  if [[ ! -f "$BWQA_COPY_LOCK_FILE" ]]; then
+    cat "$BWQA_COPY_STATUS_FILE" 2>/dev/null
+    return 0
+  fi
+
+  local frames=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+  local frame_count=${#frames[@]}
+  local idx=0
+  if [[ -f "$BWQA_COPY_SPIN_FRAME_FILE" ]]; then
+    idx="$(cat "$BWQA_COPY_SPIN_FRAME_FILE" 2>/dev/null || echo 0)"
+    [[ "$idx" =~ ^[0-9]+$ ]] || idx=0
+  fi
+  printf '%s' "$(((idx + 1) % frame_count))" >"$BWQA_COPY_SPIN_FRAME_FILE"
+
+  printf '%s %s\n' "${frames[idx]}" "$BWQA_MSG_FIELDS_COPYING"
 }
 
 # __copy-field サブコマンドの実体。BWQA_ITEM_ID / BW_SESSION は環境変数から受け取る。
@@ -118,6 +157,12 @@ bwqa_copy_field_internal() {
   bwqa_detect_platform
   bwqa_detect_clipboard_cmd
 
+  # コピー処理中であることを bwqa_render_copy_status に伝えるためのロック
+  # ファイル。この関数はバックグラウンドジョブとして起動されるため、すべての
+  # 終了経路(正常終了・各 exit)で確実に削除されるよう trap で後始末する。
+  trap 'rm -f "$BWQA_COPY_LOCK_FILE" "$BWQA_COPY_SPIN_FRAME_FILE"' EXIT
+  : >"$BWQA_COPY_LOCK_FILE"
+
   if [[ -z "$item_id" || -z "$session" || -z "$field" ]]; then
     printf '%s __copy-field: item_id/session/field のいずれかが不足しています\n' "$(date '+%F %T')" >>"$BWQA_ERROR_LOG_FILE"
     exit 1
@@ -127,8 +172,9 @@ bwqa_copy_field_internal() {
   local exit_code=0
   # この関数は fzf の execute-silent 経由でのみ呼ばれ、execute-silent は子プロセスの
   # stdout/stderr を一切ターミナルに表示しない(fzf(1) COMMAND EXECUTION 参照)ため、
-  # ここで bwqa_log を呼んでもユーザーには見えない。ローディング表示が必要な場合は
-  # fzf のヘッダーを書き換える仕組み(別 change で検討)が必要になる。
+  # ここで bwqa_log を呼んでもユーザーには見えない。進行中であることの表示は、
+  # 上で作成したロックファイルを bwqa_render_copy_status が読み取り、fzf の
+  # every(N) + bg-transform-border-label 経由でボーダーラベルに反映する形で行う。
   case "$field" in
     username) value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;
     password) value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;

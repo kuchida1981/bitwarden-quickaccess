@@ -90,3 +90,54 @@ teardown() {
   [[ "$err" == *"vaultのアイテム一覧を読み込んでいます..."* ]]
 }
 
+# --- 2 bwqa_run_search_screen: fzf 起動オプション ---
+
+@test "bwqa_run_search_screen: --height オプションを付けずに fzf を起動する(フルスクリーン化)" {
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_search_screen
+  [ "$status" -eq 0 ]
+
+  run grep -q "--height" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -ne 0 ]
+}
+
+@test "bwqa_run_search_screen: every(0.15):bg-transform-border-label バインドで __copy-status を呼ぶ" {
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_search_screen
+  [ "$status" -eq 0 ]
+
+  run grep -q "every(0.15):bg-transform-border-label" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-status" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}
+
+@test "bwqa_run_search_screen: ctrl-o/ctrl-r/ctrl-t のコピー処理はバックグラウンドジョブとして起動する" {
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_search_screen
+  [ "$status" -eq 0 ]
+
+  run grep -q "__copy-field username &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-field password &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-field totp &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}
+
+@test "bwqa_run_search_screen: ロックファイルはバックグラウンド化する前に同期的に作成する(スピナー表示の競合防止)" {
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_search_screen
+  [ "$status" -eq 0 ]
+
+  # execute-silent 内で `: >"$BWQA_COPY_LOCK_FILE"` が __copy-field の起動より
+  # 先(同じ行の左側)に書かれていることを確認する。__copy-status 側の
+  # transform-border-label が execute-silent 完了直後に走っても、この時点で
+  # 既にロックファイルが存在することを保証するための並び順。
+  run grep -q ": >\"$BWQA_COPY_LOCK_FILE\"; BWQA_ITEM_ID={1} \"/tmp/bwqa-self-stub\" __copy-field password &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}

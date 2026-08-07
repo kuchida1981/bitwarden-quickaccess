@@ -27,6 +27,7 @@ bwqa_print_usage() {
 bwqa_main() {
   bwqa_run_preflight
   bwqa_ensure_cache_dir
+  bwqa_reset_copy_status
   bwqa_get_session
 
   while true; do
@@ -74,6 +75,10 @@ case "${1:-}" in
   __copy-field)
     shift
     bwqa_copy_field_internal "${1:-}"
+    ;;
+  __copy-status)
+    bwqa_ensure_cache_dir
+    bwqa_render_copy_status
     ;;
   lock)
     bwqa_run_lock_subcommand

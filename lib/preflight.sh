@@ -14,7 +14,7 @@ bwqa_require_cmd() {
 }
 
 bwqa_check_fzf_version() {
-  local required="0.37.0"
+  local required="0.73.0"
   local raw
   raw="$(fzf --version 2>/dev/null | awk '{print $1}')"
   if [[ -z "$raw" ]]; then
