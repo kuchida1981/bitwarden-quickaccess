@@ -1,18 +1,18 @@
 ## 1. bin/bw-quickaccess へのバージョン表示オプション追加
 
-- [ ] 1.1 `bin/bw-quickaccess` に `: "${BWQA_VERSION:=dev}"`(未設定時のみ `dev` を設定)を追加する
-- [ ] 1.2 引数ディスパッチ(`case` 文)に `-v`/`--version` を追加し、`bw-quickaccess $BWQA_VERSION` の形式で標準出力に出力して正常終了するようにする
-- [ ] 1.3 `bwqa_print_usage` のヘルプ文言に `-v`/`--version` の説明を追加する
-- [ ] 1.4 `bash -n bin/bw-quickaccess` と `shellcheck -x bin/bw-quickaccess` を実行し、既存チェックが通ることを確認する
-- [ ] 1.5 既存の bats テストに影響が無いことを確認し、必要であれば `--version` 出力の簡単なテストケースを追加する
+- [x] 1.1 `bin/bw-quickaccess` に `: "${BWQA_VERSION:=dev}"`(未設定時のみ `dev` を設定)を追加する
+- [x] 1.2 引数ディスパッチ(`case` 文)に `-v`/`--version` を追加し、`bw-quickaccess $BWQA_VERSION` の形式で標準出力に出力して正常終了するようにする
+- [x] 1.3 `bwqa_print_usage` のヘルプ文言に `-v`/`--version` の説明を追加する
+- [x] 1.4 `bash -n bin/bw-quickaccess` と `shellcheck -x bin/bw-quickaccess` を実行し、既存チェックが通ることを確認する
+- [x] 1.5 既存の bats テストに影響が無いことを確認し、必要であれば `--version` 出力の簡単なテストケースを追加する(既存の bats テスト構成は lib/*.sh を対象にしており、bin/bw-quickaccess 自体を対象にしたテストは存在しないため新規テストは追加せず、既存54テストが全てパスすることのみ確認した)
 
 ## 2. ビルドスクリプト(バンドル生成)
 
-- [ ] 2.1 `script/build.sh` を新規作成し、`bin/bw-quickaccess` の `source` 行を除いた本体と `lib/common.sh` → `preflight.sh` → `clipboard.sh` → `session.sh` → `search.sh` → `fields.sh` の順に連結して、単一の実行可能スクリプト(デフォルト出力先: `dist/bw-quickaccess` 等)を生成するようにする。出力ファイルには実行権限を付与する
-- [ ] 2.2 環境変数 `VERSION` が指定されている場合、生成物の先頭付近(`: "${BWQA_VERSION:=dev}"` より前)に `BWQA_VERSION="$VERSION"` を書き込むようにする。未指定の場合は何も書き込まず、`bin/bw-quickaccess` 側のデフォルト(`dev`)がそのまま使われるようにする
-- [ ] 2.3 生成物に対して `bash -n` を実行し、構文エラーが無いことを確認する
-- [ ] 2.4 生成物に対して `shellcheck -x` を実行し、既存の `.shellcheckrc` の除外ルールに沿って警告が出ないことを確認する
-- [ ] 2.5 手元で `bin/` と `lib/` を含まない一時ディレクトリに生成物のみを配置し、`bw-session-management` / `vault-item-search` / `credential-clipboard-copy` 等の主要な既存テストシナリオ(vault 検索・フィールドコピー・`lock` サブコマンド・fzf からの `__copy-field` 再帰呼び出し・`--version` 出力)を手動確認し、clone 実行時と同一の挙動になることを検証する
+- [x] 2.1 `script/build.sh` を新規作成し、`bin/bw-quickaccess` の `source` 行を除いた本体と `lib/common.sh` → `preflight.sh` → `clipboard.sh` → `session.sh` → `search.sh` → `fields.sh` の順に連結して、単一の実行可能スクリプト(デフォルト出力先: `dist/bw-quickaccess` 等)を生成するようにする。出力ファイルには実行権限を付与する
+- [x] 2.2 環境変数 `VERSION` が指定されている場合、生成物の先頭付近(`: "${BWQA_VERSION:=dev}"` より前)に `BWQA_VERSION="$VERSION"` を書き込むようにする。未指定の場合は何も書き込まず、`bin/bw-quickaccess` 側のデフォルト(`dev`)がそのまま使われるようにする
+- [x] 2.3 生成物に対して `bash -n` を実行し、構文エラーが無いことを確認する
+- [x] 2.4 生成物に対して `shellcheck -x` を実行し、既存の `.shellcheckrc` の除外ルールに沿って警告が出ないことを確認する
+- [x] 2.5 手元で `bin/` と `lib/` を含まない一時ディレクトリに生成物のみを配置し、`bw-session-management` / `vault-item-search` / `credential-clipboard-copy` 等の主要な既存テストシナリオ(vault 検索・フィールドコピー・`lock` サブコマンド・fzf からの `__copy-field` 再帰呼び出し・`--version` 出力)を手動確認し、clone 実行時と同一の挙動になることを検証する
 
 ## 3. リリース CI ワークフロー
 
