@@ -13,7 +13,7 @@
 
 bwqa_get_item_summary() {
   local item_id="$1" raw
-  bwqa_log "アイテム情報を取得しています..."
+  bwqa_log "$BWQA_MSG_FIELDS_LOADING_ITEM"
   raw="$(bwqa_bw get item "$item_id")" || return 1
   jq -c '{
     name: (.name // ""),
@@ -26,11 +26,14 @@ bwqa_get_item_summary() {
 # username を先頭にすることで、Enterによる誤ったパスワードコピーの事故を減らす
 bwqa_build_field_rows() {
   local summary_json="$1"
-  jq -r '
+  jq -r \
+    --arg u "$BWQA_MSG_FIELDS_ROW_USERNAME" \
+    --arg p "$BWQA_MSG_FIELDS_ROW_PASSWORD" \
+    --arg t "$BWQA_MSG_FIELDS_ROW_TOTP" '
     [
-      (if .has_username then ["username", "ユーザー名をコピー (ctrl-o)"] else empty end),
-      (if .has_password then ["password", "パスワードをコピー (ctrl-r)"] else empty end),
-      (if .has_totp then ["totp", "TOTP をコピー (ctrl-t)"] else empty end)
+      (if .has_username then ["username", $u] else empty end),
+      (if .has_password then ["password", $p] else empty end),
+      (if .has_totp then ["totp", $t] else empty end)
     ] | .[] | @tsv
   ' <<<"$summary_json"
 }
@@ -42,7 +45,7 @@ bwqa_build_field_rows() {
 bwqa_run_field_screen() {
   local item_id="$1"
   local summary
-  summary="$(bwqa_get_item_summary "$item_id")" || bwqa_die "アイテム情報の取得に失敗しました。"
+  summary="$(bwqa_get_item_summary "$item_id")" || bwqa_die "$BWQA_MSG_FIELDS_ITEM_FETCH_FAILED"
 
   local item_name
   item_name="$(jq -r '.name' <<<"$summary")"
@@ -50,7 +53,10 @@ bwqa_run_field_screen() {
   local rows
   rows="$(bwqa_build_field_rows "$summary")"
   if [[ -z "$rows" ]]; then
-    bwqa_log "コピー可能なフィールドがありません: ${item_name}"
+    # BWQA_MSG_* はこのプロジェクトが定義する固定テンプレート(lib/i18n/*.sh)であり、
+    # ユーザー入力ではないため、変数を printf の書式文字列として使う設計を許容する。
+    # shellcheck disable=SC2059
+    bwqa_log "$(printf "$BWQA_MSG_FIELDS_NO_COPYABLE_FIELDS" "$item_name")"
     return 2
   fi
 
@@ -67,7 +73,7 @@ bwqa_run_field_screen() {
     printf '%s\n' "$rows" | fzf \
       --delimiter='\t' --with-nth=2 \
       --prompt="${item_name} > " --height=80% --reverse \
-      --header='Enter: 選択中の項目をコピー  ctrl-r: password  ctrl-o: username  ctrl-t: totp  Esc: 検索へ戻る  q: 終了' \
+      --header="$BWQA_MSG_FIELDS_FZF_HEADER" \
       --border=rounded --border-label='' \
       --expect='esc,q' \
       --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})${status_feedback}" \
@@ -85,9 +91,9 @@ bwqa_run_field_screen() {
 
 bwqa_field_label() {
   case "$1" in
-    username) printf 'ユーザー名' ;;
-    password) printf 'パスワード' ;;
-    totp) printf 'TOTP' ;;
+    username) printf '%s' "$BWQA_MSG_FIELDS_LABEL_USERNAME" ;;
+    password) printf '%s' "$BWQA_MSG_FIELDS_LABEL_PASSWORD" ;;
+    totp) printf '%s' "$BWQA_MSG_FIELDS_LABEL_TOTP" ;;
     *) printf '%s' "$1" ;;
   esac
 }
@@ -129,13 +135,13 @@ bwqa_copy_field_internal() {
     totp) value="$(BW_SESSION="$session" bw get totp "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;
     *)
       printf '%s __copy-field: 不明な field です: %s\n' "$(date '+%F %T')" "$field" >>"$BWQA_ERROR_LOG_FILE"
-      printf 'コピーに失敗しました\n' >"$BWQA_COPY_STATUS_FILE"
+      printf '%s\n' "$BWQA_MSG_FIELDS_COPY_FAILED" >"$BWQA_COPY_STATUS_FILE"
       exit 1
       ;;
   esac
 
   if [[ $exit_code -ne 0 ]]; then
-    printf 'コピーに失敗しました\n' >"$BWQA_COPY_STATUS_FILE"
+    printf '%s\n' "$BWQA_MSG_FIELDS_COPY_FAILED" >"$BWQA_COPY_STATUS_FILE"
     exit 1
   fi
 
@@ -143,15 +149,17 @@ bwqa_copy_field_internal() {
   label="$(bwqa_field_label "$field")"
 
   if [[ -z "$value" ]]; then
-    printf '%sは設定されていません\n' "$label" >"$BWQA_COPY_STATUS_FILE"
+    # shellcheck disable=SC2059
+    printf "${BWQA_MSG_FIELDS_VALUE_NOT_SET}\n" "$label" >"$BWQA_COPY_STATUS_FILE"
     printf '%s __copy-field: field=%s item=%s の値が空でした\n' "$(date '+%F %T')" "$field" "$item_id" >>"$BWQA_ERROR_LOG_FILE"
     exit 1
   fi
 
   if ! printf '%s' "$value" | bwqa_copy_to_clipboard; then
-    printf 'コピーに失敗しました\n' >"$BWQA_COPY_STATUS_FILE"
+    printf '%s\n' "$BWQA_MSG_FIELDS_COPY_FAILED" >"$BWQA_COPY_STATUS_FILE"
     exit 1
   fi
 
-  printf '%sをコピーしました\n' "$label" >"$BWQA_COPY_STATUS_FILE"
+  # shellcheck disable=SC2059
+  printf "${BWQA_MSG_FIELDS_COPY_SUCCESS}\n" "$label" >"$BWQA_COPY_STATUS_FILE"
 }
