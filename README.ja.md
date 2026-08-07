@@ -9,7 +9,7 @@
 - macOS、または デスクトップ GUI 環境(GNOME Keyring / KWallet 等が動作している)の Linux
 - [`bw`(Bitwarden CLI)](https://bitwarden.com/help/cli/) — `bw login` 済みであること
 - `jq`
-- `fzf`(0.37.0 以上)
+- `fzf`(0.73.0 以上)
 - クリップボードコピーコマンド
   - macOS: `pbcopy`(標準搭載)
   - Linux(Wayland): `wl-copy`
@@ -25,6 +25,8 @@
   - `git`
 
 不足しているツールがある場合、起動時にインストール方法を案内した上でエラー終了します。
+
+検索画面・フィールド選択画面はフルスクリーン表示(ターミナルの alternate screen buffer を使用)になります。画面表示中はターミナルのスクロールバックが一時的に隠れ、終了時に元の画面内容へ復元されます。
 
 ## インストール
 
