@@ -2,6 +2,8 @@
 # bw-quickaccess: bw / jq / fzf を組み合わせた 1Password Quick Access 相当のターミナルツール
 set -euo pipefail
 
+: "${BWQA_VERSION:=dev}"
+
 BWQA_SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 BWQA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -24,6 +26,7 @@ bwqa_print_usage() {
 
   (引数なし)   vault アイテムを検索し、フィールドをクリップボードへコピーする
   lock         キャッシュされた session を破棄する(次回起動時に再度マスターパスワードを要求する)
+  -v, --version   バージョンを表示する
   -h, --help   このヘルプを表示する
 EOF
 }
@@ -81,6 +84,10 @@ case "${1:-}" in
     ;;
   lock)
     bwqa_run_lock_subcommand
+    ;;
+  -v | --version)
+    echo "bw-quickaccess $BWQA_VERSION"
+    exit 0
     ;;
   -h | --help)
     bwqa_print_usage
