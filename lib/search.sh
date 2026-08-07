@@ -28,7 +28,9 @@ bwqa_run_search_screen() {
   # transform-border-label だけが実行されてしまい、直前のコピー結果メッセージが
   # 「たった今コピーしたかのように」再表示される不具合になる(design.md が想定する
   # 「実質無反応」という前提を満たせない)。`: {1}` は no-op で処理結果には影響しない。
-  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null; : {1})"
+  # __copy-status サブコマンドは、コピー処理中はスピナーを、完了後は
+  # BWQA_COPY_STATUS_FILE の内容を返す(lib/fields.sh の bwqa_render_copy_status 参照)。
+  status_feedback="+transform-border-label(\"$BWQA_SELF\" __copy-status; : {1})"
 
   local selected_id
   # この subshell 内での export は fzf の execute-silent 経由で起動する
@@ -39,12 +41,13 @@ bwqa_run_search_screen() {
     export BW_SESSION="$BWQA_SESSION"
     jq -r '.[] | [.id, .label] | @tsv' <<<"$items_json" \
       | fzf --delimiter='\t' --with-nth=2 \
-        --prompt='vault> ' --height=80% --reverse \
+        --prompt='vault> ' --reverse \
         --header="$BWQA_MSG_SEARCH_FZF_HEADER" \
         --border=rounded --border-label='' \
-        --bind="ctrl-o:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username)${status_feedback}" \
-        --bind="ctrl-r:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password)${status_feedback}" \
-        --bind="ctrl-t:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
+        --bind="ctrl-o:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username &)${status_feedback}" \
+        --bind="ctrl-r:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password &)${status_feedback}" \
+        --bind="ctrl-t:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field totp &)${status_feedback}" \
+        --bind="every(0.15):bg-transform-border-label(\"$BWQA_SELF\" __copy-status)" \
       | cut -f1
   )" || true
 
