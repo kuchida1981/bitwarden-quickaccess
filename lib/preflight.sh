@@ -28,9 +28,9 @@ bwqa_check_fzf_version() {
 }
 
 bwqa_check_core_tools() {
-  bwqa_require_cmd bw "https://bitwarden.com/help/cli/ を参照してインストールしてください(例: brew install bitwarden-cli)。"
-  bwqa_require_cmd jq "'brew install jq' または各ディストリのパッケージマネージャでインストールしてください。"
-  bwqa_require_cmd fzf "'brew install fzf' または各ディストリのパッケージマネージャでインストールしてください。"
+  bwqa_require_cmd bw "$BWQA_MSG_PREFLIGHT_BW_INSTALL_HINT"
+  bwqa_require_cmd jq "$BWQA_MSG_PREFLIGHT_JQ_INSTALL_HINT"
+  bwqa_require_cmd fzf "$BWQA_MSG_PREFLIGHT_FZF_INSTALL_HINT"
   bwqa_check_fzf_version
 }
 

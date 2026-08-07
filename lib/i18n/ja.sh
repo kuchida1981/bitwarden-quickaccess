@@ -5,6 +5,9 @@ BWQA_MSG_ERR_PREFIX="エラー: %s"
 
 # lib/preflight.sh
 BWQA_MSG_PREFLIGHT_CMD_NOT_FOUND="必須コマンド '%s' が見つかりません。%s"
+BWQA_MSG_PREFLIGHT_BW_INSTALL_HINT="https://bitwarden.com/help/cli/ を参照してインストールしてください(例: brew install bitwarden-cli)。"
+BWQA_MSG_PREFLIGHT_JQ_INSTALL_HINT="'brew install jq' または各ディストリのパッケージマネージャでインストールしてください。"
+BWQA_MSG_PREFLIGHT_FZF_INSTALL_HINT="'brew install fzf' または各ディストリのパッケージマネージャでインストールしてください。"
 BWQA_MSG_PREFLIGHT_FZF_VERSION_UNKNOWN="fzf のバージョンを取得できませんでした。fzf %s 以上をインストールしてください(例: brew install fzf)。"
 BWQA_MSG_PREFLIGHT_FZF_VERSION_TOO_OLD="fzf のバージョンが古すぎます(検出: %s / 必要: %s 以上)。'brew upgrade fzf' 等でアップグレードしてください。"
 BWQA_MSG_PREFLIGHT_OS_UNSUPPORTED="サポート対象外の OS です(%s)。macOS または Linux(デスクトップ環境)のみサポートします。"
