@@ -1,7 +1,7 @@
 ## 1. fzf 最低要件の引き上げ
 
-- [ ] 1.1 `lib/preflight.sh` の `bwqa_check_fzf_version` にある `required="0.37.0"` を `"0.73.0"` に変更する
-- [ ] 1.2 `test/lib/preflight.bats` のバージョン境界値に関する既存テストを新しい要求バージョンに合わせて更新する
+- [x] 1.1 `lib/preflight.sh` の `bwqa_check_fzf_version` にある `required="0.37.0"` を `"0.73.0"` に変更する
+- [x] 1.2 `test/lib/preflight.bats` のバージョン境界値に関する既存テストを新しい要求バージョンに合わせて更新する
 
 ## 2. コピー進行状況の共通基盤
 
@@ -12,24 +12,24 @@
 
 ## 3. 検索画面のフルスクリーン化とスピナー結線
 
-- [ ] 3.1 `lib/search.sh` の `bwqa_run_search_screen` 内 fzf 起動オプションから `--height=80%` を外す
-- [ ] 3.2 `ctrl-o`/`ctrl-r`/`ctrl-t` バインドの `execute-silent(...)` をバックグラウンドジョブ化(末尾に `&` を付与)し、既存の `: {1}` による0件マッチ時スキップの挙動を維持したまま、直後に `__copy-status` を呼ぶ `transform-border-label` へ差し替える
-- [ ] 3.3 `every(N):bg-transform-border-label(... __copy-status)` バインドを追加する(N は実装時に体感で調整、0.1〜0.2秒程度を想定)
+- [x] 3.1 `lib/search.sh` の `bwqa_run_search_screen` 内 fzf 起動オプションから `--height=80%` を外す
+- [x] 3.2 `ctrl-o`/`ctrl-r`/`ctrl-t` バインドの `execute-silent(...)` をバックグラウンドジョブ化(末尾に `&` を付与)し、既存の `: {1}` による0件マッチ時スキップの挙動を維持したまま、直後に `__copy-status` を呼ぶ `transform-border-label` へ差し替える
+- [x] 3.3 `every(N):bg-transform-border-label(... __copy-status)` バインドを追加する(N=0.15秒とした)
 
 ## 4. フィールド選択画面のフルスクリーン化とスピナー結線
 
-- [ ] 4.1 `lib/fields.sh` の `bwqa_run_field_screen` 内 fzf 起動オプションから `--height=80%` を外す
-- [ ] 4.2 `enter`/`ctrl-o`/`ctrl-r`/`ctrl-t` バインドの `execute-silent(...)` をバックグラウンドジョブ化し、直後に `__copy-status` を呼ぶ `transform-border-label` へ差し替える
-- [ ] 4.3 `every(N):bg-transform-border-label(... __copy-status)` バインドを追加する(3.3 と同じ間隔値を使用する)
+- [x] 4.1 `lib/fields.sh` の `bwqa_run_field_screen` 内 fzf 起動オプションから `--height=80%` を外す
+- [x] 4.2 `enter`/`ctrl-o`/`ctrl-r`/`ctrl-t` バインドの `execute-silent(...)` をバックグラウンドジョブ化し、直後に `__copy-status` を呼ぶ `transform-border-label` へ差し替える
+- [x] 4.3 `every(N):bg-transform-border-label(... __copy-status)` バインドを追加する(3.3 と同じ間隔値を使用する)
 
 ## 5. ドキュメント更新
 
-- [ ] 5.1 `README.md` / `README.ja.md` の必要要件セクションで fzf の最低バージョン記載を `0.73.0` に更新する
-- [ ] 5.2 `README.md` / `README.ja.md` に、検索画面・フィールド選択画面がフルスクリーン表示になる旨(スクロールバックが一時的に隠れる挙動を含む)を追記する
+- [x] 5.1 `README.md` / `README.ja.md` の必要要件セクションで fzf の最低バージョン記載を `0.73.0` に更新する
+- [x] 5.2 `README.md` / `README.ja.md` に、検索画面・フィールド選択画面がフルスクリーン表示になる旨(スクロールバックが一時的に隠れる挙動を含む)を追記する
 
 ## 6. テスト
 
-- [ ] 6.1 `test/lib/preflight.bats` に、要求バージョン未満・要求バージョン以上・バージョン判定不能の3ケースを網羅するテストがあることを確認し、不足があれば追加する
+- [x] 6.1 `test/lib/preflight.bats` に、要求バージョン未満・要求バージョン以上・バージョン判定不能の3ケースを網羅するテストがあることを確認し、不足があれば追加する
 - [x] 6.2 `__copy-status` サブコマンドについて、ロックファイルが存在する場合としない場合それぞれで出力が切り替わることを検証するテストを追加する(`test/lib/fields.bats` または新規ファイル)
 - [ ] 6.3 `test/lib/search.bats` / `test/lib/fields.bats` の既存テストのうち、fzf 起動コマンド文字列を検証しているものを更新し、`--height` オプションが含まれないこと・`every(...)` バインドが含まれることをアサーションに追加する
 - [ ] 6.4 `bash -n` / `shellcheck` / `bats test/lib/*.bats` を実行し、全て成功することを確認する
