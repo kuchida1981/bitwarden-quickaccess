@@ -16,10 +16,78 @@
   - macOS: `security`(標準搭載)
   - Linux: `secret-tool`(`libsecret-tools` パッケージ)
 
+また、インストールの方法に応じて以下のツールが必要です。
+- **インストーラー(install.sh)を使用する場合**
+  - `curl` (git は不要です)
+- **ソースから clone して使用する場合**
+  - `git`
+
 不足しているツールがある場合、起動時にインストール方法を案内した上でエラー終了します。
+
+## インストール
+
+以下のコマンドを実行することで、簡単にインストールできます。
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash
+```
+
+デフォルトでは、ユーザー権限で `~/.local/bin/bw-quickaccess` にインストールされます。
+
+### オプション指定
+
+インストール時のオプションを指定する場合は、以下のように実行します。
+
+- **インストール先の変更 (`--prefix`)**
+  デフォルトのインストール先を変更したい場合は `--prefix` オプションを指定します。
+  ```sh
+  curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --prefix /opt/bwqa
+  ```
+  この例では `/opt/bwqa/bin/bw-quickaccess` にインストールされます。
+
+- **特定バージョンのインストール (`--version`)**
+  最新版以外の特定バージョンをインストールしたい場合は `--version` オプションを指定します。
+  ```sh
+  curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --version v0.1.0
+  ```
+
+### アップデート
+
+アップデートを行うには、インストール時と同じ curl コマンドを再実行します。再実行すると、旧バージョンから新バージョンへの更新メッセージが表示されます。
+
+現在インストールされているバージョンは、以下のコマンドで確認できます。
+
+```sh
+bw-quickaccess --version
+```
+または、インストール先が PATH に通っていない場合は直接実行して確認します。
+```sh
+~/.local/bin/bw-quickaccess --version
+```
+
+### アンインストール
+
+インストールした `bw-quickaccess` を削除するには、実行ファイルを削除します。
+
+```sh
+rm ~/.local/bin/bw-quickaccess
+```
+
+`--prefix` オプションでインストール先を変更した場合は、以下のように削除します。
+
+```sh
+rm <prefix>/bin/bw-quickaccess
+```
 
 ## 使い方
 
+インストールして使用する場合:
+```sh
+bw-quickaccess
+```
+※ `~/.local/bin` などのインストール先に PATH が通っている必要があります。通っていない場合は `~/.local/bin/bw-quickaccess` のようにフルパスで実行してください。
+
+ソースから clone して直接実行する場合(開発者向けなど):
 ```sh
 bin/bw-quickaccess
 ```
@@ -47,6 +115,12 @@ bin/bw-quickaccess
 
 キャッシュされた session を破棄したい場合:
 
+インストールして使用する場合:
+```sh
+bw-quickaccess lock
+```
+
+ソースから直接実行する場合:
 ```sh
 bin/bw-quickaccess lock
 ```
