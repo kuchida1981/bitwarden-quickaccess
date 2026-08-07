@@ -98,6 +98,31 @@ bwqa_field_label() {
   esac
 }
 
+# __copy-status サブコマンドの実体。fzf の every(N):bg-transform-border-label
+# 経由で定期的に呼ばれ、ボーダーラベルに表示する1行を標準出力へ返す。
+# BWQA_COPY_LOCK_FILE が存在する間(= bwqa_copy_field_internal がバックグラウンドで
+# 実行中)はスピナーを、存在しなければ BWQA_COPY_STATUS_FILE の最終結果を返す。
+# フレーム位置は時刻ではなく BWQA_COPY_SPIN_FRAME_FILE に保存したカウンタを
+# 呼び出しごとに進める方式にしている。サブ秒精度の時刻取得(date +%N 等)は
+# macOS の BSD date で使えないため、この方式の方が両OSで確実に動く。
+bwqa_render_copy_status() {
+  if [[ ! -f "$BWQA_COPY_LOCK_FILE" ]]; then
+    cat "$BWQA_COPY_STATUS_FILE" 2>/dev/null
+    return 0
+  fi
+
+  local frames=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+  local frame_count=${#frames[@]}
+  local idx=0
+  if [[ -f "$BWQA_COPY_SPIN_FRAME_FILE" ]]; then
+    idx="$(cat "$BWQA_COPY_SPIN_FRAME_FILE" 2>/dev/null || echo 0)"
+    [[ "$idx" =~ ^[0-9]+$ ]] || idx=0
+  fi
+  printf '%s' "$(((idx + 1) % frame_count))" >"$BWQA_COPY_SPIN_FRAME_FILE"
+
+  printf '%s %s\n' "${frames[idx]}" "$BWQA_MSG_FIELDS_COPYING"
+}
+
 # __copy-field サブコマンドの実体。BWQA_ITEM_ID / BW_SESSION は環境変数から受け取る。
 # 機密情報は標準出力へは一切出さず、クリップボードへのみ渡す。失敗はログファイルにのみ記録する。
 # この関数は bwqa_run_field_screen 内の subshell とは別の(fzf 経由で再起動される)
@@ -118,6 +143,12 @@ bwqa_copy_field_internal() {
   bwqa_detect_platform
   bwqa_detect_clipboard_cmd
 
+  # コピー処理中であることを bwqa_render_copy_status に伝えるためのロック
+  # ファイル。この関数はバックグラウンドジョブとして起動されるため、すべての
+  # 終了経路(正常終了・各 exit)で確実に削除されるよう trap で後始末する。
+  trap 'rm -f "$BWQA_COPY_LOCK_FILE" "$BWQA_COPY_SPIN_FRAME_FILE"' EXIT
+  : >"$BWQA_COPY_LOCK_FILE"
+
   if [[ -z "$item_id" || -z "$session" || -z "$field" ]]; then
     printf '%s __copy-field: item_id/session/field のいずれかが不足しています\n' "$(date '+%F %T')" >>"$BWQA_ERROR_LOG_FILE"
     exit 1
@@ -127,8 +158,9 @@ bwqa_copy_field_internal() {
   local exit_code=0
   # この関数は fzf の execute-silent 経由でのみ呼ばれ、execute-silent は子プロセスの
   # stdout/stderr を一切ターミナルに表示しない(fzf(1) COMMAND EXECUTION 参照)ため、
-  # ここで bwqa_log を呼んでもユーザーには見えない。ローディング表示が必要な場合は
-  # fzf のヘッダーを書き換える仕組み(別 change で検討)が必要になる。
+  # ここで bwqa_log を呼んでもユーザーには見えない。進行中であることの表示は、
+  # 上で作成したロックファイルを bwqa_render_copy_status が読み取り、fzf の
+  # every(N) + bg-transform-border-label 経由でボーダーラベルに反映する形で行う。
   case "$field" in
     username) value="$(BW_SESSION="$session" bw get username "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;
     password) value="$(BW_SESSION="$session" bw get password "$item_id" 2>>"$BWQA_ERROR_LOG_FILE")" || exit_code=$? ;;

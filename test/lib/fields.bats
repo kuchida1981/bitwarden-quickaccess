@@ -225,3 +225,75 @@ esac
   [ "$(cat "$BWQA_COPY_STATUS_FILE")" = "コピーに失敗しました" ]
 }
 
+# --- 5.5 bwqa_copy_field_internal: ロックファイルの後始末 -------------------
+
+@test "bwqa_copy_field_internal: 成功終了後にロックファイルが削除されている" {
+  _stub_bw_get_all_fields
+
+  BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
+    run bwqa_copy_field_internal password
+  [ "$status" -eq 0 ]
+  [ ! -e "$BWQA_COPY_LOCK_FILE" ]
+  [ ! -e "$BWQA_COPY_SPIN_FRAME_FILE" ]
+}
+
+@test "bwqa_copy_field_internal: bw コマンド失敗の異常終了後もロックファイルが削除されている" {
+  bwqa_test_stub_cmd bw 'exit 1'
+
+  BWQA_ITEM_ID="11111111-1111-1111-1111-111111111111" BW_SESSION="dummy-session" \
+    run bwqa_copy_field_internal password
+  [ "$status" -ne 0 ]
+  [ ! -e "$BWQA_COPY_LOCK_FILE" ]
+}
+
+@test "bwqa_copy_field_internal: item_id/session 不足による異常終了後もロックファイルが削除されている" {
+  run bwqa_copy_field_internal password
+  [ "$status" -ne 0 ]
+  [ ! -e "$BWQA_COPY_LOCK_FILE" ]
+}
+
+# --- 5.6 bwqa_render_copy_status --------------------------------------------
+
+@test "bwqa_render_copy_status: ロックファイルが無い場合は BWQA_COPY_STATUS_FILE の内容を返す" {
+  printf 'パスワードをコピーしました\n' >"$BWQA_COPY_STATUS_FILE"
+  rm -f "$BWQA_COPY_LOCK_FILE"
+
+  run bwqa_render_copy_status
+  [ "$status" -eq 0 ]
+  [ "$output" = "パスワードをコピーしました" ]
+}
+
+@test "bwqa_render_copy_status: BWQA_COPY_STATUS_FILE が無い場合は空を返す" {
+  rm -f "$BWQA_COPY_LOCK_FILE" "$BWQA_COPY_STATUS_FILE"
+
+  run bwqa_render_copy_status
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "bwqa_render_copy_status: ロックファイルがある場合はコピー中メッセージを返す" {
+  : >"$BWQA_COPY_LOCK_FILE"
+
+  run bwqa_render_copy_status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"コピー中..."* ]]
+}
+
+@test "bwqa_render_copy_status: 呼び出しごとにスピナーのフレームが進む" {
+  : >"$BWQA_COPY_LOCK_FILE"
+
+  local first second
+  first="$(bwqa_render_copy_status)"
+  second="$(bwqa_render_copy_status)"
+  [ "$first" != "$second" ]
+}
+
+@test "bwqa_render_copy_status: フレームカウンタが不正な値でも壊れずスピナーを返す" {
+  : >"$BWQA_COPY_LOCK_FILE"
+  printf 'not-a-number' >"$BWQA_COPY_SPIN_FRAME_FILE"
+
+  run bwqa_render_copy_status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"コピー中..."* ]]
+}
+
