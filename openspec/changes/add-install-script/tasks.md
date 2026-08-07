@@ -36,11 +36,11 @@
 
 ## 5. ドキュメント更新
 
-- [ ] 5.1 README.md に curl ワンライナーによるインストール手順(`curl -fsSL <URL> | bash`)を追記する
-- [ ] 5.2 README.md に `--prefix` オプション・バージョン指定オプションの説明を追記する
-- [ ] 5.3 README.md にアップデート手順(同じ curl コマンドの再実行で更新できる旨、`bw-quickaccess --version` での確認方法)を追記する
-- [ ] 5.4 README.md にアンインストール手順(`rm $PREFIX/bin/bw-quickaccess` 等)を追記する
-- [ ] 5.5 README.md の「必要なもの」節に、install.sh 実行には `curl` のみが必要で `git` は不要である旨を追記する(既存の clone 前提の記述と整合させる)
+- [x] 5.1 README.md に curl ワンライナーによるインストール手順(`curl -fsSL <URL> | bash`)を追記する
+- [x] 5.2 README.md に `--prefix` オプション・バージョン指定オプションの説明を追記する
+- [x] 5.3 README.md にアップデート手順(同じ curl コマンドの再実行で更新できる旨、`bw-quickaccess --version` での確認方法)を追記する
+- [x] 5.4 README.md にアンインストール手順(`rm $PREFIX/bin/bw-quickaccess` 等)を追記する
+- [x] 5.5 README.md の「必要なもの」節に、install.sh 実行には `curl` のみが必要で `git` は不要である旨を追記する(既存の clone 前提の記述と整合させる)
 
 ## 6. 初回リリースと動作検証
 
