@@ -21,14 +21,7 @@ source "$BWQA_ROOT/lib/search.sh"
 source "$BWQA_ROOT/lib/fields.sh"
 
 bwqa_print_usage() {
-  cat <<'EOF'
-使い方: bw-quickaccess [lock]
-
-  (引数なし)   vault アイテムを検索し、フィールドをクリップボードへコピーする
-  lock         キャッシュされた session を破棄する(次回起動時に再度マスターパスワードを要求する)
-  -v, --version   バージョンを表示する
-  -h, --help   このヘルプを表示する
-EOF
+  printf '%s\n' "$BWQA_MSG_USAGE_TEXT"
 }
 
 bwqa_main() {
@@ -96,7 +89,10 @@ case "${1:-}" in
     bwqa_main
     ;;
   *)
-    bwqa_log "不明な引数です: $1"
+    # BWQA_MSG_* はこのプロジェクトが定義する固定テンプレート(lib/i18n/*.sh)であり、
+    # ユーザー入力ではないため、変数を printf の書式文字列として使う設計を許容する。
+    # shellcheck disable=SC2059
+    bwqa_log "$(printf "$BWQA_MSG_UNKNOWN_ARG" "$1")"
     bwqa_print_usage >&2
     exit 1
     ;;

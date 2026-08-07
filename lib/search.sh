@@ -3,7 +3,7 @@
 # ログインタイプ(type == 1)のアイテムのみを対象に、fzf 向けの id/label ペアを作る
 bwqa_fetch_items() {
   local raw
-  bwqa_log "vaultのアイテム一覧を読み込んでいます..."
+  bwqa_log "$BWQA_MSG_SEARCH_LOADING_ITEMS"
   raw="$(bwqa_bw list items)" || return 1
   jq -c '
     [.[] | select(.type == 1)]
@@ -19,7 +19,7 @@ bwqa_fetch_items() {
 
 bwqa_run_search_screen() {
   local items_json
-  items_json="$(bwqa_fetch_items)" || bwqa_die "vault アイテムの取得に失敗しました。"
+  items_json="$(bwqa_fetch_items)" || bwqa_die "$BWQA_MSG_SEARCH_FETCH_FAILED"
 
   local status_feedback
   # transform-border-label 側にも {1} を参照させ、execute-silent のコピー処理と
@@ -40,7 +40,7 @@ bwqa_run_search_screen() {
     jq -r '.[] | [.id, .label] | @tsv' <<<"$items_json" \
       | fzf --delimiter='\t' --with-nth=2 \
         --prompt='vault> ' --height=80% --reverse \
-        --header='Enter: アイテムを選択  ctrl-o: ユーザー名  ctrl-r: パスワード  ctrl-t: TOTP を直接コピー  Esc: 終了' \
+        --header="$BWQA_MSG_SEARCH_FZF_HEADER" \
         --border=rounded --border-label='' \
         --bind="ctrl-o:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username)${status_feedback}" \
         --bind="ctrl-r:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password)${status_feedback}" \

@@ -8,7 +8,8 @@ declare -a BWQA_CLIPBOARD_CMD_ARR=()
 bwqa_require_cmd() {
   local cmd="$1" hint="$2"
   if ! command -v "$cmd" >/dev/null 2>&1; then
-    bwqa_die "必須コマンド '${cmd}' が見つかりません。${hint}"
+    # shellcheck disable=SC2059
+    bwqa_die "$(printf "$BWQA_MSG_PREFLIGHT_CMD_NOT_FOUND" "$cmd" "$hint")"
   fi
 }
 
@@ -17,17 +18,19 @@ bwqa_check_fzf_version() {
   local raw
   raw="$(fzf --version 2>/dev/null | awk '{print $1}')"
   if [[ -z "$raw" ]]; then
-    bwqa_die "fzf のバージョンを取得できませんでした。fzf ${required} 以上をインストールしてください(例: brew install fzf)。"
+    # shellcheck disable=SC2059
+    bwqa_die "$(printf "$BWQA_MSG_PREFLIGHT_FZF_VERSION_UNKNOWN" "$required")"
   fi
   if ! bwqa_version_ge "$raw" "$required"; then
-    bwqa_die "fzf のバージョンが古すぎます(検出: ${raw} / 必要: ${required} 以上)。'brew upgrade fzf' 等でアップグレードしてください。"
+    # shellcheck disable=SC2059
+    bwqa_die "$(printf "$BWQA_MSG_PREFLIGHT_FZF_VERSION_TOO_OLD" "$raw" "$required")"
   fi
 }
 
 bwqa_check_core_tools() {
-  bwqa_require_cmd bw "https://bitwarden.com/help/cli/ を参照してインストールしてください(例: brew install bitwarden-cli)。"
-  bwqa_require_cmd jq "'brew install jq' または各ディストリのパッケージマネージャでインストールしてください。"
-  bwqa_require_cmd fzf "'brew install fzf' または各ディストリのパッケージマネージャでインストールしてください。"
+  bwqa_require_cmd bw "$BWQA_MSG_PREFLIGHT_BW_INSTALL_HINT"
+  bwqa_require_cmd jq "$BWQA_MSG_PREFLIGHT_JQ_INSTALL_HINT"
+  bwqa_require_cmd fzf "$BWQA_MSG_PREFLIGHT_FZF_INSTALL_HINT"
   bwqa_check_fzf_version
 }
 
@@ -35,7 +38,10 @@ bwqa_detect_platform() {
   case "$(uname -s)" in
     Darwin) BWQA_OS_KIND="macos" ;;
     Linux) BWQA_OS_KIND="linux" ;;
-    *) bwqa_die "サポート対象外の OS です($(uname -s))。macOS または Linux(デスクトップ環境)のみサポートします。" ;;
+    *)
+      # shellcheck disable=SC2059
+      bwqa_die "$(printf "$BWQA_MSG_PREFLIGHT_OS_UNSUPPORTED" "$(uname -s)")"
+      ;;
   esac
 
   if [[ "$BWQA_OS_KIND" == "linux" ]]; then
@@ -44,7 +50,7 @@ bwqa_detect_platform() {
     elif [[ -n "${DISPLAY:-}" ]]; then
       BWQA_DISPLAY_KIND="x11"
     else
-      bwqa_die "Wayland/X11 のディスプレイが検出できませんでした。デスクトップ GUI 環境で実行してください(ヘッドレス/SSH専用環境は非対応です)。"
+      bwqa_die "$BWQA_MSG_PREFLIGHT_DISPLAY_NOT_FOUND"
     fi
   fi
 }
@@ -52,7 +58,7 @@ bwqa_detect_platform() {
 bwqa_detect_clipboard_cmd() {
   case "$BWQA_OS_KIND" in
     macos)
-      bwqa_require_cmd pbcopy "macOS には標準搭載されているはずです。PATH を確認してください。"
+      bwqa_require_cmd pbcopy "$BWQA_MSG_PREFLIGHT_MACOS_BUILTIN_HINT"
       BWQA_CLIPBOARD_CMD_ARR=(pbcopy)
       ;;
     linux)
@@ -61,7 +67,7 @@ bwqa_detect_clipboard_cmd() {
           if command -v wl-copy >/dev/null 2>&1; then
             BWQA_CLIPBOARD_CMD_ARR=(wl-copy)
           else
-            bwqa_die "wl-copy が見つかりません。'apt install wl-clipboard' 等でインストールしてください。"
+            bwqa_die "$BWQA_MSG_PREFLIGHT_WL_COPY_NOT_FOUND"
           fi
           ;;
         x11)
@@ -70,7 +76,7 @@ bwqa_detect_clipboard_cmd() {
           elif command -v xsel >/dev/null 2>&1; then
             BWQA_CLIPBOARD_CMD_ARR=(xsel --clipboard --input)
           else
-            bwqa_die "xclip または xsel が見つかりません。'apt install xclip' 等でインストールしてください。"
+            bwqa_die "$BWQA_MSG_PREFLIGHT_XCLIP_NOT_FOUND"
           fi
           ;;
       esac
@@ -92,18 +98,18 @@ bwqa_keyring_selftest() {
 bwqa_check_keychain_tool() {
   case "$BWQA_OS_KIND" in
     macos)
-      bwqa_require_cmd security "macOS には標準搭載されているはずです。PATH を確認してください。"
+      bwqa_require_cmd security "$BWQA_MSG_PREFLIGHT_MACOS_BUILTIN_HINT"
       BWQA_KEYCHAIN_AVAILABLE="true"
       ;;
     linux)
       if ! command -v secret-tool >/dev/null 2>&1; then
-        bwqa_die "secret-tool が見つかりません。'apt install libsecret-tools' 等でインストールしてください。"
+        bwqa_die "$BWQA_MSG_PREFLIGHT_SECRET_TOOL_NOT_FOUND"
       fi
       if bwqa_keyring_selftest; then
         BWQA_KEYCHAIN_AVAILABLE="true"
       else
         BWQA_KEYCHAIN_AVAILABLE="false"
-        bwqa_log "警告: keyring バックエンド(GNOME Keyring/KWallet 等)への疎通に失敗しました。session のキャッシュは無効化し、毎回マスターパスワードの入力を求めます。"
+        bwqa_log "$BWQA_MSG_PREFLIGHT_KEYRING_SELFTEST_FAILED"
       fi
       ;;
   esac

@@ -61,9 +61,9 @@ bwqa_session_ttl_expired() {
 # 取得した token は標準出力に出さず、内部変数・(可能なら)keychain にのみ保持する。
 bwqa_unlock() {
   local token
-  bwqa_log "vaultのロックを解除しています..."
-  token="$(bw unlock --raw)" || bwqa_die "bw unlock に失敗しました。マスターパスワードを確認してください。"
-  [[ -n "$token" ]] || bwqa_die "bw unlock が空の session を返しました。"
+  bwqa_log "$BWQA_MSG_SESSION_UNLOCKING"
+  token="$(bw unlock --raw)" || bwqa_die "$BWQA_MSG_SESSION_UNLOCK_FAILED"
+  [[ -n "$token" ]] || bwqa_die "$BWQA_MSG_SESSION_EMPTY"
 
   if [[ "$BWQA_KEYCHAIN_AVAILABLE" == "true" ]]; then
     bwqa_keychain_store "$token"
@@ -95,7 +95,7 @@ bwqa_bw() {
   rm -f "$errfile"
 
   if [[ $status -ne 0 ]] && grep -qiE 'not logged in|vault is locked|invalid session|unauthorized|session' <<<"$err"; then
-    bwqa_log "session が無効になっているため、再認証します。"
+    bwqa_log "$BWQA_MSG_SESSION_REAUTH"
     bwqa_keychain_delete
     rm -f "$BWQA_SESSION_ISSUED_AT_FILE"
     bwqa_unlock
@@ -108,7 +108,8 @@ bwqa_bw() {
   fi
 
   if [[ $status -ne 0 ]]; then
-    bwqa_log "bw $* に失敗しました: $err"
+    # shellcheck disable=SC2059
+    bwqa_log "$(printf "$BWQA_MSG_SESSION_BW_CMD_FAILED" "$*" "$err")"
     return "$status"
   fi
   printf '%s' "$out"
@@ -118,5 +119,5 @@ bwqa_cmd_lock() {
   bwqa_keychain_delete
   rm -f "$BWQA_SESSION_ISSUED_AT_FILE"
   bw lock >/dev/null 2>&1 || true
-  bwqa_log "session のキャッシュを破棄しました。"
+  bwqa_log "$BWQA_MSG_SESSION_CACHE_CLEARED"
 }
