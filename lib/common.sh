@@ -15,8 +15,28 @@ bwqa_log() {
 }
 
 bwqa_die() {
-  bwqa_log "エラー: $*"
+  # BWQA_MSG_* はこのプロジェクトが定義する固定テンプレート(lib/i18n/*.sh)であり、
+  # ユーザー入力ではないため、変数を printf の書式文字列として使う設計を許容する。
+  # shellcheck disable=SC2059
+  bwqa_log "$(printf "$BWQA_MSG_ERR_PREFIX" "$*")"
   exit 1
+}
+
+# 表示言語を判定する。優先順位: BWQA_LANG(明示指定) > LC_ALL > LANG。
+# ja で始まらない場合、または対応する言語ファイルが無い場合は en にフォールバックする。
+bwqa_detect_lang() {
+  local lang="${BWQA_LANG:-}"
+  if [[ -z "$lang" ]]; then
+    local locale="${LC_ALL:-${LANG:-}}"
+    case "$locale" in
+      ja*) lang="ja" ;;
+      *) lang="en" ;;
+    esac
+  fi
+  case "$lang" in
+    ja | en) printf '%s' "$lang" ;;
+    *) printf '%s' "en" ;;
+  esac
 }
 
 bwqa_ensure_cache_dir() {
@@ -49,3 +69,11 @@ bwqa_version_ge() {
   done
   return 0
 }
+
+BWQA_LIB_DIR_INTERNAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BWQA_LANG_RESOLVED="$(bwqa_detect_lang)"
+if [[ ! -f "$BWQA_LIB_DIR_INTERNAL/i18n/${BWQA_LANG_RESOLVED}.sh" ]]; then
+  BWQA_LANG_RESOLVED="en"
+fi
+# shellcheck disable=SC1090
+source "$BWQA_LIB_DIR_INTERNAL/i18n/${BWQA_LANG_RESOLVED}.sh"

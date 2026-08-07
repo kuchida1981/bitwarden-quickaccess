@@ -49,8 +49,11 @@ bwqa_test_stub_setup() {
   BWQA_SESSION_ISSUED_AT_FILE="$BWQA_CACHE_DIR/session-issued-at"
   BWQA_LAST_ITEM_FILE="$BWQA_CACHE_DIR/last-item-id"
   BWQA_ERROR_LOG_FILE="$BWQA_CACHE_DIR/last-error.log"
+  # 既存テストは日本語メッセージを前提としているため、CI のロケール設定に
+  # 依存せず言語判定を固定する(BWQA_LANG=en で上書きすれば英語も検証できる)。
+  BWQA_LANG="${BWQA_LANG:-ja}"
   export BWQA_TEST_STUB_DIR BWQA_TEST_CACHE_DIR BWQA_CACHE_DIR \
-    BWQA_SESSION_ISSUED_AT_FILE BWQA_LAST_ITEM_FILE BWQA_ERROR_LOG_FILE
+    BWQA_SESSION_ISSUED_AT_FILE BWQA_LAST_ITEM_FILE BWQA_ERROR_LOG_FILE BWQA_LANG
 }
 
 # PATH とキャッシュディレクトリを元に戻し、一時ディレクトリを削除する。

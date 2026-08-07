@@ -32,7 +32,7 @@
 
 ### 2. 言語判定順序と実装場所
 
-`lib/common.sh` に `bwqa_detect_lang()` を追加し、`bin/bw-quickaccess` からの `source lib/common.sh` 直後、他の lib ファイルを source する前に言語ファイルを読み込む。
+`lib/common.sh` に `bwqa_detect_lang()` を追加する。**実装時に設計を変更**: 当初 `bin/bw-quickaccess` から明示的に `bwqa_detect_lang` を呼んで i18n ファイルを source する想定だったが、bats テストは `test/lib/*.bats` から `lib/common.sh` を直接 source しており(`bin/bw-quickaccess` を経由しない)、このままでは各テストファイルに source 追加が必要になり漏れやすい。そこで `lib/common.sh` 自身の末尾で `bwqa_detect_lang` を呼び出し、対応する `lib/i18n/<lang>.sh` を自動 source するように変更した。`common.sh` は「source される前提」のファイルであるため、production(`bin/bw-quickaccess`)・テスト(`test/lib/*.bats`)のどちらから source されても、以降のコードは常に `BWQA_MSG_*` を参照できる。
 
 判定順序:
 1. `BWQA_LANG` 環境変数(`ja`/`en` のみ許容。他の値は無視して次へ)
@@ -40,20 +40,25 @@
 3. 上記で判定できない、または対応する `lib/i18n/<lang>.sh` が存在しない場合は `en` にフォールバック
 
 ```
-bin/bw-quickaccess
-  source lib/common.sh          # bwqa_log/bwqa_die/bwqa_detect_lang を定義
-  bwqa_detect_lang → BWQA_LANG_RESOLVED="ja" | "en"
-  source lib/i18n/${BWQA_LANG_RESOLVED}.sh   # BWQA_MSG_* を定義
-  source lib/preflight.sh ...   # 以降、BWQA_MSG_* を参照できる
+lib/common.sh (source される)
+  BWQA_MSG_* 以外の共通定義(bwqa_log/bwqa_die/bwqa_detect_lang 等)
+  ↓
+  BWQA_LANG_RESOLVED="$(bwqa_detect_lang)"
+  source lib/i18n/${BWQA_LANG_RESOLVED}.sh   # ファイル自身のディレクトリ(BASH_SOURCE基準)から解決
+  ↓
+呼び出し元(bin/bw-quickaccess または *.bats)が
+lib/preflight.sh 等をこの後に source すれば、BWQA_MSG_* を参照できる
 ```
 
-`lib/i18n/*.sh` の source は `common.sh` の直後・他 lib より前に行う必要がある(`preflight.sh` 等が起動直後から `BWQA_MSG_*` を参照するため)。
+`bin/bw-quickaccess` 側は他 lib と同様に `source lib/common.sh` するだけでよく、i18n 用の追加コードは不要になった。`test/helpers/stub.bash` の `bwqa_test_stub_setup()` では `BWQA_LANG="${BWQA_LANG:-ja}"` を設定し、CI のロケール設定に依存せず既存テスト(日本語文字列を assert しているもの)が安定して通るようにしている。
 
 ### 3. 既存メッセージの移行
 
 `bwqa_log "..."` / `bwqa_die "..."` の呼び出し箇所(12箇所)を、対応する `BWQA_MSG_*` 変数参照に置き換える。動的な埋め込み値(コマンド名・バージョン番号など)がある文字列は `printf` 形式のテンプレート変数にする(例: `BWQA_MSG_ERR_CMD_NOT_FOUND='必須コマンド '\''%s'\'' が見つかりません。%s'` を `printf` で展開)。
 
 fzf の `--prompt`/`--header` も同様に `BWQA_MSG_FZF_*` 変数に切り出す。`--prompt='vault> '` のような非日本語文字列(記号のみ)は変更不要。
+
+`printf "$BWQA_MSG_*" "$arg"` のように変数を書式文字列として使う箇所は shellcheck の SC2059(info)を誤検知として報告する。`BWQA_MSG_*` は外部入力ではなくこのプロジェクトが定義する固定テンプレートであるため、該当箇所には理由コメント付きで `# shellcheck disable=SC2059` を付与する(`lib/common.sh`/`bin/bw-quickaccess` で先行実装済み)。
 
 ### 4. README
 
