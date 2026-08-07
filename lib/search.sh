@@ -21,12 +21,30 @@ bwqa_run_search_screen() {
   local items_json
   items_json="$(bwqa_fetch_items)" || bwqa_die "vault アイテムの取得に失敗しました。"
 
+  local status_feedback
+  # transform-border-label 側にも {1} を参照させ、execute-silent のコピー処理と
+  # 同じ「0件マッチ時は該当 bind action 全体をスキップする」という fzf の挙動を
+  # 適用させる。{1} がないと、0件時に execute-silent(コピー本体)だけがスキップされ
+  # transform-border-label だけが実行されてしまい、直前のコピー結果メッセージが
+  # 「たった今コピーしたかのように」再表示される不具合になる(design.md が想定する
+  # 「実質無反応」という前提を満たせない)。`: {1}` は no-op で処理結果には影響しない。
+  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null; : {1})"
+
   local selected_id
+  # この subshell 内での export は fzf の execute-silent 経由で起動する
+  # __copy-field 子プロセスへ BW_SESSION を継承させるためのもので、subshell の
+  # 外に値を戻す意図はない(SC2030/SC2031 は意図した挙動への誤検知)。
+  # shellcheck disable=SC2030,SC2031,SC2153
   selected_id="$(
+    export BW_SESSION="$BWQA_SESSION"
     jq -r '.[] | [.id, .label] | @tsv' <<<"$items_json" \
       | fzf --delimiter='\t' --with-nth=2 \
         --prompt='vault> ' --height=80% --reverse \
-        --header='Enter: アイテムを選択  Esc: 終了' \
+        --header='Enter: アイテムを選択  ctrl-u: ユーザー名  ctrl-p: パスワード  ctrl-t: TOTP を直接コピー  Esc: 終了' \
+        --border=rounded --border-label='' \
+        --bind="ctrl-u:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username)${status_feedback}" \
+        --bind="ctrl-p:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password)${status_feedback}" \
+        --bind="ctrl-t:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
       | cut -f1
   )" || true
 
