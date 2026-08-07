@@ -40,10 +40,10 @@ bwqa_run_search_screen() {
     jq -r '.[] | [.id, .label] | @tsv' <<<"$items_json" \
       | fzf --delimiter='\t' --with-nth=2 \
         --prompt='vault> ' --height=80% --reverse \
-        --header='Enter: アイテムを選択  alt-u: ユーザー名  alt-p: パスワード  ctrl-t: TOTP を直接コピー  Esc: 終了' \
+        --header='Enter: アイテムを選択  ctrl-o: ユーザー名  ctrl-r: パスワード  ctrl-t: TOTP を直接コピー  Esc: 終了' \
         --border=rounded --border-label='' \
-        --bind="alt-u:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username)${status_feedback}" \
-        --bind="alt-p:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password)${status_feedback}" \
+        --bind="ctrl-o:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username)${status_feedback}" \
+        --bind="ctrl-r:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password)${status_feedback}" \
         --bind="ctrl-t:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
       | cut -f1
   )" || true

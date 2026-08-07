@@ -9,7 +9,7 @@
 # UUID に過ぎず、それ単体では何の情報も取得できない非秘匿な識別子であるため、
 # fzf の `{1}` プレースホルダでコマンド文字列に埋め込むことを許容する
 # (このファイルの enter バインドではフィールド名を、lib/search.sh の
-# alt-u/p、ctrl-t バインドではアイテム ID を、それぞれ {1} で埋め込んでいる)。
+# ctrl-o/r、ctrl-t バインドではアイテム ID を、それぞれ {1} で埋め込んでいる)。
 
 bwqa_get_item_summary() {
   local item_id="$1" raw
@@ -28,8 +28,8 @@ bwqa_build_field_rows() {
   local summary_json="$1"
   jq -r '
     [
-      (if .has_username then ["username", "ユーザー名をコピー (alt-u)"] else empty end),
-      (if .has_password then ["password", "パスワードをコピー (alt-p)"] else empty end),
+      (if .has_username then ["username", "ユーザー名をコピー (ctrl-o)"] else empty end),
+      (if .has_password then ["password", "パスワードをコピー (ctrl-r)"] else empty end),
       (if .has_totp then ["totp", "TOTP をコピー (ctrl-t)"] else empty end)
     ] | .[] | @tsv
   ' <<<"$summary_json"
@@ -67,12 +67,12 @@ bwqa_run_field_screen() {
     printf '%s\n' "$rows" | fzf \
       --delimiter='\t' --with-nth=2 \
       --prompt="${item_name} > " --height=80% --reverse \
-      --header='Enter: 選択中の項目をコピー  alt-p: password  alt-u: username  ctrl-t: totp  Esc: 検索へ戻る  q: 終了' \
+      --header='Enter: 選択中の項目をコピー  ctrl-r: password  ctrl-o: username  ctrl-t: totp  Esc: 検索へ戻る  q: 終了' \
       --border=rounded --border-label='' \
       --expect='esc,q' \
       --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})${status_feedback}" \
-      --bind="alt-p:execute-silent(\"$BWQA_SELF\" __copy-field password)${status_feedback}" \
-      --bind="alt-u:execute-silent(\"$BWQA_SELF\" __copy-field username)${status_feedback}" \
+      --bind="ctrl-r:execute-silent(\"$BWQA_SELF\" __copy-field password)${status_feedback}" \
+      --bind="ctrl-o:execute-silent(\"$BWQA_SELF\" __copy-field username)${status_feedback}" \
       --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
       | head -n1
   )" || true
