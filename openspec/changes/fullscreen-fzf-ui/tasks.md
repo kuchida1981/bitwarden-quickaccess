@@ -31,5 +31,5 @@
 
 - [x] 6.1 `test/lib/preflight.bats` に、要求バージョン未満・要求バージョン以上・バージョン判定不能の3ケースを網羅するテストがあることを確認し、不足があれば追加する
 - [x] 6.2 `__copy-status` サブコマンドについて、ロックファイルが存在する場合としない場合それぞれで出力が切り替わることを検証するテストを追加する(`test/lib/fields.bats` または新規ファイル)
-- [ ] 6.3 `test/lib/search.bats` / `test/lib/fields.bats` の既存テストのうち、fzf 起動コマンド文字列を検証しているものを更新し、`--height` オプションが含まれないこと・`every(...)` バインドが含まれることをアサーションに追加する
-- [ ] 6.4 `bash -n` / `shellcheck` / `bats test/lib/*.bats` を実行し、全て成功することを確認する
+- [x] 6.3 `test/lib/search.bats` / `test/lib/fields.bats` に、fzf を PATH スタブで差し替えて起動引数を検証する新規テストを追加した(既存テストは元々 fzf 対話画面をスコープ外としており、更新対象の既存テストは無かった)。`--height` が含まれないこと・`every(0.15):bg-transform-border-label` と `__copy-status` が含まれること・コピー処理が `&` でバックグラウンド化されていることを検証する
+- [x] 6.4 `bash -n` / `shellcheck -x bin/bw-quickaccess` / `shellcheck test/helpers/*.bash test/lib/*.bats` / `bats test/lib/*.bats` を実行し、全75テストが成功することを確認した
