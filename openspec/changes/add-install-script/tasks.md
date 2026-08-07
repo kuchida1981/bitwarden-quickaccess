@@ -24,15 +24,15 @@
 
 ## 4. install.sh
 
-- [ ] 4.1 リポジトリ直下に `install.sh` を新規作成する。デフォルトで `PREFIX=~/.local` を設定し、`--prefix <path>` オプションでオーバーライドできるようにする
-- [ ] 4.2 バージョン解決ロジックを実装する: オプション未指定時は `https://github.com/<owner>/<repo>/releases/latest/download/bw-quickaccess` を、`--version <tag>` 指定時は `https://github.com/<owner>/<repo>/releases/download/<tag>/bw-quickaccess` を curl でダウンロードする
-- [ ] 4.3 上書き前に `$PREFIX/bin/bw-quickaccess` が既に存在するか確認し、存在する場合は `"$PREFIX/bin/bw-quickaccess" --version` で現在のバージョンを取得しておく
-- [ ] 4.4 ダウンロードしたファイルを `$PREFIX/bin/bw-quickaccess` に配置し `chmod +x` する。`$PREFIX/bin` が存在しない場合は作成する
-- [ ] 4.5 インストール後、`"$PREFIX/bin/bw-quickaccess" --version` で新バージョンを取得し、既存インストールがあった場合は `<旧バージョン> から <新バージョン> に更新しました`、無かった場合は `<新バージョン> をインストールしました` を表示する
-- [ ] 4.6 インストール完了後、`$PREFIX/bin` が現在の `PATH` に含まれているか確認し、含まれていなければ `export PATH="$PREFIX/bin:$PATH"` を追加するよう促す警告メッセージを表示する(シェル rc ファイルの自動編集はしない)
-- [ ] 4.7 `-h`/`--help` オプションで使い方(オプション一覧)を表示できるようにする
-- [ ] 4.8 `bash -n install.sh` と `shellcheck install.sh` を実行し、構文・静的解析エラーが無いことを確認する
-- [ ] 4.9 `git` コマンドが存在しない環境でも install.sh が完結すること(curl のみに依存していること)を確認する
+- [x] 4.1 リポジトリ直下に `install.sh` を新規作成する。デフォルトで `PREFIX=~/.local` を設定し、`--prefix <path>` オプションでオーバーライドできるようにする
+- [x] 4.2 バージョン解決ロジックを実装する: オプション未指定時は `https://github.com/<owner>/<repo>/releases/latest/download/bw-quickaccess` を、`--version <tag>` 指定時は `https://github.com/<owner>/<repo>/releases/download/<tag>/bw-quickaccess` を curl でダウンロードする
+- [x] 4.3 上書き前に `$PREFIX/bin/bw-quickaccess` が既に存在するか確認し、存在する場合は `"$PREFIX/bin/bw-quickaccess" --version` で現在のバージョンを取得しておく
+- [x] 4.4 ダウンロードしたファイルを `$PREFIX/bin/bw-quickaccess` に配置し `chmod +x` する。`$PREFIX/bin` が存在しない場合は作成する
+- [x] 4.5 インストール後、`"$PREFIX/bin/bw-quickaccess" --version` で新バージョンを取得し、既存インストールがあった場合は `<旧バージョン> から <新バージョン> に更新しました`、無かった場合は `<新バージョン> をインストールしました` を表示する
+- [x] 4.6 インストール完了後、`$PREFIX/bin` が現在の `PATH` に含まれているか確認し、含まれていなければ `export PATH="$PREFIX/bin:$PATH"` を追加するよう促す警告メッセージを表示する(シェル rc ファイルの自動編集はしない)
+- [x] 4.7 `-h`/`--help` オプションで使い方(オプション一覧)を表示できるようにする
+- [x] 4.8 `bash -n install.sh` と `shellcheck install.sh` を実行し、構文・静的解析エラーが無いことを確認する
+- [x] 4.9 `git` コマンドが存在しない環境でも install.sh が完結すること(curl のみに依存していること)を確認する
 
 ## 5. ドキュメント更新
 
