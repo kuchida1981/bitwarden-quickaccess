@@ -13,7 +13,7 @@ setup() {
   # を呼ぶ(この2つの組み合わせで「他は揃っているが特定の1つだけ無い」を再現する)。
   bwqa_test_stub_cmd bw 'exit 0'
   bwqa_test_stub_cmd jq 'exit 0'
-  bwqa_test_stub_cmd fzf '[ "$1" = "--version" ] && printf "0.37.0\n"'
+  bwqa_test_stub_cmd fzf '[ "$1" = "--version" ] && printf "0.73.0\n"'
 }
 
 teardown() {
@@ -59,18 +59,18 @@ teardown() {
 # --- 6.2 bwqa_check_fzf_version ---------------------------------------------
 
 @test "bwqa_check_fzf_version: 要件バージョンちょうどなら成功する" {
-  bwqa_test_stub_cmd fzf 'printf "0.37.0\n"'
+  bwqa_test_stub_cmd fzf 'printf "0.73.0\n"'
 
   run bwqa_check_fzf_version
   [ "$status" -eq 0 ]
 }
 
 @test "bwqa_check_fzf_version: 要件バージョン未満なら失敗する" {
-  bwqa_test_stub_cmd fzf 'printf "0.36.9\n"'
+  bwqa_test_stub_cmd fzf 'printf "0.72.9\n"'
 
   run bwqa_check_fzf_version
   [ "$status" -ne 0 ]
-  [[ "$output" == *"0.36.9"* ]]
+  [[ "$output" == *"0.72.9"* ]]
 }
 
 @test "bwqa_check_fzf_version: バージョンを取得できない場合は失敗する" {
