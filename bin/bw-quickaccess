@@ -27,6 +27,7 @@ bwqa_print_usage() {
 bwqa_main() {
   bwqa_run_preflight
   bwqa_ensure_cache_dir
+  bwqa_reset_copy_status
   bwqa_get_session
 
   while true; do

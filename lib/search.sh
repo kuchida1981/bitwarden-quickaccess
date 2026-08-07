@@ -30,6 +30,11 @@ bwqa_run_search_screen() {
   # 「実質無反応」という前提を満たせない)。`: {1}` は no-op で処理結果には影響しない。
   # __copy-status サブコマンドは、コピー処理中はスピナーを、完了後は
   # BWQA_COPY_STATUS_FILE の内容を返す(lib/fields.sh の bwqa_render_copy_status 参照)。
+  # 各 execute-silent の先頭で `: >"$BWQA_COPY_LOCK_FILE"` を同期的に実行しているのは、
+  # 直後に連結される transform-border-label(__copy-status)が、バックグラウンド化した
+  # __copy-field 本体(bash 起動・複数ファイルの source を経てからロックファイルを
+  # 作成する)より先にロックファイルの有無を判定してしまい、スピナーの代わりに
+  # 直前のコピー結果が一瞬再表示される競合を防ぐため。
   status_feedback="+transform-border-label(\"$BWQA_SELF\" __copy-status; : {1})"
 
   local selected_id
@@ -44,9 +49,9 @@ bwqa_run_search_screen() {
         --prompt='vault> ' --reverse \
         --header="$BWQA_MSG_SEARCH_FZF_HEADER" \
         --border=rounded --border-label='' \
-        --bind="ctrl-o:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username &)${status_feedback}" \
-        --bind="ctrl-r:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password &)${status_feedback}" \
-        --bind="ctrl-t:execute-silent(BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field totp &)${status_feedback}" \
+        --bind="ctrl-o:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field username &)${status_feedback}" \
+        --bind="ctrl-r:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field password &)${status_feedback}" \
+        --bind="ctrl-t:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; BWQA_ITEM_ID={1} \"$BWQA_SELF\" __copy-field totp &)${status_feedback}" \
         --bind="every(0.15):bg-transform-border-label(\"$BWQA_SELF\" __copy-status)" \
       | cut -f1
   )" || true

@@ -340,3 +340,35 @@ esac
   [ "$status" -eq 0 ]
 }
 
+@test "bwqa_run_field_screen: ロックファイルはバックグラウンド化する前に同期的に作成する(スピナー表示の競合防止)" {
+  bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_field_screen "11111111-1111-1111-1111-111111111111"
+  [ "$status" -eq 0 ]
+
+  # execute-silent 内で `: >"$BWQA_COPY_LOCK_FILE"` が __copy-field の起動より
+  # 先(同じ行の左側)に書かれていることを確認する。__copy-status 側の
+  # transform-border-label が execute-silent 完了直後に走っても、この時点で
+  # 既にロックファイルが存在することを保証するための並び順。
+  run grep -q ": >\"$BWQA_COPY_LOCK_FILE\"; \"/tmp/bwqa-self-stub\" __copy-field password &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}
+
+@test "bwqa_reset_copy_status: BWQA_COPY_STATUS_FILE を空にする" {
+  printf '前回セッションのコピー結果\n' >"$BWQA_COPY_STATUS_FILE"
+
+  bwqa_reset_copy_status
+
+  [ -e "$BWQA_COPY_STATUS_FILE" ]
+  [ -z "$(cat "$BWQA_COPY_STATUS_FILE")" ]
+}
+
+@test "bwqa_reset_copy_status: BWQA_COPY_STATUS_FILE が元々存在しなくても失敗しない" {
+  rm -f "$BWQA_COPY_STATUS_FILE"
+
+  run bwqa_reset_copy_status
+  [ "$status" -eq 0 ]
+  [ -e "$BWQA_COPY_STATUS_FILE" ]
+}
+

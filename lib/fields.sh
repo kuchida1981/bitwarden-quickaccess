@@ -62,6 +62,11 @@ bwqa_run_field_screen() {
   local status_feedback
   # __copy-status サブコマンドは、コピー処理中はスピナーを、完了後は
   # BWQA_COPY_STATUS_FILE の内容を返す(bwqa_render_copy_status 参照)。
+  # 各 execute-silent の先頭で `: >"$BWQA_COPY_LOCK_FILE"` を同期的に実行しているのは、
+  # 直後に連結される transform-border-label(__copy-status)が、バックグラウンド化した
+  # __copy-field 本体(bash 起動・複数ファイルの source を経てからロックファイルを
+  # 作成する)より先にロックファイルの有無を判定してしまい、スピナーの代わりに
+  # 直前のコピー結果が一瞬再表示される競合を防ぐため。
   status_feedback="+transform-border-label(\"$BWQA_SELF\" __copy-status)"
   # この subshell 内での export は fzf の execute-silent 経由で起動する
   # __copy-field 子プロセスへ環境変数を継承させるためのもので、subshell の
@@ -76,10 +81,10 @@ bwqa_run_field_screen() {
       --header="$BWQA_MSG_FIELDS_FZF_HEADER" \
       --border=rounded --border-label='' \
       --expect='esc,q' \
-      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1} &)${status_feedback}" \
-      --bind="ctrl-r:execute-silent(\"$BWQA_SELF\" __copy-field password &)${status_feedback}" \
-      --bind="ctrl-o:execute-silent(\"$BWQA_SELF\" __copy-field username &)${status_feedback}" \
-      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp &)${status_feedback}" \
+      --bind="enter:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field {1} &)${status_feedback}" \
+      --bind="ctrl-r:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field password &)${status_feedback}" \
+      --bind="ctrl-o:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field username &)${status_feedback}" \
+      --bind="ctrl-t:execute-silent(: >\"$BWQA_COPY_LOCK_FILE\"; \"$BWQA_SELF\" __copy-field totp &)${status_feedback}" \
       --bind="every(0.15):bg-transform-border-label(\"$BWQA_SELF\" __copy-status)" \
       | head -n1
   )" || true
@@ -97,6 +102,14 @@ bwqa_field_label() {
     totp) printf '%s' "$BWQA_MSG_FIELDS_LABEL_TOTP" ;;
     *) printf '%s' "$1" ;;
   esac
+}
+
+# ツール起動時に呼ぶ。BWQA_COPY_STATUS_FILE は前回セッションのコピー結果を
+# 保持したまま永続化されるため、これを呼ばずに起動すると、検索画面が表示された
+# 直後(every(0.15) の最初のティック)に前回セッションの古い結果メッセージが
+# 一瞬ボーダーラベルに表示されてしまう。
+bwqa_reset_copy_status() {
+  : >"$BWQA_COPY_STATUS_FILE"
 }
 
 # __copy-status サブコマンドの実体。fzf の every(N):bg-transform-border-label
