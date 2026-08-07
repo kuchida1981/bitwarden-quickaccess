@@ -72,6 +72,10 @@ bwqa_version_ge() {
   return 0
 }
 
+# === i18n-load:begin ===
+# script/build.sh はバンドル生成時にこのブロックを、lib/i18n/*.sh の中身を
+# 埋め込んだ静的な case 文に置き換える(単一自己完結ファイルにするため)。
+# 開発時(lib/*.sh をリポジトリ内から直接 source する場合)はここでファイルから動的に読み込む。
 BWQA_LIB_DIR_INTERNAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BWQA_LANG_RESOLVED="$(bwqa_detect_lang)"
 if [[ ! -f "$BWQA_LIB_DIR_INTERNAL/i18n/${BWQA_LANG_RESOLVED}.sh" ]]; then
@@ -79,3 +83,4 @@ if [[ ! -f "$BWQA_LIB_DIR_INTERNAL/i18n/${BWQA_LANG_RESOLVED}.sh" ]]; then
 fi
 # shellcheck disable=SC1090
 source "$BWQA_LIB_DIR_INTERNAL/i18n/${BWQA_LANG_RESOLVED}.sh"
+# === i18n-load:end ===
