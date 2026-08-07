@@ -220,8 +220,9 @@ Bash ツールの `timeout` パラメータも併用し、agy プロセスが応
    → アーカイブと spec sync のコミットを PR に含める
 
 6. CI 確認 (Claude Code)
-   現時点(2026-08-06)ではこのリポジトリに CI ワークフローは未設定。
-   CI が追加されたら、以下のコマンドで結果を待ち、失敗があれば修正してプッシュする:
+   `.github/workflows/ci.yml` により push/PR ごとに CI(macos-latest / ubuntu-latest で
+   構文チェック・shellcheck・bats テスト)が実行される。
+   PR 作成後は以下のコマンドで結果を待ち、失敗があれば修正してプッシュする:
    gh pr checks --watch
 ```
 
@@ -236,8 +237,10 @@ Bash ツールの `timeout` パラメータも併用し、agy プロセスが応
 
 ### pre-commit / CI ルール
 
-現時点でこのリポジトリに pre-commit フック・CI ワークフローは未設定。
-今後追加した場合は以下を厳守する:
+CI ワークフロー(`.github/workflows/ci.yml`)は設定済み。push/PR ごとに
+macos-latest / ubuntu-latest 上で構文チェック(`bash -n`)・`shellcheck`・
+`bats test/lib/*.bats` が実行される。pre-commit フックは現時点で未設定。
+今後 pre-commit フックを追加した場合も以下を厳守する:
 
 **pre-commit のスキップ禁止**
 `--no-verify` や `SKIP=...` による pre-commit フックのスキップは一切行わない。
