@@ -16,11 +16,11 @@
 
 ## 3. リリース CI ワークフロー
 
-- [ ] 3.1 `.github/workflows/release.yml` を新規作成し、`on: release: types: [published]` をトリガーに設定する
-- [ ] 3.2 ワークフロー内で `github.event.release.tag_name` が指す commit を checkout し、`VERSION="${{ github.event.release.tag_name }}"` を指定して `script/build.sh` を実行しバンドルをビルドするステップを追加する
-- [ ] 3.3 ビルド成果物に対して `bash -n` / `shellcheck` を実行するステップを追加する(タスク 2.3/2.4 と同内容を CI 上でも実施)
-- [ ] 3.4 `gh release upload "${{ github.event.release.tag_name }}" <ビルド成果物> --clobber` で、公開済みの release にバンドルをアセットとして添付するステップを追加する(release 自体は作成しない)
-- [ ] 3.5 ワークフローに `permissions: contents: write`(release へのアセット添付に必要な権限)を設定する
+- [x] 3.1 `.github/workflows/release.yml` を新規作成し、`on: release: types: [published]` をトリガーに設定する
+- [x] 3.2 ワークフロー内で `github.event.release.tag_name` が指す commit を checkout し、`VERSION="${{ github.event.release.tag_name }}"` を指定して `script/build.sh` を実行しバンドルをビルドするステップを追加する
+- [x] 3.3 ビルド成果物に対して `bash -n` / `shellcheck` を実行するステップを追加する(タスク 2.3/2.4 と同内容を CI 上でも実施)
+- [x] 3.4 `gh release upload "${{ github.event.release.tag_name }}" <ビルド成果物> --clobber` で、公開済みの release にバンドルをアセットとして添付するステップを追加する(release 自体は作成しない)
+- [x] 3.5 ワークフローに `permissions: contents: write`(release へのアセット添付に必要な権限)を設定する
 
 ## 4. install.sh
 
