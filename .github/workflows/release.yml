@@ -20,6 +20,11 @@ jobs:
         run: |
           VERSION="${{ github.event.release.tag_name }}" script/build.sh
 
+      - name: Smoke test
+        run: |
+          dist/bw-quickaccess --version
+          dist/bw-quickaccess --help
+
       - name: Syntax check (bash -n)
         run: |
           bash -n dist/bw-quickaccess

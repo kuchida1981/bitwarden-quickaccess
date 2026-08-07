@@ -60,13 +60,16 @@ while IFS= read -r line || [[ -n "$line" ]]; do
       continue
     fi
 
-    # : "${BWQA_VERSION:=dev}" の行の直前に VERSION 環境変数が指定されていれば書き込む
+    # : "${BWQA_VERSION:=dev}" の行を処理
     if [[ "$line" == *'BWQA_VERSION:=dev'* ]]; then
       if [[ -n "${VERSION:-}" ]]; then
         echo "BWQA_VERSION=\"$VERSION\"" >> "$TMP_OUT"
+      else
+        echo "$line" >> "$TMP_OUT"
       fi
+    else
+      echo "$line" >> "$TMP_OUT"
     fi
-    echo "$line" >> "$TMP_OUT"
   else
     # ヘッダー部分が終わったら、まず lib/ ファイルを一括して書き込む
     if ! $libs_written; then

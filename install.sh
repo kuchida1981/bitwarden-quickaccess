@@ -26,6 +26,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --)
       shift
+      break
       ;;
     --prefix)
       if [[ -z "${2:-}" ]]; then
@@ -56,9 +57,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ダウンロードURLの構築
-if [[ -n "${BWQA_TEST_URL:-}" ]]; then
-  DOWNLOAD_URL="$BWQA_TEST_URL"
-elif [[ -n "$VERSION" ]]; then
+if [[ -n "$VERSION" ]]; then
   DOWNLOAD_URL="https://github.com/${OWNER}/${REPO}/releases/download/${VERSION}/bw-quickaccess"
 else
   DOWNLOAD_URL="https://github.com/${OWNER}/${REPO}/releases/latest/download/bw-quickaccess"
@@ -85,6 +84,12 @@ trap 'rm -f "$TEMP_FILE"' EXIT
 echo "Downloading bw-quickaccess from $DOWNLOAD_URL ..."
 if ! curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_FILE"; then
   echo "Error: Failed to download bw-quickaccess from $DOWNLOAD_URL" >&2
+  exit 1
+fi
+
+# ダウンロードファイルの検証
+if [[ "$(head -c 2 "$TEMP_FILE")" != "#!" ]]; then
+  echo "Error: Downloaded file does not appear to be a valid script (missing shebang)." >&2
   exit 1
 fi
 
