@@ -91,7 +91,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   fi
 done < "$REPO_ROOT/bin/bw-quickaccess"
 
-# 成果物を所定 of パスに移動して実行権限を付与
+# 成果物を所定のパスに移動して実行権限を付与
 mv "$TMP_OUT" "$OUTPUT_PATH"
 chmod +x "$OUTPUT_PATH"
 
