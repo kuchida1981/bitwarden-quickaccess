@@ -63,6 +63,7 @@ teardown() {
 # shellcheck disable=SC2034
 @test "bwqa_detect_lang: BWQA_LANG が unset で LANG=ja_JP.UTF-8 のときは ja になる" {
   unset BWQA_LANG
+  unset LC_ALL
   LANG="ja_JP.UTF-8"
   run bwqa_detect_lang
   [ "$status" -eq 0 ]
@@ -109,6 +110,7 @@ teardown() {
 # shellcheck disable=SC2034
 @test "bwqa_detect_lang: BWQA_LANG が unset で LANG=en_US.UTF-8 のときは en になる" {
   unset BWQA_LANG
+  unset LC_ALL
   LANG="en_US.UTF-8"
   run bwqa_detect_lang
   [ "$status" -eq 0 ]
