@@ -1,163 +1,173 @@
 # bw-quickaccess
 
-`bw`(Bitwarden CLI)・`jq`・`fzf` を組み合わせた、1Password Quick Access 相当のターミナル向けクイックアクセスツールです。vault アイテムをインクリメンタルサーチし、ユーザー名・パスワード・TOTP をクリップボードへコピーできます。
+Read this in English / [日本語版はこちら](README.ja.md)
 
-## 必要なもの
+A terminal quick-access tool equivalent to 1Password Quick Access, built on top of `bw` (Bitwarden CLI), `jq`, and `fzf`. It lets you incrementally search vault items and copy the username, password, or TOTP to the clipboard.
 
-- macOS、または デスクトップ GUI 環境(GNOME Keyring / KWallet 等が動作している)の Linux
-- [`bw`(Bitwarden CLI)](https://bitwarden.com/help/cli/) — `bw login` 済みであること
+## Requirements
+
+- macOS, or Linux with a desktop GUI environment (with GNOME Keyring / KWallet or similar running)
+- [`bw` (Bitwarden CLI)](https://bitwarden.com/help/cli/) — must already be logged in via `bw login`
 - `jq`
-- `fzf`(0.37.0 以上)
-- クリップボードコピーコマンド
-  - macOS: `pbcopy`(標準搭載)
-  - Linux(Wayland): `wl-copy`
-  - Linux(X11): `xclip` または `xsel`
-- OS キーチェーン連携コマンド(session token のキャッシュに使用)
-  - macOS: `security`(標準搭載)
-  - Linux: `secret-tool`(`libsecret-tools` パッケージ)
+- `fzf` (0.37.0 or later)
+- A clipboard copy command
+  - macOS: `pbcopy` (built in)
+  - Linux (Wayland): `wl-copy`
+  - Linux (X11): `xclip` or `xsel`
+- An OS keychain integration command (used to cache the session token)
+  - macOS: `security` (built in)
+  - Linux: `secret-tool` (from the `libsecret-tools` package)
 
-また、インストールの方法に応じて以下のツールが必要です。
-- **インストーラー(install.sh)を使用する場合**
-  - `curl` (git は不要です)
-- **ソースから clone して使用する場合**
+Depending on how you install it, you'll also need:
+- **Using the installer (install.sh)**
+  - `curl` (git is not required)
+- **Cloning the source and running it directly**
   - `git`
 
-不足しているツールがある場合、起動時にインストール方法を案内した上でエラー終了します。
+If any required tool is missing, the tool prints installation instructions and exits with an error at startup.
 
-## インストール
+## Installation
 
-以下のコマンドを実行することで、簡単にインストールできます。
+You can install it easily by running the following command.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash
 ```
 
-デフォルトでは、ユーザー権限で `~/.local/bin/bw-quickaccess` にインストールされます。
+By default, it installs to `~/.local/bin/bw-quickaccess` under your user account (no elevated privileges required).
 
-### オプション指定
+### Options
 
-インストール時のオプションを指定する場合は、以下のように実行します。
+To customize the installation, pass options like this:
 
-- **インストール先の変更 (`--prefix`)**
-  デフォルトのインストール先を変更したい場合は `--prefix` オプションを指定します。
+- **Change the install location (`--prefix`)**
+  To change the default install location, use the `--prefix` option.
   ```sh
   curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --prefix /opt/bwqa
   ```
-  この例では `/opt/bwqa/bin/bw-quickaccess` にインストールされます。
+  In this example, it installs to `/opt/bwqa/bin/bw-quickaccess`.
 
-- **特定バージョンのインストール (`--version`)**
-  最新版以外の特定バージョンをインストールしたい場合は `--version` オプションを指定します。
+- **Install a specific version (`--version`)**
+  To install a specific version other than the latest, use the `--version` option.
   ```sh
   curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --version v0.1.0
   ```
 
-### アップデート
+### Updating
 
-アップデートを行うには、インストール時と同じ curl コマンドを再実行します。再実行すると、旧バージョンから新バージョンへの更新メッセージが表示されます。
+To update, re-run the same curl command used for installation. Re-running it shows an update message from the old version to the new one.
 
-現在インストールされているバージョンは、以下のコマンドで確認できます。
+You can check the currently installed version with:
 
 ```sh
 bw-quickaccess --version
 ```
-または、インストール先が PATH に通っていない場合は直接実行して確認します。
+Or, if the install location isn't on your PATH, run it directly:
 ```sh
 ~/.local/bin/bw-quickaccess --version
 ```
 
-### アンインストール
+### Uninstalling
 
-インストールした `bw-quickaccess` を削除するには、実行ファイルを削除します。
+To remove `bw-quickaccess`, delete the executable.
 
 ```sh
 rm ~/.local/bin/bw-quickaccess
 ```
 
-`--prefix` オプションでインストール先を変更した場合は、以下のように削除します。
+If you changed the install location with `--prefix`, remove it like this instead:
 
 ```sh
 rm <prefix>/bin/bw-quickaccess
 ```
 
-## 使い方
+## Usage
 
-インストールして使用する場合:
+If installed:
 ```sh
 bw-quickaccess
 ```
-※ `~/.local/bin` などのインストール先に PATH が通っている必要があります。通っていない場合は `~/.local/bin/bw-quickaccess` のようにフルパスで実行してください。
+Note: the install location (e.g. `~/.local/bin`) needs to be on your PATH. If it isn't, run it with the full path, e.g. `~/.local/bin/bw-quickaccess`.
 
-ソースから clone して直接実行する場合(開発者向けなど):
+If running directly from a cloned source checkout (e.g. for development):
 ```sh
 bin/bw-quickaccess
 ```
 
-1. 検索画面(fzf)で vault アイテムをインクリメンタルサーチします
-   - `Enter`: アイテムを選択してフィールド選択画面へ進む
-   - `ctrl-r`: 絞り込んだアイテムのパスワードを直接コピー(画面はそのまま)
-   - `ctrl-o`: 絞り込んだアイテムのユーザー名を直接コピー(画面はそのまま)
-   - `ctrl-t`: 絞り込んだアイテムの TOTP を直接コピー(画面はそのまま)
-2. フィールド選択画面で、コピーしたいフィールドを選びます
-   - `Enter`: 選択中の行をコピー
-   - `ctrl-r`: パスワードを直接コピー
-   - `ctrl-o`: ユーザー名を直接コピー
-   - `ctrl-t`: TOTP を直接コピー
-   - コピーしても画面は閉じないため、同じアイテムの別フィールドを続けてコピーできます
-   - `Esc`: 検索画面へ戻る
-   - `q`: ツールを終了する
-3. 次回起動時は、直前に選択したアイテムのフィールド選択画面から始まります(検索をスキップ)。別のアイテムを探したい場合は `Esc` で検索画面に戻ってください
+1. Incrementally search vault items on the search screen (fzf)
+   - `Enter`: select an item and move to the field selection screen
+   - `ctrl-r`: copy the password of the filtered item directly (stays on this screen)
+   - `ctrl-o`: copy the username of the filtered item directly (stays on this screen)
+   - `ctrl-t`: copy the TOTP of the filtered item directly (stays on this screen)
+2. On the field selection screen, choose the field you want to copy
+   - `Enter`: copy the selected row
+   - `ctrl-r`: copy the password directly
+   - `ctrl-o`: copy the username directly
+   - `ctrl-t`: copy the TOTP directly
+   - The screen stays open after copying, so you can copy other fields of the same item in succession
+   - `Esc`: go back to the search screen
+   - `q`: quit the tool
+3. On the next launch, it starts from the field selection screen for the last selected item (skipping the search). Press `Esc` to go back to the search screen if you want to look up a different item.
 
-### session(ログイン状態)について
+### About sessions (login state)
 
-初回実行時は `bw unlock` のマスターパスワード入力を求められます。取得した session token は OS のキーチェーンにキャッシュされ、既定 15 分(`BWQA_SESSION_TTL_SECONDS` 環境変数で変更可能)以内であれば再入力を求められません。
+On first run, you'll be prompted for your master password via `bw unlock`. The resulting session token is cached in the OS keychain, and you won't be prompted again within the default 15-minute window (configurable via the `BWQA_SESSION_TTL_SECONDS` environment variable).
 
-キャッシュされた session を破棄したい場合:
+To discard the cached session:
 
-インストールして使用する場合:
+If installed:
 ```sh
 bw-quickaccess lock
 ```
 
-ソースから直接実行する場合:
+If running directly from source:
 ```sh
 bin/bw-quickaccess lock
 ```
 
-### スコープ外の機能
+### Display language
 
-- Bitwarden デスクトップアプリへの deep link 連携(アプリ側が特定アイテムへの直接ナビゲーションに未対応のため)
-- クリップボードの自動クリア
-- Linux のヘッドレス/SSH 専用環境のサポート
+CLI messages are automatically selected from the `LANG`/`LC_ALL` environment variables between Japanese and English (anything not starting with `ja` falls back to English). You can override this explicitly with the `BWQA_LANG` environment variable (`ja` or `en`):
 
-## 開発者向け: テストの実行
+```sh
+BWQA_LANG=en bw-quickaccess
+```
 
-`lib/*.sh` の単体テストは [bats-core](https://github.com/bats-core/bats-core) で書かれています。静的解析には [shellcheck](https://www.shellcheck.net/) を使用しています(除外ルールはリポジトリ直下の `.shellcheckrc` を参照)。
+### Out of scope
 
-### セットアップ
+- Deep-link integration with the Bitwarden desktop app (the app doesn't support navigating directly to a specific item)
+- Automatically clearing the clipboard
+- Support for headless/SSH-only Linux environments
+
+## For developers: running tests
+
+Unit tests for `lib/*.sh` are written with [bats-core](https://github.com/bats-core/bats-core). Static analysis uses [shellcheck](https://www.shellcheck.net/) (see `.shellcheckrc` at the repository root for excluded rules).
+
+### Setup
 
 ```sh
 # macOS
 brew install bats-core shellcheck
 
-# Linux(Debian/Ubuntu 系)
+# Linux (Debian/Ubuntu family)
 sudo apt-get install -y bats shellcheck
 ```
 
-### 実行
+### Running
 
 ```sh
-# 構文チェック
+# Syntax check
 bash -n bin/bw-quickaccess
 for f in lib/*.sh; do bash -n "$f"; done
 
-# 静的解析(プロダクションコードは -x でクロスファイル解析、テストコードは単体で解析)
+# Static analysis (production code uses -x for cross-file analysis; test code is analyzed standalone)
 shellcheck -x bin/bw-quickaccess
 shellcheck test/helpers/*.bash test/lib/*.bats
 
-# 単体テスト
+# Unit tests
 bats test/lib/*.bats
 ```
 
-GitHub Actions(`.github/workflows/ci.yml`)で `macos-latest` / `ubuntu-latest` の両方に対して push・pull request のたびに同じチェックを自動実行しています。
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks automatically on both `macos-latest` and `ubuntu-latest` for every push and pull request.
 
-詳細な要件・設計は `openspec/changes/add-quickaccess-cli/` を参照してください。
+See `openspec/changes/add-quickaccess-cli/` for detailed requirements and design.
