@@ -19,6 +19,7 @@
 ### Modified Capabilities
 
 - `credential-clipboard-copy`: 「キーバインドによるショートカットコピー」要件のキー割り当てを `ctrl-u/ctrl-p/ctrl-t` から `alt-u/alt-p/ctrl-t` に変更する
+- `copy-feedback`: 「コピー結果のフィードバック表示」要件内でキーバインドを明記している記述を `ctrl-u/ctrl-p/ctrl-t` から `alt-u/alt-p/ctrl-t` に変更する
 
 ## Impact
 
@@ -26,3 +27,5 @@
 - `lib/fields.sh`: `--bind` の `ctrl-p`/`ctrl-u` を `alt-p`/`alt-u` に変更、`--header` 文言と `bwqa_build_field_rows` のラベル表記を更新
 - `README.md`: 使い方セクションのキーバインド説明を更新、Alt キーのターミナル依存に関する注記を追加
 - `openspec/specs/credential-clipboard-copy/spec.md`: キーバインドを明記しているシナリオの記述を更新
+- `openspec/specs/copy-feedback/spec.md`: キーバインドを明記している要件・シナリオの記述を更新
+- `test/lib/fields.bats`: `bwqa_build_field_rows` のラベル表記変更に合わせて期待値を更新
