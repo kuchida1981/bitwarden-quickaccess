@@ -25,4 +25,4 @@
 - [x] 4.1 `README.md` を英語版に書き換える(Claude Code が翻訳品質確保のため直接実施。新機能である `BWQA_LANG` 表示言語切り替えの説明も追記)
 - [x] 4.2 既存の日本語 README の内容を `README.ja.md` として新規作成する(同様に `BWQA_LANG` の説明を追記)
 - [x] 4.3 `README.md` と `README.ja.md` の冒頭に相互リンク("Read this in English / [日本語版はこちら]" 形式)を追加する
-- [ ] 4.4 `openspec/specs/` に新規 capability `message-localization` の spec が反映されるよう、change アーカイブ時の delta sync を確認する(archive フェーズで実施)
+- [x] 4.4 `openspec/specs/` に新規 capability `message-localization` の spec が反映されるよう、change アーカイブ時の delta sync を確認する(archive フェーズで実施)
