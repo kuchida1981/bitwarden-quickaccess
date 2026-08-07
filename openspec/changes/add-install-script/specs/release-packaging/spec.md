@@ -25,3 +25,14 @@ CI は GitHub Release が公開(`release` イベントの `published` タイプ)
 #### Scenario: draft のまま release を保存する
 - **WHEN** 人間が release を draft(未公開)として保存する
 - **THEN** CI は起動せず、アセットの添付は行われない
+
+### Requirement: バージョンの埋め込みとバージョン確認コマンド
+ビルドスクリプト(`script/build.sh`)は環境変数 `VERSION` を受け取り、指定がある場合はそのバージョン文字列をバンドルに埋め込まなければならない(SHALL)。`VERSION` が指定されない場合、バンドルは実行時に `dev` をバージョンとして扱わなければならない(SHALL)。生成されたバンドルは `--version`/`-v` オプションを受け付け、`bw-quickaccess <埋め込まれたバージョン>` の形式で標準出力に出力し正常終了しなければならない(SHALL)。CI(`.github/workflows/release.yml`)はビルド時に、公開された release のタグ名を `VERSION` としてビルドスクリプトに渡さなければならない(SHALL)。
+
+#### Scenario: リリースビルドでバージョンを埋め込む
+- **WHEN** CI が `VERSION=v0.1.0` を指定して `script/build.sh` を実行する
+- **THEN** 生成されたバンドルは `bw-quickaccess --version` 実行時に `bw-quickaccess v0.1.0` を出力する
+
+#### Scenario: ローカルビルドでバージョン未指定の場合
+- **WHEN** `VERSION` を指定せずに `script/build.sh` をローカルで実行する
+- **THEN** 生成されたバンドルは `bw-quickaccess --version` 実行時に `bw-quickaccess dev` を出力する

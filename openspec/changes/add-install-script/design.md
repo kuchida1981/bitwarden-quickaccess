@@ -11,14 +11,16 @@
 **Goals:**
 - `curl -fsSL <install.sh の URL> | bash` で bw-quickaccess をユーザー権限インストールできるようにする
 - インストール先ルートを `--prefix` オプションで変更できるようにする
-- `bin/bw-quickaccess` / `lib/*.sh` のランタイムロジック自体は変更しない(バンドルは既存の source 連鎖と結果的に等価な連結処理にとどめる)
+- `bin/bw-quickaccess` / `lib/*.sh` の既存ランタイムロジック(vault検索・フィールドコピー・session管理等)は変更しない(バンドルは既存の source 連鎖と結果的に等価な連結処理にとどめる)。`--version`/`-v` オプションの追加のみ例外として許容する
 - GitHub Release 公開に連動してビルド済みバンドルを自動的にアセット添付する
+- `install.sh` を再実行するだけで既存インストールを最新版に更新できるようにする(専用の update スクリプトは設けない)
 
 **Non-Goals:**
 - Homebrew tap 化(issue #7 の候補案だが、今回はスコープ外。将来的な拡張として残す)
 - Windows(ネイティブ)対応の install.sh(現状 bw-quickaccess 自体が macOS / Linux デスクトップ環境のみ対応のため)
 - シェル rc ファイル(`.bashrc`/`.zshrc` 等)の自動編集(PATH 追加はメッセージ表示のみに留める)
 - アンインストールスクリプト(README にコマンド例を書くのみで、スクリプト自体は今回のスコープ外)
+- `video-ratings/scripts/update.sh` のような専用アップデータ(DBマイグレーション・systemd再起動等を伴う)。bw-quickaccess はステートレスな単一ファイル配布のため、install.sh の再実行で上書きするだけで十分
 
 ## Decisions
 
@@ -65,12 +67,30 @@ CI(`.github/workflows/release.yml`)がやることは以下のみ:
 
 **参考にした既存実装:** `video-ratings` プロジェクトの `scripts/update.sh` にある `curl https://api.github.com/repos/<repo>/releases/latest | grep tag_name` によるバージョン解決パターン。ただし bw-quickaccess ではデフォルトケースに限り GitHub の `releases/latest/download/<asset>` ショートカット URL を使うことで API 呼び出し自体を省略する。
 
+### 4. アップデート方法とバージョン確認
+
+**アップデート = install.sh の再実行。** video-ratings は systemd サービス・PostgreSQL マイグレーション・複数バージョンの releases ディレクトリ管理を伴うため専用の `update.sh`(`scripts/update.sh` → `/usr/local/bin/video-ratings-update`)を持つが、bw-quickaccess はステートレスな単一ファイル配布であり、マイグレーションもサービス再起動も不要。そのため専用スクリプトは作らず、**同じ install.sh を同じ(または異なる)`--prefix`/`--version` で再実行すれば、既存ファイルを新しいバンドルで上書きするだけで更新が完了する**設計にする。
+
+ユーザーが「更新されたか」「何のバージョンから何に上がったか」を確認できるよう、以下を追加する:
+
+- `bin/bw-quickaccess` に `--version`/`-v` オプションを追加し、`bw-quickaccess <version>` の形式でバージョン文字列を出力する
+- バージョン文字列はビルド時に埋め込む。`script/build.sh` は環境変数 `VERSION` を受け取り、指定があればバンドル先頭に `BWQA_VERSION="$VERSION"` を書き込む。指定が無いローカルビルドでは `bin/bw-quickaccess` 側のデフォルト(`: "${BWQA_VERSION:=dev}"` のような未設定時デフォルト)により `dev` と表示される
+- `.github/workflows/release.yml` は `script/build.sh` 実行時に `VERSION="${{ github.event.release.tag_name }}"` を渡し、リリースタグをそのままバージョン文字列として埋め込む
+- `install.sh` は上書き前に、既にインストール済みの実行ファイルがあれば `"$PREFIX/bin/bw-quickaccess" --version` で現在のバージョンを取得し、ダウンロード後に新しいバージョンと合わせて `vX.Y.Z → vA.B.C に更新しました` のように表示する。新規インストール時は単に `vA.B.C をインストールしました` と表示する
+- 「最新版かどうかの事前チェック」(現在バージョンと最新版を比較してスキップする最適化)は行わない。デフォルトケースで GitHub API 呼び出しを避ける設計(3節)と矛盾するため、常にダウンロード→上書きするシンプルな動作に統一する
+
+**代替案として検討したもの:**
+- *video-ratings 同様の専用 `update.sh` を用意*: バージョンごとの releases ディレクトリ管理・ロールバックが可能になるが、単一ファイル配布には過剰。却下
+- *`git describe --tags` でビルド時にバージョンを自動解決*: CI が shallow checkout かつ `github.event.release.tag_name` を確実に持っているため、`git describe` に頼らず明示的に `VERSION` を渡す方が単純で確実
+
 ## Risks / Trade-offs
 
 - **[Risk]** `script/build.sh` の連結順序を誤ると実行時エラーになるが、テストで検知しにくい → **Mitigation**: ビルド成果物に対しても `bash -n` と `shellcheck` を CI(既存の `ci.yml` または `release.yml`)で実行し、構文・静的解析エラーを検知する
 - **[Risk]** `lib/*.sh` に将来 shebang や相対パス依存が追加されると、単純連結が壊れる → **Mitigation**: `lib/common.sh` の「source される前提」コメントを踏襲し、新規 lib ファイル追加時のガイドラインとして CLAUDE.md 等に明記することを検討する(この change のスコープでは対応しないが Open Questions に記載)
 - **[Risk]** 初回リリース(`v0.1.0` 想定)を切る作業自体がこの change に依存しており、リリース運用が実際に機能するかは実リリースを切るまで検証できない → **Mitigation**: tasks.md に「テストタグでの動作確認」を含め、本番タグを切る前に CI の動作を検証する
 - **[Trade-off]** パターンB(人間主導のリリース)は `video-ratings` のパターンA(CI主導)と運用が異なり、プロジェクトをまたいだ一貫性がない → 許容する(明示的な選択のため)
+- **[Risk]** ローカルビルド(`VERSION` 未指定)はすべて `dev` と表示され、複数のローカルビルド同士を区別できない → **Mitigation**: ローカル開発時の区別は本 change のスコープ外とする(必要になった場合は commit hash 等の付加を別途検討)
+- **[Risk]** アップデート時に「最新版かどうかの事前チェック」を行わないため、既に最新版でも常に再ダウンロード・上書きが発生する → **Mitigation**: バンドルはファイルサイズが小さく、頻繁に実行する操作でもないため許容する
 
 ## Open Questions
 
