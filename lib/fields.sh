@@ -53,8 +53,6 @@ bwqa_run_field_screen() {
   local rows
   rows="$(bwqa_build_field_rows "$summary")"
   if [[ -z "$rows" ]]; then
-    # BWQA_MSG_* はこのプロジェクトが定義する固定テンプレート(lib/i18n/*.sh)であり、
-    # ユーザー入力ではないため、変数を printf の書式文字列として使う設計を許容する。
     # shellcheck disable=SC2059
     bwqa_log "$(printf "$BWQA_MSG_FIELDS_NO_COPYABLE_FIELDS" "$item_name")"
     return 2
@@ -62,7 +60,9 @@ bwqa_run_field_screen() {
 
   local key
   local status_feedback
-  status_feedback="+transform-border-label(cat \"$BWQA_COPY_STATUS_FILE\" 2>/dev/null)"
+  # __copy-status サブコマンドは、コピー処理中はスピナーを、完了後は
+  # BWQA_COPY_STATUS_FILE の内容を返す(bwqa_render_copy_status 参照)。
+  status_feedback="+transform-border-label(\"$BWQA_SELF\" __copy-status)"
   # この subshell 内での export は fzf の execute-silent 経由で起動する
   # __copy-field 子プロセスへ環境変数を継承させるためのもので、subshell の
   # 外に値を戻す意図はない(SC2030/SC2031 は意図した挙動への誤検知)。
@@ -72,14 +72,15 @@ bwqa_run_field_screen() {
     export BWQA_ITEM_ID="$item_id"
     printf '%s\n' "$rows" | fzf \
       --delimiter='\t' --with-nth=2 \
-      --prompt="${item_name} > " --height=80% --reverse \
+      --prompt="${item_name} > " --reverse \
       --header="$BWQA_MSG_FIELDS_FZF_HEADER" \
       --border=rounded --border-label='' \
       --expect='esc,q' \
-      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1})${status_feedback}" \
-      --bind="ctrl-r:execute-silent(\"$BWQA_SELF\" __copy-field password)${status_feedback}" \
-      --bind="ctrl-o:execute-silent(\"$BWQA_SELF\" __copy-field username)${status_feedback}" \
-      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp)${status_feedback}" \
+      --bind="enter:execute-silent(\"$BWQA_SELF\" __copy-field {1} &)${status_feedback}" \
+      --bind="ctrl-r:execute-silent(\"$BWQA_SELF\" __copy-field password &)${status_feedback}" \
+      --bind="ctrl-o:execute-silent(\"$BWQA_SELF\" __copy-field username &)${status_feedback}" \
+      --bind="ctrl-t:execute-silent(\"$BWQA_SELF\" __copy-field totp &)${status_feedback}" \
+      --bind="every(0.15):bg-transform-border-label(\"$BWQA_SELF\" __copy-status)" \
       | head -n1
   )" || true
 
