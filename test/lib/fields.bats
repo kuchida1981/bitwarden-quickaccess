@@ -297,3 +297,46 @@ esac
   [[ "$output" == *"コピー中..."* ]]
 }
 
+# --- 5.7 bwqa_run_field_screen: fzf 起動オプション --------------------------
+
+@test "bwqa_run_field_screen: --height オプションを付けずに fzf を起動する(フルスクリーン化)" {
+  bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_field_screen "11111111-1111-1111-1111-111111111111"
+  [ "$status" -eq 0 ]
+
+  run grep -q "--height" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -ne 0 ]
+}
+
+@test "bwqa_run_field_screen: every(0.15):bg-transform-border-label バインドで __copy-status を呼ぶ" {
+  bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_field_screen "11111111-1111-1111-1111-111111111111"
+  [ "$status" -eq 0 ]
+
+  run grep -q "every(0.15):bg-transform-border-label" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-status" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}
+
+@test "bwqa_run_field_screen: enter/ctrl-o/ctrl-r/ctrl-t のコピー処理はバックグラウンドジョブとして起動する" {
+  bwqa_bw() { jq -c '.all_fields' "$BWQA_TEST_FIXTURES_DIR/bw-get-item.json"; }
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_field_screen "11111111-1111-1111-1111-111111111111"
+  [ "$status" -eq 0 ]
+
+  run grep -q "__copy-field {1} &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-field username &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-field password &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-field totp &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}
+

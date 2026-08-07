@@ -90,3 +90,40 @@ teardown() {
   [[ "$err" == *"vaultのアイテム一覧を読み込んでいます..."* ]]
 }
 
+# --- 2 bwqa_run_search_screen: fzf 起動オプション ---
+
+@test "bwqa_run_search_screen: --height オプションを付けずに fzf を起動する(フルスクリーン化)" {
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_search_screen
+  [ "$status" -eq 0 ]
+
+  run grep -q "--height" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -ne 0 ]
+}
+
+@test "bwqa_run_search_screen: every(0.15):bg-transform-border-label バインドで __copy-status を呼ぶ" {
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_search_screen
+  [ "$status" -eq 0 ]
+
+  run grep -q "every(0.15):bg-transform-border-label" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-status" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}
+
+@test "bwqa_run_search_screen: ctrl-o/ctrl-r/ctrl-t のコピー処理はバックグラウンドジョブとして起動する" {
+  bwqa_test_stub_cmd fzf 'printf "%s\n" "$@" >"$BWQA_TEST_CACHE_DIR/fzf-args"'
+  BWQA_SELF="/tmp/bwqa-self-stub" BWQA_SESSION="dummy-session" \
+    run bwqa_run_search_screen
+  [ "$status" -eq 0 ]
+
+  run grep -q "__copy-field username &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-field password &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+  run grep -q "__copy-field totp &" "$BWQA_TEST_CACHE_DIR/fzf-args"
+  [ "$status" -eq 0 ]
+}
