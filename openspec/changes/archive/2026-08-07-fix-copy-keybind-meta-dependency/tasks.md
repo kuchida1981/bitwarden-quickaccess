@@ -31,4 +31,4 @@
 
 ## 6. OpenSpec 同期
 
-- [ ] 6.1 `/opsx:archive` で本 change をアーカイブし、`vault-item-search` / `credential-clipboard-copy` の delta spec を main spec に同期する
+- [x] 6.1 `/opsx:archive` で本 change をアーカイブし、`vault-item-search` / `credential-clipboard-copy` の delta spec を main spec に同期する
