@@ -19,8 +19,8 @@ Bitwarden向けの、1Password Quick Access 相当のメニューバー常駐ア
 
 ### 方法1: GitHub Releasesからダウンロード(推奨)
 
-1. [Releasesページ](https://github.com/kuchida1981/bitwarden-quickaccess/releases)から `bw-quickaccess.app.zip` をダウンロードする
-2. 展開して `bw-quickaccess.app` を `/Applications`(お好きな場所でも構いません)に移動する
+1. [Releasesページ](https://github.com/kuchida1981/bitwarden-quickaccess/releases)から `bw-quickaccess_aarch64.app.tar.gz` をダウンロードする。このビルドは **Apple Silicon(arm64)専用**です。Intel Macは現時点でビルド済みリリースの対象外です(方法2のセルフビルドを利用してください)
+2. 展開して(Finderでダブルクリック、または `tar -xzf bw-quickaccess_aarch64.app.tar.gz`)、`bw-quickaccess.app` を `/Applications`(お好きな場所でも構いません)に移動する
 3. このアプリは**コード署名・notarizationされていません**。初回起動時、macOSのGatekeeperが「開発元を確認できません」という警告を出して起動をブロックします。以下の手順で起動してください:
    - Finderで `bw-quickaccess.app` を右クリック(またはControl+クリック)し、**「開く」**を選択、表示されるダイアログでも**「開く」**を選ぶ
    - この操作は初回のみ必要です。以降は通常どおり起動できます

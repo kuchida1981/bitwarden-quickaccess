@@ -19,8 +19,8 @@ To **self-build**, you additionally need:
 
 ### Option 1: Download from GitHub Releases (recommended)
 
-1. Download `bw-quickaccess.app.zip` from the [Releases page](https://github.com/kuchida1981/bitwarden-quickaccess/releases).
-2. Unzip it and move `bw-quickaccess.app` to `/Applications` (or anywhere you like).
+1. Download `bw-quickaccess_aarch64.app.tar.gz` from the [Releases page](https://github.com/kuchida1981/bitwarden-quickaccess/releases). This build targets **Apple Silicon (arm64) only**; Intel Macs are not currently supported by the prebuilt release (self-build from source instead — see Option 2).
+2. Extract it (double-click in Finder, or `tar -xzf bw-quickaccess_aarch64.app.tar.gz`) and move `bw-quickaccess.app` to `/Applications` (or anywhere you like).
 3. The app is **not code-signed or notarized**. On first launch, macOS Gatekeeper will refuse to open it with an "unidentified developer" warning. To open it anyway:
    - Right-click (or Control-click) `bw-quickaccess.app` in Finder and choose **Open**, then confirm **Open** in the dialog that appears.
    - You only need to do this once; subsequent launches work normally.
