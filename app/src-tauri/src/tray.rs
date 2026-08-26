@@ -18,11 +18,11 @@ const QUIT_ITEM_ID: &str = "quit";
 /// 明示せず、Tauriがビルド時にCargo.tomlの値を採用する。design.md 決定3)。
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn status_label(state: BackendState) -> &'static str {
+fn status_label(m: &crate::i18n::Messages, state: BackendState) -> &'static str {
     match state {
-        BackendState::Disconnected => "状態: 未接続",
-        BackendState::Locked => "状態: ロック中",
-        BackendState::Unlocked => "状態: アンロック済み",
+        BackendState::Disconnected => m.status_disconnected,
+        BackendState::Locked => m.status_locked,
+        BackendState::Unlocked => m.status_unlocked,
     }
 }
 
@@ -38,13 +38,15 @@ fn icon_bytes_for(state: BackendState) -> &'static [u8] {
 /// バックエンドのロック状態変化を購読し、アイコンとステータス表示を更新し続ける。
 pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Result<()> {
     let state = app.state::<AppState>().inner().clone();
+    let lang = *app.state::<crate::i18n::Lang>().inner();
+    let m = crate::i18n::messages(lang);
     let initial = state.backend_state();
 
-    let status_item = MenuItem::with_id(app, STATUS_ITEM_ID, status_label(initial), false, None::<&str>)?;
+    let status_item = MenuItem::with_id(app, STATUS_ITEM_ID, status_label(m, initial), false, None::<&str>)?;
 
     let hotkey_text = match hotkey_warning {
-        None => "ホットキー: ⇧⌘Space".to_string(),
-        Some(reason) => format!("⚠ ホットキー未登録: {reason}"),
+        None => m.hotkey_registered.to_string(),
+        Some(reason) => m.hotkey_unregistered_prefix.replace("{}", reason),
     };
     let hotkey_item = MenuItem::with_id(app, HOTKEY_STATUS_ITEM_ID, &hotkey_text, false, None::<&str>)?;
 
@@ -52,18 +54,18 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
     let autostart_item = CheckMenuItem::with_id(
         app,
         AUTOSTART_ITEM_ID,
-        "ログイン時に自動起動",
+        m.autostart_label,
         true,
         autostart_enabled,
         None::<&str>,
     )?;
 
-    let quit_item = MenuItem::with_id(app, QUIT_ITEM_ID, "終了", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, QUIT_ITEM_ID, m.quit_label, true, None::<&str>)?;
 
     let version_item = MenuItem::with_id(
         app,
         VERSION_ITEM_ID,
-        format!("バージョン: {APP_VERSION}"),
+        m.version_label.replace("{}", APP_VERSION),
         false,
         None::<&str>,
     )?;
@@ -112,7 +114,7 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
     tauri::async_runtime::spawn(async move {
         while rx.changed().await.is_ok() {
             let new_state = *rx.borrow();
-            let _ = status_item_for_task.set_text(status_label(new_state));
+            let _ = status_item_for_task.set_text(status_label(m, new_state));
             if let Ok(image) = Image::from_bytes(icon_bytes_for(new_state)) {
                 let _ = tray.set_icon(Some(image));
             }

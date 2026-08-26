@@ -13,20 +13,22 @@
           id="master-password"
           type="password"
           placeholder="マスターパスワード"
+          data-i18n-placeholder="masterPasswordPlaceholder"
           autocomplete="current-password"
         />
-        <button type="submit">アンロック</button>
+        <button type="submit" data-i18n="unlockButton">アンロック</button>
         <div id="unlock-error"></div>
       </form>
     </section>
 
     <section id="search-screen" class="screen">
-      <input id="search-box" type="text" placeholder="検索..." autocomplete="off" />
+      <input id="search-box" type="text" placeholder="検索..." data-i18n-placeholder="searchPlaceholder" autocomplete="off" />
       <ul id="results"></ul>
-      <div id="empty-message">アイテムが見つかりません</div>
+      <div id="empty-message" data-i18n="emptyMessage">アイテムが見つかりません</div>
       <div id="feedback"></div>
     </section>
 
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
