@@ -1,7 +1,7 @@
 ## 1. ビルド時のバージョン導出
 
 - [x] 1.1 `app/src-tauri/build.rs` を修正し、`tauri_build::build()` に加えて以下を行う: `CARGO_MANIFEST_DIR` を起点に、`git describe --tags --always` を実行し、成功すればその標準出力(トリム済み)を、失敗(gitコマンドが無い/`.git`が無い等)すれば `format!("v{}", env!("CARGO_PKG_VERSION"))` を、`cargo:rustc-env=BWQA_DISPLAY_VERSION=<値>` として出力する。
-- [x] 1.2 同じ `build.rs` に、`cargo:rerun-if-changed=<repo_root>/.git/HEAD` と `cargo:rerun-if-changed=<repo_root>/.git/refs/tags` を追加し、タグ変更時に再ビルドが走るようにする(`repo_root` は `CARGO_MANIFEST_DIR` から2階層上)。
+- [x] ~~1.2 同じ `build.rs` に、`cargo:rerun-if-changed=<repo_root>/.git/HEAD` と `cargo:rerun-if-changed=<repo_root>/.git/refs/tags` を追加し、タグ変更時に再ビルドが走るようにする~~ **訂正(コードレビューで発覚)**: `.git/refs/tags` の監視は撤回し `.git/HEAD` のみとした。タグの無いshallow clone等で当該パスが存在しない場合、Cargoの仕様上「存在しないパスは常に変更あり」とみなされ毎回無条件で再ビルドが走ってしまう不具合と、実機検証で判明した「新規タグ追加だけでは確実に効かない」という既存の欠陥が重なったため。詳細はdesign.md参照。
 - [x] 1.3 `app/src-tauri/src/tray.rs` の `const APP_VERSION: &str = env!("CARGO_PKG_VERSION");` を `const APP_VERSION: &str = env!("BWQA_DISPLAY_VERSION");` に変更する。
 - [x] 1.4 同ファイルの `about_item` 組み立て箇所 `format!("{} v{}", app.package_info().name, APP_VERSION)` を `format!("{} {}", app.package_info().name, APP_VERSION)` に変更する(`APP_VERSION` が既に `v` を含むため二重にならないようにする)。
 
