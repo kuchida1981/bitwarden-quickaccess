@@ -44,12 +44,19 @@ fn extract_path_from_marker(stdout: &str) -> Option<&str> {
 /// ターミナルからの起動ではシェルのPATHを継承するため再現しなかった)。
 /// ユーザーのログインシェルを一度だけ起動してPATHを取得し、このプロセスの
 /// 環境変数に反映することで解消する。シェルが応答しない場合に備えタイムアウトを設ける。
+///
+/// PATHの取得は `printenv PATH`(外部コマンド)の出力をそのまま使う。`echo -n
+/// {marker}$PATH` のようにシェル内蔵の変数展開に頼ると、fishでは `$PATH` が
+/// コロン区切り文字列ではなくリスト変数として扱われ、要素ごとにマーカーが
+/// 重複してPATHが1要素目に切り詰められてしまう不具合があった。`printenv` は
+/// OSへエクスポートする際の環境変数(常にコロン区切り)をそのまま出力するため、
+/// bash/zsh/fishいずれでも同じ形式で取得できる。
 fn fix_path_env() {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let result = std::process::Command::new(shell)
-            .args(["-l", "-c", &format!("echo -n {PATH_MARKER}$PATH")])
+            .args(["-l", "-c", &format!("echo -n {PATH_MARKER}; printenv PATH")])
             .output();
         let _ = tx.send(result);
     });
