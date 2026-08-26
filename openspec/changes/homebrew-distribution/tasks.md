@@ -15,11 +15,11 @@
 
 ## 3. 本リポジトリのREADME更新
 
-- [ ] 3.1 README.md の `## Install` セクションに、既存の「Option 1: GitHub Releases」「Option 2: セルフビルド」と並べて「Option: Homebrew」を追加し、`brew tap kuchida1981/bitwarden-quickaccess` と `brew install --cask bw-quickaccess` のコマンド、Gatekeeper警告に関する注記を記載する
-- [ ] 3.2 README.ja.md にも同内容を日本語で追加する
-- [ ] 3.3 本リポジトリへの変更(README.md, README.ja.md)をコミットする
+- [x] 3.1 README.md の `## Install` セクションに、既存の「Option 1: GitHub Releases」「Option 2: セルフビルド」と並べて「Option: Homebrew」を追加し、`brew tap kuchida1981/bitwarden-quickaccess` と `brew install --cask bw-quickaccess` のコマンド、Gatekeeper警告に関する注記を記載する。Homebrewを新Option 1とし、既存の2項目をOption 2/3に繰り下げ
+- [x] 3.2 README.ja.md にも同内容を日本語で追加する
+- [x] 3.3 本リポジトリへの変更(README.md, README.ja.md)をコミットする
 
 ## 4. 動作確認・仕上げ
 
-- [ ] 4.1 実機で `brew tap kuchida1981/bitwarden-quickaccess && brew install --cask bw-quickaccess` を実行し、`/Applications` にアプリがインストールされ起動できることを確認する(実機確認が必要。2.4と重複する場合は1回で兼ねてよい)
-- [ ] 4.2 `specs/homebrew-distribution/spec.md` の各シナリオ(README記載内容)が満たされていることを確認する
+- [x] 4.1 実機で `brew tap kuchida1981/bitwarden-quickaccess && brew install --cask bw-quickaccess` を実行し、`/Applications` にアプリがインストールされることを確認する(2.4で実施済み)。ただし無署名アプリのGatekeeperバイパス(Finderでの右クリック→開く、のダイアログ操作)はClaude Codeでは実行できないため、実際に起動できるかの最終確認はユーザーにお願いする
+- [x] 4.2 `specs/homebrew-distribution/spec.md` の各シナリオ(README記載内容)が満たされていることを確認する
