@@ -1,7 +1,12 @@
 use bw_quickaccess_gui_lib::backend::{
     http_client::{BwServeClient, VaultItemSummary},
+    idle::IdleTimer,
     state::{AppState, BackendState},
 };
+use tauri_plugin_clipboard_manager::ClipboardExt;
+use tauri_plugin_opener::OpenerExt;
+
+use crate::popup;
 
 fn client_for(state: &AppState) -> Result<BwServeClient, String> {
     let port = state
@@ -22,7 +27,12 @@ pub fn get_lock_state(state: tauri::State<'_, AppState>) -> &'static str {
 
 /// アンロックフォームの送信から呼ばれる。成功時はアプリ内部状態も更新する。
 #[tauri::command]
-pub async fn unlock(state: tauri::State<'_, AppState>, password: String) -> Result<(), String> {
+pub async fn unlock(
+    state: tauri::State<'_, AppState>,
+    idle: tauri::State<'_, IdleTimer>,
+    password: String,
+) -> Result<(), String> {
+    idle.reset();
     let client = client_for(&state)?;
     client.unlock(&password).await.map_err(|err| err.to_string())?;
     state.set_unlocked();
@@ -33,10 +43,76 @@ pub async fn unlock(state: tauri::State<'_, AppState>, password: String) -> Resu
 #[tauri::command]
 pub async fn search_items(
     state: tauri::State<'_, AppState>,
+    idle: tauri::State<'_, IdleTimer>,
     query: String,
 ) -> Result<Vec<VaultItemSummary>, String> {
+    idle.reset();
     let client = client_for(&state)?;
     client.search_items(&query).await.map_err(|err| err.to_string())
+}
+
+/// フォーカス行のユーザー名/パスワード/TOTPをクリップボードにコピーする。
+/// 平文の値はWebView側JSには一切渡さず、Rustコア内で取得しそのままクリップボードへ書き込む。
+#[tauri::command]
+pub async fn copy_field(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    idle: tauri::State<'_, IdleTimer>,
+    item_id: String,
+    field: String,
+) -> Result<(), String> {
+    idle.reset();
+    let client = client_for(&state)?;
+
+    let value = match field.as_str() {
+        "username" => {
+            let item = client.get_item(&item_id).await.map_err(|err| err.to_string())?;
+            item.login
+                .and_then(|login| login.username)
+                .ok_or_else(|| "ユーザー名が設定されていません。".to_string())?
+        }
+        "password" => {
+            let item = client.get_item(&item_id).await.map_err(|err| err.to_string())?;
+            item.login
+                .and_then(|login| login.password)
+                .ok_or_else(|| "パスワードが設定されていません。".to_string())?
+        }
+        "totp" => client.get_totp(&item_id).await.map_err(|err| err.to_string())?,
+        other => return Err(format!("不明なフィールドです: {other}")),
+    };
+
+    app.clipboard().write_text(value).map_err(|err| err.to_string())
+}
+
+/// フォーカス行のURL(login.urisの先頭要素)をデフォルトブラウザで開く。
+#[tauri::command]
+pub async fn open_in_browser(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    idle: tauri::State<'_, IdleTimer>,
+    item_id: String,
+) -> Result<(), String> {
+    idle.reset();
+    let client = client_for(&state)?;
+    let item = client.get_item(&item_id).await.map_err(|err| err.to_string())?;
+    let url = item
+        .login
+        .and_then(|login| login.uris.into_iter().next())
+        .and_then(|uri| uri.uri)
+        .ok_or_else(|| "URLが設定されていません。".to_string())?;
+
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|err| err.to_string())
+}
+
+/// コピー/ブラウザ起動アクション実行後、フィードバック表示を挟んでポップアップを閉じる際に呼ばれる。
+#[tauri::command]
+pub fn hide_popup(app: tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window(popup::POPUP_LABEL) {
+        let _ = window.hide();
+    }
 }
 
 #[cfg(test)]
