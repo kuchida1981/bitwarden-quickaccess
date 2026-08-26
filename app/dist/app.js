@@ -17,6 +17,8 @@ const SHORTCUT_HINTS = "⌘C ユーザー名 / ⌘⇧C パスワード / ⌥⌘C
 let currentItems = [];
 let focusedIndex = -1;
 let debounceTimer = null;
+let searchRequestId = 0;
+let lastKnownScreen = "unlock";
 
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
@@ -24,6 +26,15 @@ function showScreen(name) {
 }
 
 async function handleShown() {
+  showScreen(lastKnownScreen);
+  if (lastKnownScreen === "search") {
+    searchBox.focus();
+  } else {
+    passwordInput.value = "";
+    unlockError.textContent = "";
+    passwordInput.focus();
+  }
+
   let lockState = "disconnected";
   try {
     lockState = await invoke("get_lock_state");
@@ -31,17 +42,27 @@ async function handleShown() {
     // 取得に失敗した場合はアンロックフォーム側にフォールバックする
   }
 
-  if (lockState === "unlocked") {
-    showScreen("search");
-    searchBox.value = "";
-    searchBox.focus();
-    await runSearch("");
+  const actualScreen = lockState === "unlocked" ? "search" : "unlock";
+
+  if (actualScreen === lastKnownScreen) {
+    if (actualScreen === "search") {
+      searchBox.value = "";
+      await runSearch("");
+    }
   } else {
-    showScreen("unlock");
-    passwordInput.value = "";
-    unlockError.textContent = "";
-    passwordInput.focus();
+    showScreen(actualScreen);
+    if (actualScreen === "search") {
+      searchBox.value = "";
+      searchBox.focus();
+      await runSearch("");
+    } else {
+      passwordInput.value = "";
+      unlockError.textContent = "";
+      passwordInput.focus();
+    }
   }
+
+  lastKnownScreen = actualScreen;
 }
 
 unlockForm.addEventListener("submit", async (event) => {
@@ -58,16 +79,20 @@ unlockForm.addEventListener("submit", async (event) => {
   try {
     await invoke("unlock", { password });
     showScreen("search");
+    lastKnownScreen = "search";
     searchBox.value = "";
     searchBox.focus();
     await runSearch("");
   } catch (err) {
     unlockError.textContent = typeof err === "string" ? err : "アンロックに失敗しました。";
     passwordInput.value = "";
-    passwordInput.focus();
   } finally {
     unlockButton.disabled = false;
     passwordInput.disabled = false;
+  }
+
+  if (unlockScreen.classList.contains("active")) {
+    passwordInput.focus();
   }
 });
 
@@ -96,11 +121,15 @@ function moveFocus(delta) {
 }
 
 async function runSearch(query) {
+  const requestId = ++searchRequestId;
   let items = [];
   try {
     items = await invoke("search_items", { query });
   } catch {
     items = [];
+  }
+  if (requestId !== searchRequestId) {
+    return;
   }
   currentItems = items;
   focusedIndex = items.length > 0 ? 0 : -1;
