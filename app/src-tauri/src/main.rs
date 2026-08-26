@@ -25,7 +25,56 @@ const IDLE_CHECK_INTERVAL: Duration = Duration::from_secs(30);
 
 struct ManagedProcess(Mutex<Option<process::ProcessHandle>>);
 
+const PATH_MARKER: &str = "__BWQA_PATH__";
+
+fn extract_path_from_marker(stdout: &str) -> Option<&str> {
+    let path = stdout.split(PATH_MARKER).nth(1)?.trim();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path)
+    }
+}
+
+/// Finderからの起動やログイン項目からの自動起動では、macOSはログインシェルの
+/// PATHを引き継がず `/usr/bin:/bin:/usr/sbin:/sbin` 程度の最小PATHしか渡さない。
+/// `bw`(Bitwarden CLI)は典型的にHomebrewの `/opt/homebrew/bin` 等にインストール
+/// されており、これが原因で `bw` コマンドが見つからず「バックエンドサービスの
+/// 準備ができていません」というエラーになる不具合があった(`cargo run` 等
+/// ターミナルからの起動ではシェルのPATHを継承するため再現しなかった)。
+/// ユーザーのログインシェルを一度だけ起動してPATHを取得し、このプロセスの
+/// 環境変数に反映することで解消する。シェルが応答しない場合に備えタイムアウトを設ける。
+fn fix_path_env() {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let result = std::process::Command::new(shell)
+            .args(["-l", "-c", &format!("echo -n {PATH_MARKER}$PATH")])
+            .output();
+        let _ = tx.send(result);
+    });
+
+    let Ok(Ok(output)) = rx.recv_timeout(Duration::from_secs(3)) else {
+        return;
+    };
+    if !output.status.success() {
+        return;
+    }
+    let Ok(stdout) = String::from_utf8(output.stdout) else {
+        return;
+    };
+    if let Some(path) = extract_path_from_marker(&stdout) {
+        // SAFETY: この時点ではまだ他のスレッド(Tauri/tokioランタイム、トレイ等)を
+        // 起動しておらず、他のスレッドが並行してPATHを読み書きすることはない。
+        unsafe {
+            std::env::set_var("PATH", path);
+        }
+    }
+}
+
 fn main() {
+    fix_path_env();
+
     let app_state = AppState::new();
     let idle_timer = IdleTimer::new(DEFAULT_IDLE_TIMEOUT);
     let lang = i18n::resolve_lang();
@@ -213,4 +262,32 @@ async fn sync_initial_status(client: &BwServeClient, state: &AppState) {
         }
     }
     state.set_error("bw serve の起動確認がタイムアウトしました。");
+}
+
+#[cfg(test)]
+mod fix_path_env_tests {
+    use super::*;
+
+    #[test]
+    fn extracts_path_after_marker() {
+        let stdout = format!("{PATH_MARKER}/usr/bin:/opt/homebrew/bin");
+        assert_eq!(extract_path_from_marker(&stdout), Some("/usr/bin:/opt/homebrew/bin"));
+    }
+
+    #[test]
+    fn returns_none_when_marker_missing() {
+        assert_eq!(extract_path_from_marker("/usr/bin:/bin"), None);
+    }
+
+    #[test]
+    fn returns_none_when_path_after_marker_is_empty() {
+        let stdout = format!("{PATH_MARKER}   \n");
+        assert_eq!(extract_path_from_marker(&stdout), None);
+    }
+
+    #[test]
+    fn ignores_login_shell_noise_before_marker() {
+        let stdout = format!("Last login: Mon Jan 1\n{PATH_MARKER}/usr/bin:/opt/homebrew/bin\n");
+        assert_eq!(extract_path_from_marker(&stdout), Some("/usr/bin:/opt/homebrew/bin"));
+    }
 }
