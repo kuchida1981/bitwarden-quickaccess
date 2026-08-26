@@ -125,9 +125,22 @@ searchBox.addEventListener("input", () => {
   debounceTimer = setTimeout(() => runSearch(query), SEARCH_DEBOUNCE_MS);
 });
 
+// event.key ではなく event.code(物理キー位置)で判定する(handleActionShortcutの
+// ⌘Cと同じ理由)。ヘルプの開閉どちらからも参照するため共通関数にしておく。
+function isHelpToggleShortcut(event) {
+  return event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey;
+}
+
 searchBox.addEventListener("keydown", (event) => {
   if (helpOpen) {
     handleHelpKeydown(event);
+    return;
+  }
+  // アクションメニュー表示中でも⌘/は優先する(design.md 決定4: メニューを
+  // 閉じてからヘルプを表示する)。actionMenuOpenの分岐より先に判定する必要がある。
+  if (isHelpToggleShortcut(event)) {
+    event.preventDefault();
+    openHelp();
     return;
   }
   if (actionMenuOpen) {
@@ -137,11 +150,6 @@ searchBox.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     event.preventDefault();
     invoke("hide_popup").catch(() => {});
-    return;
-  }
-  if (event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey) {
-    event.preventDefault();
-    openHelp();
     return;
   }
 
@@ -257,7 +265,7 @@ function closeHelp() {
 // Escapeまたは⌘/でヘルプを閉じ、それ以外のキーはすべて無視して
 // 検索文字入力などを抑止する。
 function handleHelpKeydown(event) {
-  if (event.key === "Escape" || (event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey)) {
+  if (event.key === "Escape" || isHelpToggleShortcut(event)) {
     event.preventDefault();
     closeHelp();
     return;
