@@ -109,6 +109,7 @@ fn main() {
         .manage(ManagedProcess(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::get_lock_state,
+            commands::get_backend_error,
             commands::get_ui_locale,
             commands::unlock,
             commands::search_items,

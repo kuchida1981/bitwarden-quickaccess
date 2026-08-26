@@ -25,6 +25,12 @@ pub fn get_lock_state(state: tauri::State<'_, AppState>) -> &'static str {
     }
 }
 
+/// バックエンド接続エラー発生時に、WebView側が具体的なエラーメッセージを取得するために呼ぶ。
+#[tauri::command]
+pub fn get_backend_error(state: tauri::State<'_, AppState>) -> Option<String> {
+    state.last_error()
+}
+
 #[tauri::command]
 pub fn get_ui_locale(lang: tauri::State<'_, crate::i18n::Lang>) -> &'static str {
     match *lang {

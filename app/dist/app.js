@@ -2,6 +2,8 @@ const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
 const unlockScreen = document.getElementById("unlock-screen");
+const errorScreen = document.getElementById("error-screen");
+const errorMessage = document.getElementById("error-message");
 const searchScreen = document.getElementById("search-screen");
 const unlockForm = document.getElementById("unlock-form");
 const passwordInput = document.getElementById("master-password");
@@ -29,6 +31,7 @@ let helpOpen = false;
 
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
+  errorScreen.classList.toggle("active", name === "error");
   searchScreen.classList.toggle("active", name === "search");
 }
 
@@ -50,6 +53,15 @@ function flashRow(element) {
   });
 }
 
+// バックエンド接続エラーのメッセージ取得。取得失敗時は空文字を返す。
+async function fetchBackendError() {
+  try {
+    return (await invoke("get_backend_error")) || "";
+  } catch {
+    return "";
+  }
+}
+
 async function handleShown() {
   actionMenuOpen = false;
   actionMenuActions = [];
@@ -59,7 +71,7 @@ async function handleShown() {
   showScreen(lastKnownScreen);
   if (lastKnownScreen === "search") {
     searchBox.focus();
-  } else {
+  } else if (lastKnownScreen === "unlock") {
     passwordInput.value = "";
     unlockError.textContent = "";
     passwordInput.focus();
@@ -72,12 +84,24 @@ async function handleShown() {
     // 取得に失敗した場合はアンロックフォーム側にフォールバックする
   }
 
-  const actualScreen = lockState === "unlocked" ? "search" : "unlock";
+  // disconnectedはバックエンド起動直後(preflight/bw serve接続確認中)にも
+  // 一時的に取り得る状態で、その間はまだlast_errorが記録されていない。
+  // 実際にエラーメッセージが記録されている場合のみ専用のエラー画面を表示し、
+  // それ以外(起動中の一時的なdisconnected)は従来通りアンロック画面に
+  // フォールバックする(issue #79の対象は「エラーが起きて放置される」ケース)。
+  let backendError = "";
+  if (lockState === "disconnected") {
+    backendError = await fetchBackendError();
+  }
+  const actualScreen =
+    lockState === "unlocked" ? "search" : lockState === "locked" || !backendError ? "unlock" : "error";
 
   if (actualScreen === lastKnownScreen) {
     if (actualScreen === "search") {
       searchBox.value = "";
       await runSearch("");
+    } else if (actualScreen === "error") {
+      errorMessage.textContent = backendError;
     }
   } else {
     showScreen(actualScreen);
@@ -85,10 +109,12 @@ async function handleShown() {
       searchBox.value = "";
       searchBox.focus();
       await runSearch("");
-    } else {
+    } else if (actualScreen === "unlock") {
       passwordInput.value = "";
       unlockError.textContent = "";
       passwordInput.focus();
+    } else if (actualScreen === "error") {
+      errorMessage.textContent = backendError;
     }
   }
 
