@@ -1,5 +1,6 @@
 const MESSAGES = {
   ja: {
+    errorScreenTitle: "接続できません",
     masterPasswordPlaceholder: "マスターパスワード",
     unlockButton: "アンロック",
     searchPlaceholder: "検索...",
@@ -23,6 +24,7 @@ const MESSAGES = {
     helpToggleHelp: "このヘルプを表示/非表示",
   },
   en: {
+    errorScreenTitle: "Connection Error",
     masterPasswordPlaceholder: "Master password",
     unlockButton: "Unlock",
     searchPlaceholder: "Search...",

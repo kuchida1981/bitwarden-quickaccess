@@ -2,6 +2,8 @@ const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
 const unlockScreen = document.getElementById("unlock-screen");
+const errorScreen = document.getElementById("error-screen");
+const errorMessage = document.getElementById("error-message");
 const searchScreen = document.getElementById("search-screen");
 const unlockForm = document.getElementById("unlock-form");
 const passwordInput = document.getElementById("master-password");
@@ -29,6 +31,7 @@ let helpOpen = false;
 
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
+  errorScreen.classList.toggle("active", name === "error");
   searchScreen.classList.toggle("active", name === "search");
 }
 
@@ -59,7 +62,7 @@ async function handleShown() {
   showScreen(lastKnownScreen);
   if (lastKnownScreen === "search") {
     searchBox.focus();
-  } else {
+  } else if (lastKnownScreen === "unlock") {
     passwordInput.value = "";
     unlockError.textContent = "";
     passwordInput.focus();
@@ -72,12 +75,19 @@ async function handleShown() {
     // 取得に失敗した場合はアンロックフォーム側にフォールバックする
   }
 
-  const actualScreen = lockState === "unlocked" ? "search" : "unlock";
+  const actualScreen = lockState === "unlocked" ? "search" : lockState === "locked" ? "unlock" : "error";
 
   if (actualScreen === lastKnownScreen) {
     if (actualScreen === "search") {
       searchBox.value = "";
       await runSearch("");
+    } else if (actualScreen === "error") {
+      try {
+        const err = await invoke("get_backend_error");
+        errorMessage.textContent = err || "";
+      } catch {
+        errorMessage.textContent = "";
+      }
     }
   } else {
     showScreen(actualScreen);
@@ -85,10 +95,17 @@ async function handleShown() {
       searchBox.value = "";
       searchBox.focus();
       await runSearch("");
-    } else {
+    } else if (actualScreen === "unlock") {
       passwordInput.value = "";
       unlockError.textContent = "";
       passwordInput.focus();
+    } else if (actualScreen === "error") {
+      try {
+        const err = await invoke("get_backend_error");
+        errorMessage.textContent = err || "";
+      } catch {
+        errorMessage.textContent = "";
+      }
     }
   }
 
