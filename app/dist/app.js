@@ -23,6 +23,10 @@ let searchRequestId = 0;
 let lastKnownScreen = "unlock";
 let hidePopupTimer = null;
 
+let actionMenuOpen = false;
+let actionMenuActions = [];
+let actionMenuFocusIndex = -1;
+
 
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
@@ -38,6 +42,9 @@ function showFeedback(message, ok) {
 
 async function handleShown() {
   clearTimeout(hidePopupTimer);
+  actionMenuOpen = false;
+  actionMenuActions = [];
+  actionMenuFocusIndex = -1;
   showScreen(lastKnownScreen);
   if (lastKnownScreen === "search") {
     searchBox.focus();
@@ -115,6 +122,11 @@ searchBox.addEventListener("input", () => {
 });
 
 searchBox.addEventListener("keydown", (event) => {
+  if (actionMenuOpen) {
+    handleActionMenuKeydown(event);
+    return;
+  }
+
   if (event.key === "ArrowDown") {
     event.preventDefault();
     moveFocus(1);
@@ -123,6 +135,11 @@ searchBox.addEventListener("keydown", (event) => {
   if (event.key === "ArrowUp") {
     event.preventDefault();
     moveFocus(-1);
+    return;
+  }
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    openActionMenu();
     return;
   }
   handleActionShortcut(event);
@@ -136,10 +153,104 @@ function moveFocus(delta) {
   renderResults();
 }
 
+// 選択中アイテムの実行可能アクション一覧を組み立てる(design.md 決定4)。
+// フィールドを持たない項目は結果配列から除外する(#52)。
+function buildActionsForItem(item) {
+  const actions = [
+    { key: "username", labelKey: "actionCopyUsername", shortcutHint: "⌘C", enabled: !!item.username },
+    { key: "password", labelKey: "actionCopyPassword", shortcutHint: "⌘⇧C", enabled: item.has_password },
+    { key: "totp", labelKey: "actionCopyTotp", shortcutHint: "⌥⌘C", enabled: item.has_totp },
+    { key: "browser", labelKey: "actionOpenBrowser", shortcutHint: "Enter", enabled: item.has_url },
+  ];
+  return actions.filter((action) => action.enabled);
+}
+
+function openActionMenu() {
+  if (currentItems.length === 0 || focusedIndex < 0) {
+    return;
+  }
+  const actions = buildActionsForItem(currentItems[focusedIndex]);
+  if (actions.length === 0) {
+    return;
+  }
+  actionMenuActions = actions;
+  actionMenuOpen = true;
+  actionMenuFocusIndex = 0;
+  renderResults();
+}
+
+function closeActionMenu() {
+  actionMenuOpen = false;
+  actionMenuActions = [];
+  actionMenuFocusIndex = -1;
+  renderResults();
+}
+
+// アクションメニュー展開中のキー操作(design.md 決定3)。
+// ⌘C系のダイレクトショートカットはメニュー表示中も従来通り動作させ、
+// それ以外の未処理キー(検索文字入力等)はメニューの前提が崩れないよう無視する。
+function handleActionMenuKeydown(event) {
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    actionMenuFocusIndex = Math.min(actionMenuFocusIndex + 1, actionMenuActions.length - 1);
+    renderResults();
+    return;
+  }
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    actionMenuFocusIndex = Math.max(actionMenuFocusIndex - 1, 0);
+    renderResults();
+    return;
+  }
+  if (event.key === "ArrowLeft" || event.key === "Escape") {
+    event.preventDefault();
+    closeActionMenu();
+    return;
+  }
+  if (event.key === "Enter") {
+    event.preventDefault();
+    const action = actionMenuActions[actionMenuFocusIndex];
+    if (action) {
+      executeItemAction(currentItems[focusedIndex], action.key);
+    }
+    return;
+  }
+
+  handleActionShortcut(event);
+  if (!event.defaultPrevented) {
+    event.preventDefault();
+  }
+}
+
 // 検索ボックスにテキスト選択がある間は、通常のOS標準コピー動作を妨げない
 // (design.md 決定2)。選択がない場合のみ `⌘C` 系をアクションとして扱う。
 function hasTextSelectionInSearchBox() {
   return searchBox.selectionStart !== searchBox.selectionEnd;
+}
+
+// アイテムに対するアクション実行を一箇所に集約する。ダイレクトショートカット
+// (`handleActionShortcut`)とアクションメニュー(`handleActionMenuKeydown`/クリック)
+// の両方から呼ばれる(design.md 決定4、実装の重複を避ける)。
+function executeItemAction(item, key) {
+  if (!item) {
+    return;
+  }
+  switch (key) {
+    case "username":
+      runAction(() => invoke("copy_field", { itemId: item.id, field: "username" }), t("copiedUsername"));
+      break;
+    case "password":
+      runAction(() => invoke("copy_field", { itemId: item.id, field: "password" }), t("copiedPassword"));
+      break;
+    case "totp":
+      runAction(() => invoke("copy_field", { itemId: item.id, field: "totp" }), t("copiedTotp"));
+      break;
+    case "browser":
+      runAction(() => invoke("open_in_browser", { itemId: item.id }), t("openedInBrowser"));
+      break;
+    default:
+      break;
+  }
 }
 
 function handleActionShortcut(event) {
@@ -153,7 +264,7 @@ function handleActionShortcut(event) {
 
   if (event.key === "Enter") {
     event.preventDefault();
-    runAction(() => invoke("open_in_browser", { itemId: item.id }), t("openedInBrowser"));
+    executeItemAction(item, "browser");
     return;
   }
 
@@ -169,13 +280,13 @@ function handleActionShortcut(event) {
       return;
     }
     event.preventDefault();
-    runAction(() => invoke("copy_field", { itemId: item.id, field: "username" }), t("copiedUsername"));
+    executeItemAction(item, "username");
   } else if (event.shiftKey && !event.altKey) {
     event.preventDefault();
-    runAction(() => invoke("copy_field", { itemId: item.id, field: "password" }), t("copiedPassword"));
+    executeItemAction(item, "password");
   } else if (event.altKey && !event.shiftKey) {
     event.preventDefault();
-    runAction(() => invoke("copy_field", { itemId: item.id, field: "totp" }), t("copiedTotp"));
+    executeItemAction(item, "totp");
   }
 }
 
@@ -212,6 +323,12 @@ async function runSearch(query) {
   }
   currentItems = items;
   focusedIndex = items.length > 0 ? 0 : -1;
+  // 新しい検索結果が届いたら、開いていたアクションメニューは前提(対象アイテム)が
+  // 崩れるため必ず閉じる。デバウンス中にメニューを開いた場合(先にArrowRightで
+  // メニューを開いた直後にデバウンスが解決するケース)もここで確実に閉じられる。
+  actionMenuOpen = false;
+  actionMenuActions = [];
+  actionMenuFocusIndex = -1;
   renderResults();
 }
 
@@ -228,7 +345,7 @@ function renderResults() {
     nameSpan.textContent = item.name;
     li.appendChild(nameSpan);
 
-    const username = item.login && item.login.username;
+    const username = item.username;
     if (username) {
       const userSpan = document.createElement("span");
       userSpan.className = "item-username";
@@ -236,12 +353,21 @@ function renderResults() {
       li.appendChild(userSpan);
     }
 
-    const hints = document.createElement("div");
-    hints.className = "hints";
-    hints.textContent = SHORTCUT_HINTS;
-    li.appendChild(hints);
+    if (actionMenuOpen && index === focusedIndex) {
+      li.appendChild(renderActionMenu(item));
+    } else {
+      const hints = document.createElement("div");
+      hints.className = "hints";
+      hints.textContent = SHORTCUT_HINTS;
+      li.appendChild(hints);
+    }
 
     li.addEventListener("mouseenter", () => {
+      // メニュー表示中に他行へフォーカスが移ると、開いているメニューの前提
+      // (対象アイテム)が崩れるため無視する(design.md 決定2関連のリスク対策)。
+      if (actionMenuOpen) {
+        return;
+      }
       focusedIndex = index;
       renderResults();
     });
@@ -255,6 +381,41 @@ function renderResults() {
       focusedEl.scrollIntoView({ block: "nearest" });
     }
   }
+}
+
+function renderActionMenu(item) {
+  const menu = document.createElement("ul");
+  menu.className = "action-menu";
+
+  actionMenuActions.forEach((action, index) => {
+    const actionLi = document.createElement("li");
+    actionLi.className = index === actionMenuFocusIndex ? "focused" : "";
+
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "action-label";
+    labelSpan.textContent = t(action.labelKey);
+    actionLi.appendChild(labelSpan);
+
+    const hintSpan = document.createElement("span");
+    hintSpan.className = "action-hint";
+    hintSpan.textContent = action.shortcutHint;
+    actionLi.appendChild(hintSpan);
+
+    // mousedownの既定動作(フォーカス可能要素ではないためsearchBoxがblurする)を
+    // 止め、searchBoxのDOM/ネイティブ側フォーカスを常に維持する。これを怠ると、
+    // クリック操作の後にポップアップを閉じて再度開いたときにWebView側の
+    // first responderがずれ、キー入力を受け付けなくなることがある。
+    actionLi.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    actionLi.addEventListener("click", () => {
+      executeItemAction(item, action.key);
+    });
+
+    menu.appendChild(actionLi);
+  });
+
+  return menu;
 }
 
 listen("popup-shown", () => {

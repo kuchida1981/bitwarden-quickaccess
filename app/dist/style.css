@@ -121,6 +121,32 @@ body {
   display: none;
 }
 
+#results li .action-menu {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+#results li .action-menu li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+#results li .action-menu li.focused {
+  background: #fff;
+  color: #0071e3;
+}
+
+#results li .action-menu .action-hint {
+  opacity: 0.75;
+}
+
 #results li.focused .hints {
   display: block;
 }
