@@ -9,6 +9,7 @@ use tauri_plugin_autostart::ManagerExt;
 use bw_quickaccess_gui_lib::backend::state::{AppState, BackendState};
 
 const STATUS_ITEM_ID: &str = "status";
+const HOTKEY_STATUS_ITEM_ID: &str = "hotkey_status";
 const AUTOSTART_ITEM_ID: &str = "autostart";
 const QUIT_ITEM_ID: &str = "quit";
 
@@ -30,11 +31,17 @@ fn icon_bytes_for(state: BackendState) -> &'static [u8] {
 
 /// メニューバー常駐アイコンとコンテキストメニュー(ロック状態表示・自動起動トグル・終了)を構築する。
 /// バックエンドのロック状態変化を購読し、アイコンとステータス表示を更新し続ける。
-pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
+pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Result<()> {
     let state = app.state::<AppState>().inner().clone();
     let initial = state.backend_state();
 
     let status_item = MenuItem::with_id(app, STATUS_ITEM_ID, status_label(initial), false, None::<&str>)?;
+
+    let hotkey_text = match hotkey_warning {
+        None => "ホットキー: ⇧⌘Space".to_string(),
+        Some(reason) => format!("⚠ ホットキー未登録: {reason}"),
+    };
+    let hotkey_item = MenuItem::with_id(app, HOTKEY_STATUS_ITEM_ID, &hotkey_text, false, None::<&str>)?;
 
     let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
     let autostart_item = CheckMenuItem::with_id(
@@ -52,6 +59,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         app,
         &[
             &status_item,
+            &hotkey_item,
             &PredefinedMenuItem::separator(app)?,
             &autostart_item,
             &PredefinedMenuItem::separator(app)?,
@@ -74,14 +82,12 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
                 } else {
                     autolaunch.enable()
                 };
-                match result {
-                    Ok(()) => {
-                        let _ = autostart_item_for_menu.set_checked(!currently_enabled);
-                    }
-                    Err(err) => {
-                        eprintln!("自動起動設定の切り替えに失敗しました: {err}");
-                    }
+                if let Err(err) = result {
+                    eprintln!("自動起動設定の切り替えに失敗しました: {err}");
                 }
+                // enable()/disable() の戻り値だけを信用せず、実際の状態を再取得してチェック状態に反映する
+                let actual_enabled = app.autolaunch().is_enabled().unwrap_or(currently_enabled);
+                let _ = autostart_item_for_menu.set_checked(actual_enabled);
             }
             _ => {}
         })

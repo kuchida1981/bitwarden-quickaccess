@@ -42,8 +42,8 @@ fn main() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             popup::create_popup_window(app.handle())?;
-            tray::setup_tray(app.handle())?;
-            hotkey::register_quick_access_hotkey(app.handle());
+            let hotkey_result = hotkey::register_quick_access_hotkey(app.handle());
+            tray::setup_tray(app.handle(), hotkey_result.err().as_deref())?;
 
             let app_handle = app.handle().clone();
             let state = app.state::<AppState>().inner().clone();
