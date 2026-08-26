@@ -7,51 +7,27 @@ on:
 
 jobs:
   test:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    env:
-      # bats のテスト名に日本語(マルチバイト文字)を使っているため、ロケールが
-      # UTF-8 でないと "unknown test name" で全テストが実行されずに失敗する
-      # (macos-latest ランナーで実際に発生を確認)。明示的に UTF-8 ロケールを指定する。
-      LANG: en_US.UTF-8
-      LC_ALL: en_US.UTF-8
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app/src-tauri
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install bats-core, shellcheck and modern bash (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install bats-core shellcheck bash
-          # macOS の /bin/bash は Apple 標準搭載の bash 3.2(2007年、GPLv2最終版)で、
-          # マルチバイト文字列処理に非互換がある。bats の `#!/usr/bin/env bash`
-          # シェバンがこれを解決すると、日本語のテスト名が壊れて
-          # "unknown test name" で全テストが失敗する(実際に CI で確認した問題)。
-          # Homebrew でインストールした新しい bash を PATH の先頭に置き、
-          # 以降のステップで `env bash` がそちらを解決するようにする。
-          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install bats-core (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
 
-      - name: Syntax check (bash -n)
-        run: |
-          bash -n bin/bw-quickaccess
-          for f in lib/*.sh; do
-            bash -n "$f"
-          done
+      - name: cargo build
+        run: cargo build --verbose
 
-      - name: shellcheck (production code)
-        run: shellcheck -x bin/bw-quickaccess
+      - name: cargo test
+        run: cargo test --verbose
 
-      - name: shellcheck (test code)
-        run: shellcheck test/helpers/*.bash test/lib/*.bats
-
-      - name: Run bats tests
-        run: bats test/lib/*.bats
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings

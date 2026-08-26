@@ -11,7 +11,12 @@ use bw_quickaccess_gui_lib::backend::state::{AppState, BackendState};
 const STATUS_ITEM_ID: &str = "status";
 const HOTKEY_STATUS_ITEM_ID: &str = "hotkey_status";
 const AUTOSTART_ITEM_ID: &str = "autostart";
+const VERSION_ITEM_ID: &str = "version";
 const QUIT_ITEM_ID: &str = "quit";
+
+/// `Cargo.toml` の version を単一の情報源とする(`tauri.conf.json` はversionを
+/// 明示せず、Tauriがビルド時にCargo.tomlの値を採用する。design.md 決定3)。
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn status_label(state: BackendState) -> &'static str {
     match state {
@@ -55,6 +60,14 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
 
     let quit_item = MenuItem::with_id(app, QUIT_ITEM_ID, "終了", true, None::<&str>)?;
 
+    let version_item = MenuItem::with_id(
+        app,
+        VERSION_ITEM_ID,
+        format!("バージョン: {APP_VERSION}"),
+        false,
+        None::<&str>,
+    )?;
+
     let menu = Menu::with_items(
         app,
         &[
@@ -63,6 +76,7 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
             &PredefinedMenuItem::separator(app)?,
             &autostart_item,
             &PredefinedMenuItem::separator(app)?,
+            &version_item,
             &quit_item,
         ],
     )?;

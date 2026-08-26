@@ -9,32 +9,25 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Build bundle
-        run: |
-          VERSION="${{ github.event.release.tag_name }}" script/build.sh
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Smoke test
-        run: |
-          dist/bw-quickaccess --version
-          dist/bw-quickaccess --help
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
 
-      - name: Syntax check (bash -n)
-        run: |
-          bash -n dist/bw-quickaccess
-
-      - name: shellcheck
-        run: |
-          shellcheck -x dist/bw-quickaccess
-
-      - name: Upload bundle to release
-        run: |
-          gh release upload "${{ github.event.release.tag_name }}" dist/bw-quickaccess --clobber
+      - name: Build and upload the macOS app to the release
+        uses: tauri-apps/tauri-action@v0
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app
+          releaseId: ${{ github.event.release.id }}
