@@ -1,6 +1,7 @@
 // トレイ常駐・グローバルホットキー・ポップアップウィンドウの骨格。
 // 検索UI・コピー操作は後続change(`quickaccess-search-ui` / `credential-actions-autolock`)で追加する。
 
+mod commands;
 mod hotkey;
 mod popup;
 mod tray;
@@ -37,6 +38,11 @@ fn main() {
         ))
         .manage(app_state)
         .manage(ManagedProcess(Mutex::new(None)))
+        .invoke_handler(tauri::generate_handler![
+            commands::get_lock_state,
+            commands::unlock,
+            commands::search_items,
+        ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);

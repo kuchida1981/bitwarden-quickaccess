@@ -1,0 +1,132 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  font-size: 13px;
+  color: #1d1d1f;
+  background: #f5f5f7;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* --- unlock screen --- */
+
+#unlock-screen {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+}
+
+#unlock-screen h1 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+#unlock-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+#master-password {
+  padding: 8px 10px;
+  border: 1px solid #d0d0d5;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+#unlock-form button {
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #0071e3;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#unlock-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+#unlock-error {
+  color: #d70015;
+  min-height: 16px;
+  font-size: 12px;
+}
+
+/* --- search screen --- */
+
+#search-screen {
+  height: 100vh;
+}
+
+#search-box {
+  margin: 10px;
+  padding: 8px 10px;
+  border: 1px solid #d0d0d5;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+#results {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+#results li {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: default;
+}
+
+#results li.focused {
+  background: #0071e3;
+  color: #fff;
+}
+
+#results li .item-name {
+  font-weight: 600;
+}
+
+#results li .item-username {
+  opacity: 0.75;
+  margin-left: 6px;
+}
+
+#results li .hints {
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+  display: none;
+}
+
+#results li.focused .hints {
+  display: block;
+}
+
+#empty-message {
+  text-align: center;
+  padding: 16px;
+  opacity: 0.6;
+}

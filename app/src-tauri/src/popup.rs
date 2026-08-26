@@ -1,6 +1,11 @@
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 pub const POPUP_LABEL: &str = "popup";
+
+/// ウィンドウが表示されるたびにWebView側へ通知するイベント名。
+/// フロントエンドはこれを購読し、ロック状態の再取得・検索ボックスへの
+/// 自動フォーカスを行う(`quickaccess-search-ui` design.md 参照)。
+pub const POPUP_SHOWN_EVENT: &str = "popup-shown";
 
 const WIDTH: f64 = 420.0;
 const HEIGHT: f64 = 480.0;
@@ -50,5 +55,6 @@ pub fn toggle_popup(app: &AppHandle) {
     } else {
         let _ = window.show();
         let _ = window.set_focus();
+        let _ = window.emit(POPUP_SHOWN_EVENT, ());
     }
 }
