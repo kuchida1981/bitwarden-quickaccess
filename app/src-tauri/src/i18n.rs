@@ -32,6 +32,53 @@ pub fn resolve_lang() -> Lang {
     Lang::En
 }
 
+pub struct Messages {
+    pub status_disconnected: &'static str,
+    pub status_locked: &'static str,
+    pub status_unlocked: &'static str,
+    pub hotkey_registered: &'static str,
+    /// `{}` に hotkey_registration_failed の展開結果を埋め込むテンプレート
+    pub hotkey_unregistered_prefix: &'static str,
+    /// `{}` に元のエラー(`err`)を埋め込むテンプレート
+    pub hotkey_registration_failed: &'static str,
+    pub autostart_label: &'static str,
+    pub quit_label: &'static str,
+    /// `{}` にバージョン番号を埋め込むテンプレート
+    pub version_label: &'static str,
+}
+
+pub const JA: Messages = Messages {
+    status_disconnected: "状態: 未接続",
+    status_locked: "状態: ロック中",
+    status_unlocked: "状態: アンロック済み",
+    hotkey_registered: "ホットキー: ⇧⌘Space",
+    hotkey_unregistered_prefix: "⚠ ホットキー未登録: {}",
+    hotkey_registration_failed: "グローバルホットキー(Shift+Cmd+Space)の登録に失敗しました: {}\n他のアプリと衝突しているか、macOSのシステム設定 > プライバシーとセキュリティ > アクセシビリティ でこのアプリの権限が許可されていない可能性があります。",
+    autostart_label: "ログイン時に自動起動",
+    quit_label: "終了",
+    version_label: "バージョン: {}",
+};
+
+pub const EN: Messages = Messages {
+    status_disconnected: "Status: Disconnected",
+    status_locked: "Status: Locked",
+    status_unlocked: "Status: Unlocked",
+    hotkey_registered: "Hotkey: ⇧⌘Space",
+    hotkey_unregistered_prefix: "⚠ Hotkey not registered: {}",
+    hotkey_registration_failed: "Failed to register the global hotkey (Shift+Cmd+Space): {}\nIt may conflict with another app, or this app may not have Accessibility permission under System Settings > Privacy & Security > Accessibility.",
+    autostart_label: "Launch at Login",
+    quit_label: "Quit",
+    version_label: "Version: {}",
+};
+
+pub fn messages(lang: Lang) -> &'static Messages {
+    match lang {
+        Lang::Ja => &JA,
+        Lang::En => &EN,
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
