@@ -23,6 +23,6 @@ GitHub issue #78: `.github/workflows/release.yml` は公式リリースのビル
 
 - `app/src-tauri/build.rs`: git describeによるバージョン導出ロジックの追加
 - `app/src-tauri/src/tray.rs`: `APP_VERSION` の参照先変更、`about_item` のフォーマット調整(git describe形式は既に`v`を含むため二重にならないようにする)
-- `.github/workflows/release.yml`: 「Sync Cargo.toml version」ステップの削除、`fetch-depth: 0` の追加
+- `.github/workflows/release.yml`: 「Sync Cargo.toml version」ステップの削除、`fetch-depth: 0` の追加、`Swatinem/rust-cache` の削除(タスク4.4のレビューで発覚したキャッシュ起因の再発リスクへの対応。詳細はdesign.md参照)
 - `CONTRIBUTING.md`: リリース手順の記述更新
 - 破壊的変更なし。`Cargo.toml` の `version` フィールド自体は今後も存在するが、表示用途としては参照されなくなる。
