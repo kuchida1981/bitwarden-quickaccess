@@ -2,174 +2,87 @@
 
 Read this in English / [日本語版はこちら](README.ja.md)
 
-A terminal quick-access tool equivalent to 1Password Quick Access, built on top of `bw` (Bitwarden CLI), `jq`, and `fzf`. It lets you incrementally search vault items and copy the username, password, or TOTP to the clipboard.
+A menu-bar quick-access app for Bitwarden, equivalent to 1Password Quick Access, built on top of `bw` (Bitwarden CLI) via `bw serve` and [Tauri](https://tauri.app/). Press a global hotkey from anywhere to search your vault and copy the username, password, or TOTP to the clipboard — or open the item's URL in your browser.
+
+> **Coming from the old terminal (TUI) version?** See [Migrating from the old TUI](#migrating-from-the-old-tui) below.
 
 ## Requirements
 
-- macOS, or Linux with a desktop GUI environment (with GNOME Keyring / KWallet or similar running)
-- [`bw` (Bitwarden CLI)](https://bitwarden.com/help/cli/) — must already be logged in via `bw login`
-- `jq`
-- `fzf` (0.73.0 or later)
-- A clipboard copy command
-  - macOS: `pbcopy` (built in)
-  - Linux (Wayland): `wl-copy`
-  - Linux (X11): `xclip` or `xsel`
-- An OS keychain integration command (used to cache the session token)
-  - macOS: `security` (built in)
-  - Linux: `secret-tool` (from the `libsecret-tools` package)
+- macOS (Linux support is planned for a future release; not yet supported)
+- [`bw` (Bitwarden CLI)](https://bitwarden.com/help/cli/) — must already be logged in via `bw login` (the vault can be locked; the app handles unlocking)
 
-Depending on how you install it, you'll also need:
-- **Using the installer (install.sh)**
-  - `curl` (git is not required)
-- **Cloning the source and running it directly**
-  - `git`
+To **self-build**, you additionally need:
+- [Rust toolchain](https://www.rust-lang.org/tools/install) (stable, via `rustup`)
+- [Tauri CLI](https://v2.tauri.app/reference/cli/): `cargo install tauri-cli --locked`
 
-If any required tool is missing, the tool prints installation instructions and exits with an error at startup.
+## Install
 
-The search screen and field-selection screen run fullscreen (using the terminal's alternate screen buffer). Your terminal scrollback is temporarily hidden while either screen is open, and the original screen content is restored when you exit.
+### Option 1: Download from GitHub Releases (recommended)
 
-## Installation
+1. Download `bw-quickaccess.app.zip` from the [Releases page](https://github.com/kuchida1981/bitwarden-quickaccess/releases).
+2. Unzip it and move `bw-quickaccess.app` to `/Applications` (or anywhere you like).
+3. The app is **not code-signed or notarized**. On first launch, macOS Gatekeeper will refuse to open it with an "unidentified developer" warning. To open it anyway:
+   - Right-click (or Control-click) `bw-quickaccess.app` in Finder and choose **Open**, then confirm **Open** in the dialog that appears.
+   - You only need to do this once; subsequent launches work normally.
 
-You can install it easily by running the following command.
+### Option 2: Self-build from source
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash
+```bash
+git clone https://github.com/kuchida1981/bitwarden-quickaccess.git
+cd bitwarden-quickaccess/app/src-tauri
+cargo tauri build
 ```
 
-By default, it installs to `~/.local/bin/bw-quickaccess` under your user account (no elevated privileges required).
+The built `.app` is placed under `target/release/bundle/macos/bw-quickaccess.app`. Move it to `/Applications` if you like.
 
-### Options
+For local development (runs the app without producing a distributable bundle):
 
-To customize the installation, pass options like this:
-
-- **Change the install location (`--prefix`)**
-  To change the default install location, use the `--prefix` option.
-  ```sh
-  curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --prefix /opt/bwqa
-  ```
-  In this example, it installs to `/opt/bwqa/bin/bw-quickaccess`.
-
-- **Install a specific version (`--version`)**
-  To install a specific version other than the latest, use the `--version` option.
-  ```sh
-  curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --version v0.1.0
-  ```
-
-### Updating
-
-To update, re-run the same curl command used for installation. Re-running it shows an update message from the old version to the new one.
-
-You can check the currently installed version with:
-
-```sh
-bw-quickaccess --version
-```
-Or, if the install location isn't on your PATH, run it directly:
-```sh
-~/.local/bin/bw-quickaccess --version
-```
-
-### Uninstalling
-
-To remove `bw-quickaccess`, delete the executable.
-
-```sh
-rm ~/.local/bin/bw-quickaccess
-```
-
-If you changed the install location with `--prefix`, remove it like this instead:
-
-```sh
-rm <prefix>/bin/bw-quickaccess
+```bash
+cd app/src-tauri
+cargo run
 ```
 
 ## Usage
 
-If installed:
-```sh
-bw-quickaccess
-```
-Note: the install location (e.g. `~/.local/bin`) needs to be on your PATH. If it isn't, run it with the full path, e.g. `~/.local/bin/bw-quickaccess`.
+1. Launch `bw-quickaccess.app`. It has no Dock icon or window on startup — look for its icon in the menu bar.
+2. Press **⇧⌘Space** (Shift+Cmd+Space) from anywhere to toggle the popup.
+3. If the vault is locked, enter your master password to unlock.
+4. Type to search incrementally. Use the **↑ / ↓** arrow keys to move the highlighted selection.
+5. With an item highlighted, use one of these shortcuts:
 
-If running directly from a cloned source checkout (e.g. for development):
-```sh
-bin/bw-quickaccess
-```
+   | Shortcut | Action |
+   |---|---|
+   | `⌘C` | Copy username |
+   | `⌘⇧C` | Copy password |
+   | `⌥⌘C` | Copy TOTP code |
+   | `Enter` | Open the item's URL in your default browser |
 
-1. Incrementally search vault items on the search screen (fzf)
-   - `Enter`: select an item and move to the field selection screen
-   - `ctrl-r`: copy the password of the filtered item directly (stays on this screen)
-   - `ctrl-o`: copy the username of the filtered item directly (stays on this screen)
-   - `ctrl-t`: copy the TOTP of the filtered item directly (stays on this screen)
-2. On the field selection screen, choose the field you want to copy
-   - `Enter`: copy the selected row
-   - `ctrl-r`: copy the password directly
-   - `ctrl-o`: copy the username directly
-   - `ctrl-t`: copy the TOTP directly
-   - The screen stays open after copying, so you can copy other fields of the same item in succession
-   - `Esc`: go back to the search screen
-   - `q`: quit the tool
-3. On the next launch, it starts from the field selection screen for the last selected item (skipping the search). Press `Esc` to go back to the search screen if you want to look up a different item.
+   The popup closes automatically after the action completes.
+6. The popup also closes automatically when it loses focus (e.g. clicking elsewhere).
 
-### About sessions (login state)
+### Menu bar icon
 
-On first run, you'll be prompted for your master password via `bw unlock`. The resulting session token is cached in the OS keychain, and you won't be prompted again within the default 15-minute window (configurable via the `BWQA_SESSION_TTL_SECONDS` environment variable).
+Click the tray icon to see the current lock status, whether the global hotkey registered successfully, toggle **launch at login**, check the installed version, or quit the app.
 
-To discard the cached session:
+### Auto-lock
 
-If installed:
-```sh
-bw-quickaccess lock
+The vault automatically re-locks after 15 minutes of inactivity (no search, copy, or browser-open actions). This mirrors the previous TUI's session TTL behavior. There is currently no UI to change this timeout.
+
+## Migrating from the old TUI
+
+The previous terminal-based tool (`bin/bw-quickaccess`, installed via `install.sh`) has been removed from this repository as of this GUI rewrite. If you previously installed it via the `curl` one-liner, it is **not automatically removed** — delete it manually:
+
+```bash
+rm "$HOME/.local/bin/bw-quickaccess"
 ```
 
-If running directly from source:
-```sh
-bin/bw-quickaccess lock
-```
+(If you installed with a custom `--prefix`, adjust the path accordingly: `$PREFIX/bin/bw-quickaccess`.)
 
-### Display language
+Then install the new GUI app using one of the options above.
 
-CLI messages are automatically selected from the `LANG`/`LC_ALL` environment variables between Japanese and English (anything not starting with `ja` falls back to English). You can override this explicitly with the `BWQA_LANG` environment variable (`ja` or `en`):
+## Out of scope
 
-```sh
-BWQA_LANG=en bw-quickaccess
-```
-
-### Out of scope
-
-- Deep-link integration with the Bitwarden desktop app (the app doesn't support navigating directly to a specific item)
-- Automatically clearing the clipboard
-- Support for headless/SSH-only Linux environments
-
-## For developers: running tests
-
-Unit tests for `lib/*.sh` are written with [bats-core](https://github.com/bats-core/bats-core). Static analysis uses [shellcheck](https://www.shellcheck.net/) (see `.shellcheckrc` at the repository root for excluded rules).
-
-### Setup
-
-```sh
-# macOS
-brew install bats-core shellcheck
-
-# Linux (Debian/Ubuntu family)
-sudo apt-get install -y bats shellcheck
-```
-
-### Running
-
-```sh
-# Syntax check
-bash -n bin/bw-quickaccess
-for f in lib/*.sh; do bash -n "$f"; done
-
-# Static analysis (production code uses -x for cross-file analysis; test code is analyzed standalone)
-shellcheck -x bin/bw-quickaccess
-shellcheck test/helpers/*.bash test/lib/*.bats
-
-# Unit tests
-bats test/lib/*.bats
-```
-
-GitHub Actions (`.github/workflows/ci.yml`) runs the same checks automatically on both `macos-latest` and `ubuntu-latest` for every push and pull request.
-
-See `openspec/changes/add-quickaccess-cli/` for detailed requirements and design.
+- Linux support (planned for a future release)
+- Code signing / notarization
+- In-app localization (the UI text is currently Japanese-only; no language switching)
+- Configurable idle-lock timeout or hotkey remapping

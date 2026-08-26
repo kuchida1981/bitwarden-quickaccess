@@ -2,174 +2,87 @@
 
 [Read this in English](README.md) / 日本語版
 
-`bw`(Bitwarden CLI)・`jq`・`fzf` を組み合わせた、1Password Quick Access 相当のターミナル向けクイックアクセスツールです。vault アイテムをインクリメンタルサーチし、ユーザー名・パスワード・TOTP をクリップボードへコピーできます。
+Bitwarden向けの、1Password Quick Access 相当のメニューバー常駐アプリです。`bw`(Bitwarden CLI)の `bw serve` と [Tauri](https://tauri.app/) を組み合わせて実装されています。どこからでもグローバルホットキーを押すだけでvaultを検索し、ユーザー名・パスワード・TOTPをクリップボードにコピーしたり、アイテムのURLをブラウザで開いたりできます。
+
+> **旧ターミナル版(TUI)をお使いだった方へ**: 下記の[旧TUIからの移行](#旧tuiからの移行)を参照してください。
 
 ## 必要なもの
 
-- macOS、または デスクトップ GUI 環境(GNOME Keyring / KWallet 等が動作している)の Linux
-- [`bw`(Bitwarden CLI)](https://bitwarden.com/help/cli/) — `bw login` 済みであること
-- `jq`
-- `fzf`(0.73.0 以上)
-- クリップボードコピーコマンド
-  - macOS: `pbcopy`(標準搭載)
-  - Linux(Wayland): `wl-copy`
-  - Linux(X11): `xclip` または `xsel`
-- OS キーチェーン連携コマンド(session token のキャッシュに使用)
-  - macOS: `security`(標準搭載)
-  - Linux: `secret-tool`(`libsecret-tools` パッケージ)
+- macOS(Linux対応は将来のリリースで予定していますが、現時点では未対応です)
+- [`bw`(Bitwarden CLI)](https://bitwarden.com/help/cli/) — `bw login` 済みであること(vaultはロック状態で構いません。アプリ側でアンロックできます)
 
-また、インストールの方法に応じて以下のツールが必要です。
-- **インストーラー(install.sh)を使用する場合**
-  - `curl` (git は不要です)
-- **ソースから clone して使用する場合**
-  - `git`
-
-不足しているツールがある場合、起動時にインストール方法を案内した上でエラー終了します。
-
-検索画面・フィールド選択画面はフルスクリーン表示(ターミナルの alternate screen buffer を使用)になります。画面表示中はターミナルのスクロールバックが一時的に隠れ、終了時に元の画面内容へ復元されます。
+**セルフビルド**する場合は、追加で以下が必要です:
+- [Rust toolchain](https://www.rust-lang.org/tools/install)(stable、`rustup` 経由)
+- [Tauri CLI](https://v2.tauri.app/reference/cli/): `cargo install tauri-cli --locked`
 
 ## インストール
 
-以下のコマンドを実行することで、簡単にインストールできます。
+### 方法1: GitHub Releasesからダウンロード(推奨)
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash
+1. [Releasesページ](https://github.com/kuchida1981/bitwarden-quickaccess/releases)から `bw-quickaccess.app.zip` をダウンロードする
+2. 展開して `bw-quickaccess.app` を `/Applications`(お好きな場所でも構いません)に移動する
+3. このアプリは**コード署名・notarizationされていません**。初回起動時、macOSのGatekeeperが「開発元を確認できません」という警告を出して起動をブロックします。以下の手順で起動してください:
+   - Finderで `bw-quickaccess.app` を右クリック(またはControl+クリック)し、**「開く」**を選択、表示されるダイアログでも**「開く」**を選ぶ
+   - この操作は初回のみ必要です。以降は通常どおり起動できます
+
+### 方法2: ソースからセルフビルド
+
+```bash
+git clone https://github.com/kuchida1981/bitwarden-quickaccess.git
+cd bitwarden-quickaccess/app/src-tauri
+cargo tauri build
 ```
 
-デフォルトでは、ユーザー権限で `~/.local/bin/bw-quickaccess` にインストールされます。
+生成された `.app` は `target/release/bundle/macos/bw-quickaccess.app` に配置されます。お好みで `/Applications` に移動してください。
 
-### オプション指定
+開発時(配布用バンドルを作らず、その場でアプリを実行する場合):
 
-インストール時のオプションを指定する場合は、以下のように実行します。
-
-- **インストール先の変更 (`--prefix`)**
-  デフォルトのインストール先を変更したい場合は `--prefix` オプションを指定します。
-  ```sh
-  curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --prefix /opt/bwqa
-  ```
-  この例では `/opt/bwqa/bin/bw-quickaccess` にインストールされます。
-
-- **特定バージョンのインストール (`--version`)**
-  最新版以外の特定バージョンをインストールしたい場合は `--version` オプションを指定します。
-  ```sh
-  curl -fsSL https://raw.githubusercontent.com/kuchida1981/bitwarden-quickaccess/main/install.sh | bash -s -- --version v0.1.0
-  ```
-
-### アップデート
-
-アップデートを行うには、インストール時と同じ curl コマンドを再実行します。再実行すると、旧バージョンから新バージョンへの更新メッセージが表示されます。
-
-現在インストールされているバージョンは、以下のコマンドで確認できます。
-
-```sh
-bw-quickaccess --version
-```
-または、インストール先が PATH に通っていない場合は直接実行して確認します。
-```sh
-~/.local/bin/bw-quickaccess --version
-```
-
-### アンインストール
-
-インストールした `bw-quickaccess` を削除するには、実行ファイルを削除します。
-
-```sh
-rm ~/.local/bin/bw-quickaccess
-```
-
-`--prefix` オプションでインストール先を変更した場合は、以下のように削除します。
-
-```sh
-rm <prefix>/bin/bw-quickaccess
+```bash
+cd app/src-tauri
+cargo run
 ```
 
 ## 使い方
 
-インストールして使用する場合:
-```sh
-bw-quickaccess
-```
-※ `~/.local/bin` などのインストール先に PATH が通っている必要があります。通っていない場合は `~/.local/bin/bw-quickaccess` のようにフルパスで実行してください。
+1. `bw-quickaccess.app` を起動します。起動時にDockアイコンやウィンドウは表示されません。メニューバーのアイコンを探してください
+2. どこからでも **⇧⌘Space**(Shift+Cmd+Space)を押すとポップアップが開閉します
+3. vaultがロックされている場合は、マスターパスワードを入力してアンロックします
+4. 入力するとインクリメンタルに検索されます。**↑ / ↓** キーでフォーカスする行を移動できます
+5. 行にフォーカスした状態で、以下のショートカットが使えます:
 
-ソースから clone して直接実行する場合(開発者向けなど):
-```sh
-bin/bw-quickaccess
-```
+   | ショートカット | 動作 |
+   |---|---|
+   | `⌘C` | ユーザー名をコピー |
+   | `⌘⇧C` | パスワードをコピー |
+   | `⌥⌘C` | TOTPコードをコピー |
+   | `Enter` | アイテムのURLをデフォルトブラウザで開く |
 
-1. 検索画面(fzf)で vault アイテムをインクリメンタルサーチします
-   - `Enter`: アイテムを選択してフィールド選択画面へ進む
-   - `ctrl-r`: 絞り込んだアイテムのパスワードを直接コピー(画面はそのまま)
-   - `ctrl-o`: 絞り込んだアイテムのユーザー名を直接コピー(画面はそのまま)
-   - `ctrl-t`: 絞り込んだアイテムの TOTP を直接コピー(画面はそのまま)
-2. フィールド選択画面で、コピーしたいフィールドを選びます
-   - `Enter`: 選択中の行をコピー
-   - `ctrl-r`: パスワードを直接コピー
-   - `ctrl-o`: ユーザー名を直接コピー
-   - `ctrl-t`: TOTP を直接コピー
-   - コピーしても画面は閉じないため、同じアイテムの別フィールドを続けてコピーできます
-   - `Esc`: 検索画面へ戻る
-   - `q`: ツールを終了する
-3. 次回起動時は、直前に選択したアイテムのフィールド選択画面から始まります(検索をスキップ)。別のアイテムを探したい場合は `Esc` で検索画面に戻ってください
+   アクション実行後、ポップアップは自動的に閉じます
+6. ポップアップは、フォーカスを失った場合(別の場所をクリックした場合等)も自動的に閉じます
 
-### session(ログイン状態)について
+### メニューバーアイコン
 
-初回実行時は `bw unlock` のマスターパスワード入力を求められます。取得した session token は OS のキーチェーンにキャッシュされ、既定 15 分(`BWQA_SESSION_TTL_SECONDS` 環境変数で変更可能)以内であれば再入力を求められません。
+トレイアイコンをクリックすると、現在のロック状態・グローバルホットキーの登録状況の確認、**ログイン時自動起動**のオン/オフ切り替え、インストール済みバージョンの確認、アプリの終了ができます。
 
-キャッシュされた session を破棄したい場合:
+### 自動ロック
 
-インストールして使用する場合:
-```sh
-bw-quickaccess lock
+vaultは、15分間操作(検索・コピー・ブラウザ起動)がないと自動的に再ロックされます。旧TUIのセッションTTLの挙動を踏襲したものです。現時点ではこのタイムアウト値を変更するUIはありません。
+
+## 旧TUIからの移行
+
+このGUIへの刷新に伴い、従来のターミナル向けツール(`bin/bw-quickaccess`、`install.sh` でインストールするもの)はこのリポジトリから削除されました。以前 `curl` ワンライナーでインストールしていた場合、**自動的には削除されません**。以下の手順で手動削除してください:
+
+```bash
+rm "$HOME/.local/bin/bw-quickaccess"
 ```
 
-ソースから直接実行する場合:
-```sh
-bin/bw-quickaccess lock
-```
+(`--prefix` オプションでインストール先を変更していた場合は、`$PREFIX/bin/bw-quickaccess` のように読み替えてください。)
 
-### 表示言語について
+その後、上記いずれかの方法で新しいGUIアプリをインストールしてください。
 
-CLI のメッセージは `LANG`/`LC_ALL` 環境変数から日本語・英語を自動判定します(`ja` で始まらない場合は英語)。`BWQA_LANG` 環境変数(`ja` または `en`)を設定すると明示的に切り替えられます。
+## スコープ外
 
-```sh
-BWQA_LANG=en bw-quickaccess
-```
-
-### スコープ外の機能
-
-- Bitwarden デスクトップアプリへの deep link 連携(アプリ側が特定アイテムへの直接ナビゲーションに未対応のため)
-- クリップボードの自動クリア
-- Linux のヘッドレス/SSH 専用環境のサポート
-
-## 開発者向け: テストの実行
-
-`lib/*.sh` の単体テストは [bats-core](https://github.com/bats-core/bats-core) で書かれています。静的解析には [shellcheck](https://www.shellcheck.net/) を使用しています(除外ルールはリポジトリ直下の `.shellcheckrc` を参照)。
-
-### セットアップ
-
-```sh
-# macOS
-brew install bats-core shellcheck
-
-# Linux(Debian/Ubuntu 系)
-sudo apt-get install -y bats shellcheck
-```
-
-### 実行
-
-```sh
-# 構文チェック
-bash -n bin/bw-quickaccess
-for f in lib/*.sh; do bash -n "$f"; done
-
-# 静的解析(プロダクションコードは -x でクロスファイル解析、テストコードは単体で解析)
-shellcheck -x bin/bw-quickaccess
-shellcheck test/helpers/*.bash test/lib/*.bats
-
-# 単体テスト
-bats test/lib/*.bats
-```
-
-GitHub Actions(`.github/workflows/ci.yml`)で `macos-latest` / `ubuntu-latest` の両方に対して push・pull request のたびに同じチェックを自動実行しています。
-
-詳細な要件・設計は `openspec/changes/add-quickaccess-cli/` を参照してください。
+- Linux対応(将来のリリースで予定)
+- コード署名・notarization
+- アプリ内のローカライズ(UIの文言は現時点で日本語固定です。言語切り替えはありません)
+- アイドルロックのタイムアウト値やホットキーの変更設定
