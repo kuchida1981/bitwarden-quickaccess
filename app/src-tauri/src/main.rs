@@ -11,16 +11,22 @@ use std::time::Duration;
 
 use bw_quickaccess_gui_lib::backend::{
     http_client::{BwServeClient, LockStatus},
+    idle::{IdleTimer, DEFAULT_IDLE_TIMEOUT},
     preflight, process,
-    state::AppState,
+    state::{AppState, BackendState},
 };
 use tauri::Manager;
 use tauri_plugin_global_shortcut::ShortcutState;
+
+/// アイドルタイマーの期限切れをチェックする間隔。タイムアウト(既定15分)に比べ
+/// 十分短ければよく、厳密な即時性は求めない。
+const IDLE_CHECK_INTERVAL: Duration = Duration::from_secs(30);
 
 struct ManagedProcess(Mutex<Option<process::ProcessHandle>>);
 
 fn main() {
     let app_state = AppState::new();
+    let idle_timer = IdleTimer::new(DEFAULT_IDLE_TIMEOUT);
 
     let app = tauri::Builder::default()
         .plugin(
@@ -36,12 +42,18 @@ fn main() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(app_state)
+        .manage(idle_timer)
         .manage(ManagedProcess(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::get_lock_state,
             commands::unlock,
             commands::search_items,
+            commands::copy_field,
+            commands::open_in_browser,
+            commands::hide_popup,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -61,6 +73,12 @@ fn main() {
             tauri::async_runtime::spawn(async move {
                 wait_for_shutdown_signal().await;
                 app_handle_for_signal.exit(0);
+            });
+
+            let state_for_idle = app.state::<AppState>().inner().clone();
+            let idle_for_watcher = app.state::<IdleTimer>().inner().clone();
+            tauri::async_runtime::spawn(async move {
+                watch_idle_timeout(state_for_idle, idle_for_watcher).await;
             });
 
             Ok(())
@@ -139,6 +157,29 @@ async fn wait_for_shutdown_signal() {
             );
             // 早期リターンによりアプリが即座に終了してしまうのを防ぐため、永久に待機する
             std::future::pending::<()>().await;
+        }
+    }
+}
+
+/// アイドルタイマーを定期的にチェックし、タイムアウトに達していれば `/lock` を呼んで
+/// アンロック済み状態を解除する。タイマーのリセットは各Tauri command側(unlock/
+/// search_items/copy_field/open_in_browser)が担い、ここでは期限切れの検知と
+/// ロック実行のみを一元的に行う(design.md 決定4)。
+async fn watch_idle_timeout(state: AppState, idle: IdleTimer) {
+    loop {
+        tokio::time::sleep(IDLE_CHECK_INTERVAL).await;
+
+        if state.backend_state() != BackendState::Unlocked || !idle.is_expired() {
+            continue;
+        }
+
+        let Some(port) = state.port() else {
+            continue;
+        };
+
+        let client = BwServeClient::new(port);
+        if client.lock().await.is_ok() {
+            state.set_locked();
         }
     }
 }

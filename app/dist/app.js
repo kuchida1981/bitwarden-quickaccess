@@ -10,9 +10,11 @@ const unlockButton = unlockForm.querySelector("button");
 const searchBox = document.getElementById("search-box");
 const resultsList = document.getElementById("results");
 const emptyMessage = document.getElementById("empty-message");
+const feedback = document.getElementById("feedback");
 
 const SEARCH_DEBOUNCE_MS = 150;
 const SHORTCUT_HINTS = "⌘C ユーザー名 / ⌘⇧C パスワード / ⌥⌘C TOTP / Enter ブラウザで開く";
+const FEEDBACK_DISPLAY_MS = 700;
 
 let currentItems = [];
 let focusedIndex = -1;
@@ -23,6 +25,13 @@ let lastKnownScreen = "unlock";
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
   searchScreen.classList.toggle("active", name === "search");
+  feedback.textContent = "";
+  feedback.className = "";
+}
+
+function showFeedback(message, ok) {
+  feedback.textContent = message;
+  feedback.className = ok ? "visible ok" : "visible error";
 }
 
 async function handleShown() {
@@ -106,10 +115,14 @@ searchBox.addEventListener("keydown", (event) => {
   if (event.key === "ArrowDown") {
     event.preventDefault();
     moveFocus(1);
-  } else if (event.key === "ArrowUp") {
+    return;
+  }
+  if (event.key === "ArrowUp") {
     event.preventDefault();
     moveFocus(-1);
+    return;
   }
+  handleActionShortcut(event);
 });
 
 function moveFocus(delta) {
@@ -118,6 +131,62 @@ function moveFocus(delta) {
   }
   focusedIndex = Math.min(Math.max(focusedIndex + delta, 0), currentItems.length - 1);
   renderResults();
+}
+
+// 検索ボックスにテキスト選択がある間は、通常のOS標準コピー動作を妨げない
+// (design.md 決定2)。選択がない場合のみ `⌘C` 系をアクションとして扱う。
+function hasTextSelectionInSearchBox() {
+  return searchBox.selectionStart !== searchBox.selectionEnd;
+}
+
+function handleActionShortcut(event) {
+  if (currentItems.length === 0 || focusedIndex < 0) {
+    return;
+  }
+  const item = currentItems[focusedIndex];
+
+  if (event.key === "Enter") {
+    event.preventDefault();
+    runAction(() => invoke("open_in_browser", { itemId: item.id }), "ブラウザで開きました");
+    return;
+  }
+
+  if (!event.metaKey || event.key.toLowerCase() !== "c") {
+    return;
+  }
+
+  if (!event.shiftKey && !event.altKey) {
+    if (hasTextSelectionInSearchBox()) {
+      return;
+    }
+    event.preventDefault();
+    runAction(() => invoke("copy_field", { itemId: item.id, field: "username" }), "ユーザー名をコピーしました");
+  } else if (event.shiftKey && !event.altKey) {
+    event.preventDefault();
+    runAction(() => invoke("copy_field", { itemId: item.id, field: "password" }), "パスワードをコピーしました");
+  } else if (event.altKey && !event.shiftKey) {
+    event.preventDefault();
+    runAction(() => invoke("copy_field", { itemId: item.id, field: "totp" }), "TOTPコードをコピーしました");
+  }
+}
+
+async function runAction(actionFn, successMessage) {
+  let message = successMessage;
+  let ok = true;
+  try {
+    await actionFn();
+  } catch (err) {
+    message = typeof err === "string" ? err : "操作に失敗しました。";
+    ok = false;
+  }
+
+  showFeedback(message, ok);
+
+  // 1Password Quick Accessと同様、成功/失敗にかかわらずアクション実行後は
+  // 短いフィードバック表示を挟んでポップアップを閉じる(design.md 決定3)。
+  setTimeout(() => {
+    invoke("hide_popup").catch(() => {});
+  }, FEEDBACK_DISPLAY_MS);
 }
 
 async function runSearch(query) {
