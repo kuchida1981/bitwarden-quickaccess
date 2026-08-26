@@ -1,10 +1,10 @@
 ## 1. アイコンアセットの生成・差し替え(#50)
 
-- [ ] 1.1 承認済みのSVGソース(アプリ本体アイコン、トレイシールド)を `app/src-tauri/icons/source/app-icon.svg` と `app/src-tauri/icons/source/tray-shield.svg`(`fill` を状態色に差し替えるテンプレート)としてリポジトリに追加する
-- [ ] 1.2 `app/src-tauri/icons/source/app-icon.svg` から `rsvg-convert` で以下を生成し、既存ファイルを差し替える: `icon.png`(128x128)、`128x128.png`、`128x128@2x.png`(256x256)、`32x32.png`
-- [ ] 1.3 `icon.icns` を作り直す: `rsvg-convert` で `icon_16x16.png`/`icon_16x16@2x.png`/`icon_32x32.png`/`icon_32x32@2x.png`/`icon_128x128.png`/`icon_128x128@2x.png`/`icon_256x256.png`/`icon_256x256@2x.png`/`icon_512x512.png`/`icon_512x512@2x.png` を生成して `.iconset` ディレクトリにまとめ、`iconutil -c icns` で `icon.icns` を生成する
-- [ ] 1.4 `app/src-tauri/icons/source/tray-shield.svg` の `fill` を各状態色(`#8C8C8C` / `#D97706` / `#16A34A`)に差し替えたSVGから、`tray-disconnected.png` / `tray-locked.png` / `tray-unlocked.png`(いずれも32x32)を生成し、既存ファイルを差し替える
-- [ ] 1.5 `cd app/src-tauri && cargo build` が通ることを確認する(`include_bytes!` でアイコンファイルを埋め込んでいるため、ファイル差し替え後もビルドできることの確認)
+- [x] 1.1 承認済みのSVGソース(アプリ本体アイコン、トレイシールド)を `app/src-tauri/icons/source/app-icon.svg` と `app/src-tauri/icons/source/tray-shield.svg`(`fill` を状態色に差し替えるテンプレート)としてリポジトリに追加する
+- [x] 1.2 `app/src-tauri/icons/source/app-icon.svg` から `rsvg-convert` で以下を生成し、既存ファイルを差し替える: `icon.png`(128x128)、`128x128.png`、`128x128@2x.png`(256x256)、`32x32.png`
+- [x] 1.3 `icon.icns` を作り直す: `rsvg-convert` で `icon_16x16.png`/`icon_16x16@2x.png`/`icon_32x32.png`/`icon_32x32@2x.png`/`icon_128x128.png`/`icon_128x128@2x.png`/`icon_256x256.png`/`icon_256x256@2x.png`/`icon_512x512.png`/`icon_512x512@2x.png` を生成して `.iconset` ディレクトリにまとめ、`iconutil -c icns` で `icon.icns` を生成する(初回、iconsetディレクトリ名の末尾が `.iconset` になっておらず `iconutil` が「Invalid Iconset」で失敗し古いファイルが残っていたことに気づき、正しい命名で再実行して解消)
+- [x] 1.4 `app/src-tauri/icons/source/tray-shield.svg` の `fill` を各状態色(`#8C8C8C` / `#D97706` / `#16A34A`)に差し替えたSVGから、`tray-disconnected.png` / `tray-locked.png` / `tray-unlocked.png`(いずれも32x32)を生成し、既存ファイルを差し替える
+- [x] 1.5 `cd app/src-tauri && cargo build` が通ることを確認する(`include_bytes!` でアイコンファイルを埋め込んでいるため、ファイル差し替え後もビルドできることの確認)
 
 ## 2. トレイメニューへのアプリ名・バージョン・リポジトリリンク追加(#57)
 
