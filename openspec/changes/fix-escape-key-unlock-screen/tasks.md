@@ -1,9 +1,9 @@
 ## 1. Escapeキー処理の集約
 
-- [ ] 1.1 `app/dist/app.js` に、`document` レベルの `keydown` リスナーを追加する。優先順位は「ヘルプオーバーレイ表示中(`helpOpen`)→ ヘルプを閉じる」「アクションメニュー表示中(`actionMenuOpen`)→ アクションメニューを閉じる」「それ以外 → `invoke("hide_popup")`」の順とする。
-- [ ] 1.2 `searchBox` のkeydownリスナー内(`app.js` 内の `if (event.key === "Escape") { ... invoke("hide_popup") ... }` のブロック)から、Escape固有の分岐を削除する(1.1に処理が移るため)。
-- [ ] 1.3 `handleActionMenuKeydown` 内の `if (event.key === "ArrowLeft" || event.key === "Escape")` から `event.key === "Escape"` の条件を外し、`ArrowLeft` のみでアクションメニューを閉じる分岐として残す(Escapeは1.1の集約リスナーが処理する)。
-- [ ] 1.4 `handleHelpKeydown` 内の `if (event.key === "Escape" || isHelpToggleShortcut(event))` から `event.key === "Escape" ||` を外し、`isHelpToggleShortcut(event)` のみでヘルプを閉じる分岐として残す(Escapeは1.1の集約リスナーが処理する)。
+- [x] 1.1 `app/dist/app.js` に、`document` レベルの `keydown` リスナーを追加する。優先順位は「ヘルプオーバーレイ表示中(`helpOpen`)→ ヘルプを閉じる」「アクションメニュー表示中(`actionMenuOpen`)→ アクションメニューを閉じる」「それ以外 → `invoke("hide_popup")`」の順とする。
+- [x] 1.2 `searchBox` のkeydownリスナー内(`app.js` 内の `if (event.key === "Escape") { ... invoke("hide_popup") ... }` のブロック)から、Escape固有の分岐を削除する(1.1に処理が移るため)。
+- [x] 1.3 `handleActionMenuKeydown` 内の `if (event.key === "ArrowLeft" || event.key === "Escape")` から `event.key === "Escape"` の条件を外し、`ArrowLeft` のみでアクションメニューを閉じる分岐として残す(Escapeは1.1の集約リスナーが処理する)。
+- [x] 1.4 `handleHelpKeydown` 内の `if (event.key === "Escape" || isHelpToggleShortcut(event))` から `event.key === "Escape" ||` を外し、`isHelpToggleShortcut(event)` のみでヘルプを閉じる分岐として残す(Escapeは1.1の集約リスナーが処理する)。
 
 ## 2. 動作確認
 
