@@ -11,6 +11,7 @@ const searchBox = document.getElementById("search-box");
 const resultsList = document.getElementById("results");
 const emptyMessage = document.getElementById("empty-message");
 const feedback = document.getElementById("feedback");
+const helpOverlay = document.getElementById("help-overlay");
 
 const SEARCH_DEBOUNCE_MS = 150;
 let SHORTCUT_HINTS = "";
@@ -26,6 +27,7 @@ let hidePopupTimer = null;
 let actionMenuOpen = false;
 let actionMenuActions = [];
 let actionMenuFocusIndex = -1;
+let helpOpen = false;
 
 
 function showScreen(name) {
@@ -45,6 +47,8 @@ async function handleShown() {
   actionMenuOpen = false;
   actionMenuActions = [];
   actionMenuFocusIndex = -1;
+  helpOpen = false;
+  helpOverlay.classList.remove("visible");
   showScreen(lastKnownScreen);
   if (lastKnownScreen === "search") {
     searchBox.focus();
@@ -121,9 +125,31 @@ searchBox.addEventListener("input", () => {
   debounceTimer = setTimeout(() => runSearch(query), SEARCH_DEBOUNCE_MS);
 });
 
+// event.key ではなく event.code(物理キー位置)で判定する(handleActionShortcutの
+// ⌘Cと同じ理由)。ヘルプの開閉どちらからも参照するため共通関数にしておく。
+function isHelpToggleShortcut(event) {
+  return event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey;
+}
+
 searchBox.addEventListener("keydown", (event) => {
+  if (helpOpen) {
+    handleHelpKeydown(event);
+    return;
+  }
+  // アクションメニュー表示中でも⌘/は優先する(design.md 決定4: メニューを
+  // 閉じてからヘルプを表示する)。actionMenuOpenの分岐より先に判定する必要がある。
+  if (isHelpToggleShortcut(event)) {
+    event.preventDefault();
+    openHelp();
+    return;
+  }
   if (actionMenuOpen) {
     handleActionMenuKeydown(event);
+    return;
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    invoke("hide_popup").catch(() => {});
     return;
   }
 
@@ -220,6 +246,32 @@ function handleActionMenuKeydown(event) {
   if (!event.defaultPrevented) {
     event.preventDefault();
   }
+}
+
+function openHelp() {
+  if (actionMenuOpen) {
+    closeActionMenu();
+  }
+  helpOpen = true;
+  helpOverlay.classList.add("visible");
+}
+
+function closeHelp() {
+  helpOpen = false;
+  helpOverlay.classList.remove("visible");
+}
+
+// ヘルプ表示中のキー操作(design.md 決定3)。
+// Escapeまたは⌘/でヘルプを閉じ、それ以外のキーはすべて無視して
+// 検索文字入力などを抑止する。
+function handleHelpKeydown(event) {
+  if (event.key === "Escape" || isHelpToggleShortcut(event)) {
+    event.preventDefault();
+    closeHelp();
+    return;
+  }
+
+  event.preventDefault();
 }
 
 // 検索ボックスにテキスト選択がある間は、通常のOS標準コピー動作を妨げない
