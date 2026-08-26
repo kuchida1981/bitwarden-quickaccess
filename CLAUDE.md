@@ -256,6 +256,16 @@ gh pr checks --watch   # 成功: exit 0 / 失敗: exit 非0
 
 失敗した場合は `gh pr checks` でどのジョブが落ちたかを確認し、修正 → コミット → プッシュ → 再度 watch のサイクルで是正する。
 
+### リリース手順
+
+**詳細な手順は [CONTRIBUTING.md](CONTRIBUTING.md#releasing) を参照すること。** リリース作業(GitHub Release作成、`release.yml` のビルド待ち、Homebrew tap `kuchida1981/homebrew-bitwarden-quickaccess` のCask更新、マイルストームクローズ)を行う際は、必ず先にCONTRIBUTING.mdを読んでから着手する。
+
+概要のみ記す:
+1. `gh release create vX.Y.Z ...` でリリースを作成する(`Cargo.toml` の手動バージョン更新は不要。`release.yml` がタグから自動同期する)
+2. `release.yml` のビルド完了を待つ(`gh run watch`)
+3. 別リポジトリのHomebrew tapのCask(`version`/`sha256`)を更新し、`brew style`/`brew audit`/`brew reinstall --cask` で確認してからコミット・プッシュする
+4. 該当するマイルストーンがあればクローズする
+
 ### OpenSpec チートシート
 
 | スキル | 用途 |
