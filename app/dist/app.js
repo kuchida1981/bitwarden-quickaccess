@@ -138,6 +138,26 @@ function isHelpToggleShortcut(event) {
   return event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey;
 }
 
+// フォーカス要素(検索ボックス/パスワード入力欄等)に関わらずEscapeキーで
+// ポップアップやオーバーレイを閉じられるよう、documentレベルで集約して処理する(issue #76)。
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") {
+    return;
+  }
+  if (helpOpen) {
+    event.preventDefault();
+    closeHelp();
+    return;
+  }
+  if (actionMenuOpen) {
+    event.preventDefault();
+    closeActionMenu();
+    return;
+  }
+  event.preventDefault();
+  invoke("hide_popup").catch(() => {});
+});
+
 searchBox.addEventListener("keydown", (event) => {
   if (helpOpen) {
     handleHelpKeydown(event);
@@ -152,11 +172,6 @@ searchBox.addEventListener("keydown", (event) => {
   }
   if (actionMenuOpen) {
     handleActionMenuKeydown(event);
-    return;
-  }
-  if (event.key === "Escape") {
-    event.preventDefault();
-    invoke("hide_popup").catch(() => {});
     return;
   }
 
@@ -235,7 +250,7 @@ function handleActionMenuKeydown(event) {
     renderResults();
     return;
   }
-  if (event.key === "ArrowLeft" || event.key === "Escape") {
+  if (event.key === "ArrowLeft") {
     event.preventDefault();
     closeActionMenu();
     return;
@@ -272,7 +287,7 @@ function closeHelp() {
 // Escapeまたは⌘/でヘルプを閉じ、それ以外のキーはすべて無視して
 // 検索文字入力などを抑止する。
 function handleHelpKeydown(event) {
-  if (event.key === "Escape" || isHelpToggleShortcut(event)) {
+  if (isHelpToggleShortcut(event)) {
     event.preventDefault();
     closeHelp();
     return;
