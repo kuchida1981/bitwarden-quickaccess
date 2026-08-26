@@ -96,9 +96,12 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
         .on_menu_event(move |app, event| match event.id().as_ref() {
             QUIT_ITEM_ID => app.exit(0),
             REPO_LINK_ITEM_ID => {
-                let _ = app
+                if let Err(err) = app
                     .opener()
-                    .open_url("https://github.com/kuchida1981/bitwarden-quickaccess", None::<&str>);
+                    .open_url("https://github.com/kuchida1981/bitwarden-quickaccess", None::<&str>)
+                {
+                    eprintln!("リポジトリページを開けませんでした: {err}");
+                }
             }
             AUTOSTART_ITEM_ID => {
                 let autolaunch = app.autolaunch();
