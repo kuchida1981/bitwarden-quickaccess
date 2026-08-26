@@ -24,5 +24,13 @@ fn main() {
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
 
+    // `--always` は参照可能なタグが1つも無い場合、`v`接頭辞の無い生のコミットハッシュに
+    // フォールバックする。tray.rs側は表示文字列が常に`v`で始まる前提のため、ここで揃える。
+    let version = if version.starts_with('v') {
+        version
+    } else {
+        format!("v{version}")
+    };
+
     println!("cargo:rustc-env=BWQA_DISPLAY_VERSION={version}");
 }
