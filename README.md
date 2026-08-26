@@ -17,15 +17,30 @@ To **self-build**, you additionally need:
 
 ## Install
 
-### Option 1: Download from GitHub Releases (recommended)
+### Option 1: Homebrew
 
-1. Download `bw-quickaccess_aarch64.app.tar.gz` from the [Releases page](https://github.com/kuchida1981/bitwarden-quickaccess/releases). This build targets **Apple Silicon (arm64) only**; Intel Macs are not currently supported by the prebuilt release (self-build from source instead — see Option 2).
+```bash
+brew tap kuchida1981/bitwarden-quickaccess
+brew install --cask bw-quickaccess
+```
+
+This build targets **Apple Silicon (arm64) only**; Intel Macs are not supported. On Homebrew 6 and later, the first time you use a third-party tap you may be prompted to trust it:
+
+```bash
+brew trust --tap kuchida1981/bitwarden-quickaccess
+```
+
+The app is **not code-signed or notarized**, so installing via Homebrew does not bypass Gatekeeper. On first launch you'll still need to either right-click the app and choose **Open** (see Option 2, step 3), or reinstall with `brew install --cask --no-quarantine bw-quickaccess`.
+
+### Option 2: Download from GitHub Releases
+
+1. Download `bw-quickaccess_aarch64.app.tar.gz` from the [Releases page](https://github.com/kuchida1981/bitwarden-quickaccess/releases). This build targets **Apple Silicon (arm64) only**; Intel Macs are not currently supported by the prebuilt release (self-build from source instead — see Option 3).
 2. Extract it (double-click in Finder, or `tar -xzf bw-quickaccess_aarch64.app.tar.gz`) and move `bw-quickaccess.app` to `/Applications` (or anywhere you like).
 3. The app is **not code-signed or notarized**. On first launch, macOS Gatekeeper will refuse to open it with an "unidentified developer" warning. To open it anyway:
    - Right-click (or Control-click) `bw-quickaccess.app` in Finder and choose **Open**, then confirm **Open** in the dialog that appears.
    - You only need to do this once; subsequent launches work normally.
 
-### Option 2: Self-build from source
+### Option 3: Self-build from source
 
 ```bash
 git clone https://github.com/kuchida1981/bitwarden-quickaccess.git
