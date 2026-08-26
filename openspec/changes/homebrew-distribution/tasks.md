@@ -1,12 +1,12 @@
 ## 1. tapリポジトリの作成(要ユーザー確認)
 
-- [ ] 1.1 **【ユーザー確認】** `kuchida1981/homebrew-bitwarden-quickaccess` という名前で新規の公開GitHubリポジトリを作成してよいか、実行前に確認する
-- [ ] 1.2 確認が取れたら `gh repo create kuchida1981/homebrew-bitwarden-quickaccess --public --description "Homebrew tap for bw-quickaccess"` でリポジトリを作成する
-- [ ] 1.3 ローカルにclone(または `gh repo clone`)し、`Casks/` ディレクトリを作成する
+- [x] 1.1 **【ユーザー確認】** `kuchida1981/homebrew-bitwarden-quickaccess` という名前で新規の公開GitHubリポジトリを作成してよいか、実行前に確認する。ユーザー承認済み
+- [x] 1.2 確認が取れたら `gh repo create kuchida1981/homebrew-bitwarden-quickaccess --public --description "Homebrew tap for bw-quickaccess"` でリポジトリを作成する。作成済み: https://github.com/kuchida1981/homebrew-bitwarden-quickaccess
+- [ ] 1.3 ローカルにclone(または `gh repo clone`)し、`Casks/` ディレクトリを作成する。ユーザー自身がクローンを実施する方針(クローン完了後、ローカルパスを共有してもらってからCaskファイルを作成する)
 
 ## 2. Cask定義の作成
 
-- [ ] 2.1 最新リリースのタグとアセットのsha256を取得する: `gh release view --repo kuchida1981/bitwarden-quickaccess --json tagName,assets`
+- [x] 2.1 最新リリースのタグとアセットのsha256を取得する: `gh release view --repo kuchida1981/bitwarden-quickaccess --json tagName,assets`。取得結果: `tagName: v1.0.0`, `sha256: 6dd69706f9c1032b98482d296fc6ad169d5bebaf39e762ba40dbd64b8bb2c77e`
 - [ ] 2.2 `Casks/bw-quickaccess.rb` を作成する(design.md 決定2〜5参照)。`version`・`sha256` は2.1で取得した値を使う。`url` は `https://github.com/kuchida1981/bitwarden-quickaccess/releases/download/#{tagName}/bw-quickaccess_aarch64.app.tar.gz` の形。`depends_on arch: :arm64` を指定する。`caveats` ブロックにGatekeeper対処法(右クリックで開く / `--no-quarantine`)を記載する
 - [ ] 2.3 `brew audit --cask bw-quickaccess`(tapリポジトリのローカルパスを一時的にtapして実行するか、`brew audit --cask ./Casks/bw-quickaccess.rb` 相当の方法)でlintし、指摘があれば修正する
 - [ ] 2.4 `brew tap kuchida1981/bitwarden-quickaccess` → `brew install --cask bw-quickaccess` で実際にインストールできることを確認する(実機確認が必要)
