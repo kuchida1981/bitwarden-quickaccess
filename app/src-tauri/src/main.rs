@@ -1,6 +1,9 @@
-// UIは持たない最小限の雛形。トレイ・グローバルホットキー・ウィンドウは後続change
-// (`menubar-hotkey-shell`)で追加する。ここでは bw serve の起動・監視と、
-// アプリ内部のロック状態の初期同期のみを行う。
+// トレイ常駐・グローバルホットキー・ポップアップウィンドウの骨格。
+// 検索UI・コピー操作は後続change(`quickaccess-search-ui` / `credential-actions-autolock`)で追加する。
+
+mod hotkey;
+mod popup;
+mod tray;
 
 use std::sync::Mutex;
 use std::time::Duration;
@@ -11,6 +14,7 @@ use bw_quickaccess_gui_lib::backend::{
     state::AppState,
 };
 use tauri::Manager;
+use tauri_plugin_global_shortcut::ShortcutState;
 
 struct ManagedProcess(Mutex<Option<process::ProcessHandle>>);
 
@@ -18,9 +22,29 @@ fn main() {
     let app_state = AppState::new();
 
     let app = tauri::Builder::default()
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        popup::toggle_popup(app);
+                    }
+                })
+                .build(),
+        )
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(app_state)
         .manage(ManagedProcess(Mutex::new(None)))
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            popup::create_popup_window(app.handle())?;
+            tray::setup_tray(app.handle())?;
+            hotkey::register_quick_access_hotkey(app.handle());
+
             let app_handle = app.handle().clone();
             let state = app.state::<AppState>().inner().clone();
             tauri::async_runtime::spawn(async move {

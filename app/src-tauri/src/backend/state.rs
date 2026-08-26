@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex};
 
+use tokio::sync::watch;
+
 /// バックエンド(`bw serve`)とvaultのロック状態。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BackendState {
@@ -23,6 +25,7 @@ struct Inner {
 #[derive(Clone)]
 pub struct AppState {
     inner: Arc<Mutex<Inner>>,
+    changes: watch::Sender<BackendState>,
 }
 
 impl Default for AppState {
@@ -33,14 +36,25 @@ impl Default for AppState {
 
 impl AppState {
     pub fn new() -> Self {
+        let (changes, _) = watch::channel(BackendState::Disconnected);
         Self {
             inner: Arc::new(Mutex::new(Inner::default())),
+            changes,
         }
+    }
+
+    /// バックエンド状態が変化するたびに通知を受け取る購読者を作る
+    /// (トレイアイコンの表示更新等に使う)。
+    pub fn subscribe(&self) -> watch::Receiver<BackendState> {
+        self.changes.subscribe()
     }
 
     fn set(&self, backend: BackendState) {
         let mut inner = self.inner.lock().expect("AppState mutex poisoned");
         inner.backend = backend;
+        drop(inner);
+        // 購読者がいなくても送信自体は失敗しない(受信側なしは無視してよい)。
+        let _ = self.changes.send(backend);
     }
 
     pub fn set_disconnected(&self) {
@@ -60,6 +74,8 @@ impl AppState {
         let mut inner = self.inner.lock().expect("AppState mutex poisoned");
         inner.backend = BackendState::Disconnected;
         inner.last_error = Some(message.into());
+        drop(inner);
+        let _ = self.changes.send(BackendState::Disconnected);
     }
 
     pub fn backend_state(&self) -> BackendState {
@@ -116,5 +132,16 @@ mod tests {
         state.set_error("bw command not found");
         assert_eq!(state.backend_state(), BackendState::Disconnected);
         assert_eq!(state.last_error().as_deref(), Some("bw command not found"));
+    }
+
+    #[tokio::test]
+    async fn subscribers_are_notified_on_state_change() {
+        let state = AppState::new();
+        let mut rx = state.subscribe();
+
+        state.set_unlocked();
+
+        rx.changed().await.expect("sender should still be alive");
+        assert_eq!(*rx.borrow(), BackendState::Unlocked);
     }
 }
