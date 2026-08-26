@@ -1,6 +1,6 @@
 [package]
 name = "bw-quickaccess-gui"
-version = "0.1.0"
+version = "1.0.0"
 description = "Menu-bar Quick Access GUI for Bitwarden (bw serve backend)"
 edition = "2021"
 
