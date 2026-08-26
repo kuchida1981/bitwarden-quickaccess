@@ -30,3 +30,10 @@ GitHub issue #65(アクション実行後のフィードバックメッセージ
 - `app/dist/i18n.js`: `copiedUsername` / `copiedPassword` / `copiedTotp` / `openedInBrowser` / `actionFailed` の削除
 - `app/src-tauri/src/popup.rs`, `commands.rs`: 本redesignにより、issue #65が問題としていた「非表示イベントに依存したフィードバック管理」自体が不要になるため、当初想定していたイベント配線の変更は不要になる見込み(詳細はdesign.md参照)。
 - 破壊的変更なし(ユーザー向けの見た目が変わるのみ。外部API・設定ファイルへの影響なし)。
+
+## 補足: 同梱した別件の修正(issue #92)
+
+この実装の実機確認中に、本changeとは無関係な regression が見つかったため同じブランチに同梱した。
+
+- `app/src-tauri/src/main.rs`: `fix_path_env()` が fish シェル環境で `PATH` を破壊し `bw` CLI を発見できなくなる不具合を修正(issue #92)。シェル内蔵の `$PATH` 変数展開ではなく `printenv PATH` を使う方式に変更。
+- この修正はJS側のUX変更とは独立しており、`credential-copy-actions` 等のspecには影響しない。
