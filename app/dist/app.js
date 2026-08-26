@@ -13,7 +13,7 @@ const emptyMessage = document.getElementById("empty-message");
 const feedback = document.getElementById("feedback");
 
 const SEARCH_DEBOUNCE_MS = 150;
-const SHORTCUT_HINTS = "⌘C ユーザー名 / ⌘⇧C パスワード / ⌥⌘C TOTP / Enter ブラウザで開く";
+let SHORTCUT_HINTS = "";
 const FEEDBACK_DISPLAY_MS = 700;
 
 let currentItems = [];
@@ -96,7 +96,7 @@ unlockForm.addEventListener("submit", async (event) => {
     searchBox.focus();
     await runSearch("");
   } catch (err) {
-    unlockError.textContent = typeof err === "string" ? err : "アンロックに失敗しました。";
+    unlockError.textContent = typeof err === "string" ? err : t("unlockFailed");
     passwordInput.value = "";
   } finally {
     unlockButton.disabled = false;
@@ -153,7 +153,7 @@ function handleActionShortcut(event) {
 
   if (event.key === "Enter") {
     event.preventDefault();
-    runAction(() => invoke("open_in_browser", { itemId: item.id }), "ブラウザで開きました");
+    runAction(() => invoke("open_in_browser", { itemId: item.id }), t("openedInBrowser"));
     return;
   }
 
@@ -169,13 +169,13 @@ function handleActionShortcut(event) {
       return;
     }
     event.preventDefault();
-    runAction(() => invoke("copy_field", { itemId: item.id, field: "username" }), "ユーザー名をコピーしました");
+    runAction(() => invoke("copy_field", { itemId: item.id, field: "username" }), t("copiedUsername"));
   } else if (event.shiftKey && !event.altKey) {
     event.preventDefault();
-    runAction(() => invoke("copy_field", { itemId: item.id, field: "password" }), "パスワードをコピーしました");
+    runAction(() => invoke("copy_field", { itemId: item.id, field: "password" }), t("copiedPassword"));
   } else if (event.altKey && !event.shiftKey) {
     event.preventDefault();
-    runAction(() => invoke("copy_field", { itemId: item.id, field: "totp" }), "TOTPコードをコピーしました");
+    runAction(() => invoke("copy_field", { itemId: item.id, field: "totp" }), t("copiedTotp"));
   }
 }
 
@@ -185,7 +185,7 @@ async function runAction(actionFn, successMessage) {
   try {
     await actionFn();
   } catch (err) {
-    message = typeof err === "string" ? err : "操作に失敗しました。";
+    message = typeof err === "string" ? err : t("actionFailed");
     ok = false;
   }
 
@@ -261,4 +261,7 @@ listen("popup-shown", () => {
   handleShown();
 });
 
-handleShown();
+initI18n().then(() => {
+  SHORTCUT_HINTS = t("shortcutHints");
+  handleShown();
+});
