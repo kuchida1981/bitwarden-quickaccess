@@ -1,9 +1,10 @@
 use std::sync::{Arc, Mutex};
 
 /// バックエンド(`bw serve`)とvaultのロック状態。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BackendState {
     /// `bw serve` が起動していない、またはクラッシュ・前提チェック失敗により未接続。
+    #[default]
     Disconnected,
     /// `bw serve` は起動しているが、vaultはロックされている。
     Locked,
@@ -13,7 +14,7 @@ pub enum BackendState {
 
 #[derive(Debug, Default)]
 struct Inner {
-    backend: Option<BackendState>,
+    backend: BackendState,
     port: Option<u16>,
     last_error: Option<String>,
 }
@@ -33,17 +34,13 @@ impl Default for AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(Mutex::new(Inner {
-                backend: Some(BackendState::Disconnected),
-                port: None,
-                last_error: None,
-            })),
+            inner: Arc::new(Mutex::new(Inner::default())),
         }
     }
 
     fn set(&self, backend: BackendState) {
         let mut inner = self.inner.lock().expect("AppState mutex poisoned");
-        inner.backend = Some(backend);
+        inner.backend = backend;
     }
 
     pub fn set_disconnected(&self) {
@@ -61,7 +58,7 @@ impl AppState {
     /// 前提チェック失敗等、致命的なエラーをDisconnectedとして記録する。
     pub fn set_error(&self, message: impl Into<String>) {
         let mut inner = self.inner.lock().expect("AppState mutex poisoned");
-        inner.backend = Some(BackendState::Disconnected);
+        inner.backend = BackendState::Disconnected;
         inner.last_error = Some(message.into());
     }
 
@@ -70,7 +67,6 @@ impl AppState {
             .lock()
             .expect("AppState mutex poisoned")
             .backend
-            .unwrap_or(BackendState::Disconnected)
     }
 
     pub fn last_error(&self) -> Option<String> {

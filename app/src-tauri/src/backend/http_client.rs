@@ -94,7 +94,19 @@ impl BwServeClient {
     }
 
     async fn get_envelope<T: DeserializeOwned>(&self, path: &str) -> Result<T, ClientError> {
-        let response = self.http.get(format!("{}{}", self.base_url, path)).send().await?;
+        self.get_envelope_with_query(path, &[]).await
+    }
+
+    async fn get_envelope_with_query<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &[(&str, &str)],
+    ) -> Result<T, ClientError> {
+        let mut req = self.http.get(format!("{}{}", self.base_url, path));
+        if !query.is_empty() {
+            req = req.query(query);
+        }
+        let response = req.send().await?;
         let text = response.text().await?;
         let envelope: ApiEnvelope<T> = serde_json::from_str(&text)?;
         if envelope.success {
@@ -148,21 +160,10 @@ impl BwServeClient {
     /// `/list/object/items?search=...` を叩き、アイテム一覧を返す。
     /// vaultがロックされている場合は `bw serve` のエラーメッセージがそのまま伝播する。
     pub async fn search_items(&self, query: &str) -> Result<Vec<VaultItemSummary>, ClientError> {
-        let response = self
-            .http
-            .get(format!("{}/list/object/items", self.base_url))
-            .query(&[("search", query)])
-            .send()
+        let list_data: ListData<VaultItemSummary> = self
+            .get_envelope_with_query("/list/object/items", &[("search", query)])
             .await?;
-        let text = response.text().await?;
-        let envelope: ApiEnvelope<ListData<VaultItemSummary>> = serde_json::from_str(&text)?;
-        if envelope.success {
-            Ok(envelope.data.map(|d| d.data).unwrap_or_default())
-        } else {
-            Err(ClientError::Api(
-                envelope.message.unwrap_or_else(|| "unknown error".to_string()),
-            ))
-        }
+        Ok(list_data.data)
     }
 
     /// `/object/item/{id}` を叩き、アイテム詳細(username/password/totp/uris)を返す。

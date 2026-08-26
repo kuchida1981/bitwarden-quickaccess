@@ -17,15 +17,20 @@ pub fn pick_free_port() -> io::Result<u16> {
     Ok(listener.local_addr()?.port())
 }
 
-/// `bw serve` を子プロセスとして起動する。標準入出力は継承せず破棄する。
-pub fn spawn_bw_serve(port: u16) -> io::Result<Child> {
-    Command::new("bw")
-        .args(["serve", "--hostname", "localhost", "--port", &port.to_string()])
+/// `bw serve` の起動用コマンドを組み立てる。
+pub fn build_bw_serve_command(port: u16) -> Command {
+    let mut cmd = Command::new("bw");
+    cmd.args(["serve", "--hostname", "localhost", "--port", &port.to_string()])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
+        .kill_on_drop(true);
+    cmd
+}
+
+/// `bw serve` を子プロセスとして起動する。標準入出力は継承せず破棄する。
+pub fn spawn_bw_serve(port: u16) -> io::Result<Child> {
+    build_bw_serve_command(port).spawn()
 }
 
 /// 起動中の `bw serve` プロセスへのハンドル。`shutdown()` で明示的に終了できる。
@@ -42,12 +47,12 @@ impl ProcessHandle {
     }
 }
 
-/// `bw serve` を起動し、監視タスクを立ち上げる。
-/// 子プロセスが予期せず終了した場合は `state` を `Disconnected` に更新する。
-/// 戻り値の `ProcessHandle::shutdown()` を呼ぶとプロセスを終了させ、
-/// この場合は監視タスクは `state` を更新しない(意図した終了のため)。
-pub fn spawn_supervised(port: u16, state: AppState) -> io::Result<(ProcessHandle, JoinHandle<()>)> {
-    let mut child = spawn_bw_serve(port)?;
+/// 指定された Command を起動し、監視タスクを立ち上げる。
+pub(crate) fn spawn_supervised_with_command(
+    mut command: Command,
+    state: AppState,
+) -> io::Result<(ProcessHandle, JoinHandle<()>)> {
+    let mut child = command.spawn()?;
     let (kill_tx, kill_rx) = oneshot::channel();
 
     let join_handle = tokio::spawn(async move {
@@ -70,6 +75,15 @@ pub fn spawn_supervised(port: u16, state: AppState) -> io::Result<(ProcessHandle
     ))
 }
 
+/// `bw serve` を起動し、監視タスクを立ち上げる。
+/// 子プロセスが予期せず終了した場合は `state` を `Disconnected` に更新する。
+/// 戻り値の `ProcessHandle::shutdown()` を呼ぶとプロセスを終了させ、
+/// この場合は監視タスクは `state` を更新しない(意図した終了のため)。
+pub fn spawn_supervised(port: u16, state: AppState) -> io::Result<(ProcessHandle, JoinHandle<()>)> {
+    let cmd = build_bw_serve_command(port);
+    spawn_supervised_with_command(cmd, state)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -86,29 +100,18 @@ mod tests {
 
     #[tokio::test]
     async fn crash_updates_state_to_disconnected() {
-        // `bw` の代わりに、少し待ってすぐ終了するダミープロセスを使う。
         let state = AppState::new();
         state.set_unlocked();
 
-        let mut child = Command::new("sh")
-            .args(["-c", "exit 0"])
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "exit 0"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .kill_on_drop(true)
-            .spawn()
-            .expect("failed to spawn dummy process");
+            .kill_on_drop(true);
 
-        let (_kill_tx, kill_rx) = oneshot::channel::<()>();
-        let state_clone = state.clone();
-        let join_handle = tokio::spawn(async move {
-            tokio::select! {
-                _ = child.wait() => {
-                    state_clone.set_disconnected();
-                }
-                _ = kill_rx => {}
-            }
-        });
+        let (_handle, join_handle) = spawn_supervised_with_command(cmd, state.clone())
+            .expect("failed to spawn supervised command");
 
         join_handle.await.expect("monitor task panicked");
         assert_eq!(state.backend_state(), BackendState::Disconnected);
@@ -119,32 +122,16 @@ mod tests {
         let state = AppState::new();
         state.set_unlocked();
 
-        let mut child = Command::new("sh")
-            .args(["-c", "sleep 5"])
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "sleep 5"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .kill_on_drop(true)
-            .spawn()
-            .expect("failed to spawn dummy process");
+            .kill_on_drop(true);
 
-        let (kill_tx, kill_rx) = oneshot::channel();
-        let state_clone = state.clone();
-        let join_handle = tokio::spawn(async move {
-            tokio::select! {
-                _ = child.wait() => {
-                    state_clone.set_disconnected();
-                }
-                _ = kill_rx => {
-                    let _ = child.start_kill();
-                    let _ = child.wait().await;
-                }
-            }
-        });
+        let (mut handle, join_handle) = spawn_supervised_with_command(cmd, state.clone())
+            .expect("failed to spawn supervised command");
 
-        let mut handle = ProcessHandle {
-            kill_tx: Some(kill_tx),
-        };
         handle.shutdown();
 
         tokio::time::timeout(Duration::from_secs(3), join_handle)

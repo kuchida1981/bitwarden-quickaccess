@@ -89,11 +89,27 @@ async fn start_backend(app_handle: tauri::AppHandle, state: AppState) {
 /// `bw serve` 子プロセスが確実に終了されるようにする。
 async fn wait_for_shutdown_signal() {
     use tokio::signal::unix::{signal, SignalKind};
-    let mut sigterm = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
-    let mut sigint = signal(SignalKind::interrupt()).expect("failed to install SIGINT handler");
-    tokio::select! {
-        _ = sigterm.recv() => {}
-        _ = sigint.recv() => {}
+    let sigterm = signal(SignalKind::terminate());
+    let sigint = signal(SignalKind::interrupt());
+
+    match (sigterm, sigint) {
+        (Ok(mut sigterm), Ok(mut sigint)) => {
+            tokio::select! {
+                _ = sigterm.recv() => {}
+                _ = sigint.recv() => {}
+            }
+        }
+        (sigterm_res, sigint_res) => {
+            eprintln!(
+                "警告: シグナルハンドラの登録に失敗しました (SIGTERM: {:?}, SIGINT: {:?})。\n\
+                 OSシグナルによる終了では子プロセス (bw serve) が正常に終了しない可能性があります。\n\
+                 アプリ内のトレイメニューなどから終了操作を行ってください。",
+                sigterm_res.err(),
+                sigint_res.err()
+            );
+            // 早期リターンによりアプリが即座に終了してしまうのを防ぐため、永久に待機する
+            std::future::pending::<()>().await;
+        }
     }
 }
 
