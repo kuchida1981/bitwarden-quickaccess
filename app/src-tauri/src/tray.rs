@@ -12,6 +12,7 @@ use bw_quickaccess_gui_lib::backend::state::{AppState, BackendState};
 const STATUS_ITEM_ID: &str = "status";
 const HOTKEY_STATUS_ITEM_ID: &str = "hotkey_status";
 const AUTOSTART_ITEM_ID: &str = "autostart";
+const LOCK_ITEM_ID: &str = "lock";
 const ABOUT_ITEM_ID: &str = "about";
 const REPO_LINK_ITEM_ID: &str = "repo_link";
 const QUIT_ITEM_ID: &str = "quit";
@@ -62,6 +63,14 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
         None::<&str>,
     )?;
 
+    let lock_item = MenuItem::with_id(
+        app,
+        LOCK_ITEM_ID,
+        m.lock_now_label,
+        initial == BackendState::Unlocked,
+        None::<&str>,
+    )?;
+
     let quit_item = MenuItem::with_id(app, QUIT_ITEM_ID, m.quit_label, true, None::<&str>)?;
 
     let about_item = MenuItem::with_id(
@@ -81,6 +90,7 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
             &hotkey_item,
             &PredefinedMenuItem::separator(app)?,
             &autostart_item,
+            &lock_item,
             &PredefinedMenuItem::separator(app)?,
             &about_item,
             &repo_link_item,
@@ -103,6 +113,14 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
                     eprintln!("リポジトリページを開けませんでした: {err}");
                 }
             }
+            LOCK_ITEM_ID => {
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(err) = crate::commands::lock(app_handle.state::<AppState>()).await {
+                        eprintln!("ロックに失敗しました: {err}");
+                    }
+                });
+            }
             AUTOSTART_ITEM_ID => {
                 let autolaunch = app.autolaunch();
                 let currently_enabled = autolaunch.is_enabled().unwrap_or(false);
@@ -124,10 +142,12 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
 
     let mut rx = state.subscribe();
     let status_item_for_task = status_item.clone();
+    let lock_item_for_task = lock_item.clone();
     tauri::async_runtime::spawn(async move {
         while rx.changed().await.is_ok() {
             let new_state = *rx.borrow();
             let _ = status_item_for_task.set_text(status_label(m, new_state));
+            let _ = lock_item_for_task.set_enabled(new_state == BackendState::Unlocked);
             if let Ok(image) = Image::from_bytes(icon_bytes_for(new_state)) {
                 let _ = tray.set_icon(Some(image));
             }

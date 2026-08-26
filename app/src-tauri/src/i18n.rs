@@ -48,6 +48,7 @@ pub struct Messages {
     /// `{}` に元のエラー(`err`)を埋め込むテンプレート
     pub hotkey_registration_failed: &'static str,
     pub autostart_label: &'static str,
+    pub lock_now_label: &'static str,
     pub quit_label: &'static str,
     pub repo_link_label: &'static str,
 }
@@ -60,6 +61,7 @@ pub const JA: Messages = Messages {
     hotkey_unregistered_prefix: "⚠ ホットキー未登録: {}",
     hotkey_registration_failed: "グローバルホットキー(Shift+Cmd+Space)の登録に失敗しました: {}\n他のアプリと衝突しているか、macOSのシステム設定 > プライバシーとセキュリティ > アクセシビリティ でこのアプリの権限が許可されていない可能性があります。",
     autostart_label: "ログイン時に自動起動",
+    lock_now_label: "今すぐロック",
     quit_label: "終了",
     repo_link_label: "GitHubリポジトリを開く",
 };
@@ -72,6 +74,7 @@ pub const EN: Messages = Messages {
     hotkey_unregistered_prefix: "⚠ Hotkey not registered: {}",
     hotkey_registration_failed: "Failed to register the global hotkey (Shift+Cmd+Space): {}\nIt may conflict with another app, or this app may not have Accessibility permission under System Settings > Privacy & Security > Accessibility.",
     autostart_label: "Launch at Login",
+    lock_now_label: "Lock Now",
     quit_label: "Quit",
     repo_link_label: "View on GitHub",
 };

@@ -111,6 +111,7 @@ fn main() {
             commands::get_lock_state,
             commands::get_backend_error,
             commands::get_ui_locale,
+            commands::lock,
             commands::unlock,
             commands::search_items,
             commands::copy_field,

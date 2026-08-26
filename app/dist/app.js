@@ -196,6 +196,11 @@ searchBox.addEventListener("keydown", (event) => {
     openHelp();
     return;
   }
+  if (event.metaKey && event.code === "KeyL") {
+    event.preventDefault();
+    performLock();
+    return;
+  }
   if (actionMenuOpen) {
     handleActionMenuKeydown(event);
     return;
@@ -388,6 +393,21 @@ function handleActionShortcut(event) {
     event.preventDefault();
     executeItemAction(item, "totp");
   }
+}
+
+// ⌘Lによる明示的ロック(design.md参照、issue #66)。ロック後はポップアップが
+// 表示されていれば即座にアンロック画面に切り替える。
+async function performLock() {
+  try {
+    await invoke("lock");
+  } catch {
+    return;
+  }
+  showScreen("unlock");
+  lastKnownScreen = "unlock";
+  passwordInput.value = "";
+  unlockError.textContent = "";
+  passwordInput.focus();
 }
 
 // 1Password Quick Accessに倣い、入力受付の合図としてフォーカス行を点滅させ、
