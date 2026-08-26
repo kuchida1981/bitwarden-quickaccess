@@ -29,5 +29,5 @@
 
 ## 6. 最終確認
 
-- [ ] 6.1 `openspec/specs/` 配下の該当capability(本changeのspecsで REMOVED としたもの)が正しく反映されることを `/opsx:archive` 実行時に確認する(archive実行時に確認予定)
+- [x] 6.1 `openspec/specs/` 配下の該当capability(本changeのspecsで REMOVED としたもの)が正しく反映されることを `/opsx:archive` 実行時に確認する(spec sync実行済み。該当10capabilityのspecを削除し `openspec validate --all --strict` で全通過を確認済み)
 - [ ] 6.2 クリーンな環境(またはクリーンなgit worktree)で `git clone` + `tauri build` によるセルフビルド手順がREADME記載通りに動作することを確認する(現在の作業ツリー上で `cargo tauri build` の成功と `.app` バンドル生成・バージョン反映は確認済み。完全にクリーンな `git clone` からの検証はユーザー確認待ち)
