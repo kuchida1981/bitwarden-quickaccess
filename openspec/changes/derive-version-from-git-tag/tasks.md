@@ -7,12 +7,12 @@
 
 ## 2. リリースワークフローの簡素化
 
-- [x] 2.1 `.github/workflows/release.yml` から「Sync Cargo.toml version with the release tag」ステップを削除する。
+- [x] ~~2.1 `.github/workflows/release.yml` から「Sync Cargo.toml version with the release tag」ステップを削除する。~~ **訂正(コードレビューで発覚)**: このステップは削除せず維持する。`Cargo.toml`の`version`はアプリバンドルのメタデータ(Info.plist)の情報源でもあり、削除するとバンドル自体のバージョンが将来のリリースすべてで固定されてしまう。詳細はdesign.md参照。
 - [x] 2.2 同ファイルの `actions/checkout@v4` ステップに `fetch-depth: 0` を追加し、タグ情報を確実に取得できるようにする。
 
 ## 3. ドキュメント更新
 
-- [x] 3.1 `CONTRIBUTING.md` のリリース手順から、「Cargo.tomlはビルド用チェックアウト内でのみタグから同期される」という記述を、「バージョンはビルド時に`git describe`から動的に導出されるため、`Cargo.toml`の更新もCI側での同期も一切不要」という趣旨に更新する。
+- [x] 3.1 `CONTRIBUTING.md` のリリース手順を、「Cargo.tomlの同期(アプリバンドルのメタデータ用)は引き続き行われる」「トレイメニューの表示はgit describeから別経路で導出される」の両方が分かるように更新する(2.1の訂正を反映)。
 
 ## 4. 動作確認
 
