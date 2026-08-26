@@ -21,5 +21,5 @@
 
 ## 4. 動作確認・仕上げ
 
-- [x] 4.1 実機で `brew tap kuchida1981/bitwarden-quickaccess && brew install --cask bw-quickaccess` を実行し、`/Applications` にアプリがインストールされることを確認する(2.4で実施済み)。ただし無署名アプリのGatekeeperバイパス(Finderでの右クリック→開く、のダイアログ操作)はClaude Codeでは実行できないため、実際に起動できるかの最終確認はユーザーにお願いする
+- [x] 4.1 実機で `brew tap kuchida1981/bitwarden-quickaccess && brew install --cask bw-quickaccess` を実行し、`/Applications` にアプリがインストールされ起動できることを確認する(2.4でインストール、Gatekeeperバイパスを含む起動確認はユーザーが実施。起動成功を確認済み)
 - [x] 4.2 `specs/homebrew-distribution/spec.md` の各シナリオ(README記載内容)が満たされていることを確認する
