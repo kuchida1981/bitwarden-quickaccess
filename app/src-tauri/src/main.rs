@@ -3,6 +3,7 @@
 
 mod commands;
 mod hotkey;
+mod i18n;
 mod popup;
 mod tray;
 
