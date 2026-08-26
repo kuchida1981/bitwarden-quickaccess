@@ -14,7 +14,7 @@
 gh release create vX.Y.Z --title "vX.Y.Z" --notes "..."
 ```
 
-`Cargo.toml` の `version` を事前に手動で書き換える必要はない。`.github/workflows/release.yml` がビルド時にリリースタグから自動でバージョンを同期する(「Sync Cargo.toml version with the release tag」ステップ)。この同期はビルド用のチェックアウト内でのみ行われ、mainブランチへのコミットは発生しない(ブランチ保護によりCIから直接pushできないため)。
+`Cargo.toml` の `version` を事前に手動で書き換える必要はない。バージョンはビルド時に `git describe` から動的に導出されるため、`Cargo.toml` の更新もCI側での同期も一切不要である。
 
 リリースノートは過去のリリース(`gh release view v1.1.0 --json body` 等で参照可能)の構成に合わせる: 新機能・バグ修正・インストール方法・対象OSのセクションに分ける。
 
