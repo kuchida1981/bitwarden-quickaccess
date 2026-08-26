@@ -94,8 +94,22 @@ mod tests {
     fn pick_free_port_returns_a_bindable_port() {
         let port = pick_free_port().expect("should find a free port");
         assert!(port > 0);
+
         // 割り当てられたポートに実際にbindできることを確認する。
-        TcpListener::bind(("127.0.0.1", port)).expect("port should be free again");
+        // cargo testはテストごとに別スレッドで並行実行されるため、他のテスト
+        // (http_clientのモックサーバ等)が同じ一時ポートを一瞬先に奪うことが
+        // まれにある。数回リトライして本当に恒常的な失敗のみを検出する。
+        let mut last_err = None;
+        for attempt in 0..5 {
+            match TcpListener::bind(("127.0.0.1", port)) {
+                Ok(_) => return,
+                Err(err) => {
+                    last_err = Some(err);
+                    std::thread::sleep(Duration::from_millis(20 * (attempt + 1)));
+                }
+            }
+        }
+        panic!("port should be free again: {last_err:?}");
     }
 
     #[tokio::test]

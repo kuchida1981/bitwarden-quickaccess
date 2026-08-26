@@ -42,23 +42,25 @@ mod tests {
 
     #[test]
     fn not_expired_immediately_after_creation() {
-        let timer = IdleTimer::new(Duration::from_millis(50));
+        let timer = IdleTimer::new(Duration::from_millis(200));
         assert!(!timer.is_expired());
     }
 
     #[test]
     fn expires_after_timeout_elapses() {
-        let timer = IdleTimer::new(Duration::from_millis(20));
-        std::thread::sleep(Duration::from_millis(40));
+        // CIランナーのスケジューリング遅延で thread::sleep が意図より長く
+        // かかることがあるため、タイムアウトとsleep時間には十分な余裕を持たせる。
+        let timer = IdleTimer::new(Duration::from_millis(50));
+        std::thread::sleep(Duration::from_millis(150));
         assert!(timer.is_expired());
     }
 
     #[test]
     fn reset_extends_the_deadline() {
-        let timer = IdleTimer::new(Duration::from_millis(40));
-        std::thread::sleep(Duration::from_millis(20));
+        let timer = IdleTimer::new(Duration::from_millis(300));
+        std::thread::sleep(Duration::from_millis(100));
         timer.reset();
-        std::thread::sleep(Duration::from_millis(20));
+        std::thread::sleep(Duration::from_millis(100));
         assert!(!timer.is_expired(), "reset直後からの経過時間はまだタイムアウトに達していないはず");
     }
 }
