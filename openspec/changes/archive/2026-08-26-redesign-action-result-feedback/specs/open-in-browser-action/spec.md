@@ -1,10 +1,4 @@
-# open-in-browser-action
-
-## Purpose
-
-検索結果一覧でフォーカスされている行に対し、`Enter` キー押下でそのアイテムのURL(`login.uris[0].uri`)をデフォルトブラウザで開く機能を提供する。1Password Quick Access相当の体験の一部として、URLを持つログインアイテムへの素早いアクセスを可能にする。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Enterキーによるブラウザ起動
 一覧の行にフォーカスがある状態で `Enter` が押下された場合、そのアイテムのURL(`login.uris` の先頭要素)がデフォルトブラウザで開かれなければならない(SHALL)。ブラウザが開かれた後、フォーカス行の点滅を経てクイックアクセスを閉じなければならない(SHALL)。

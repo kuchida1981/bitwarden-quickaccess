@@ -158,27 +158,23 @@ body {
   opacity: 0.6;
 }
 
-#feedback {
-  display: none;
-  margin: 0 10px 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  text-align: center;
+@keyframes flash {
+  0%, 100% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.3;
+  }
 }
 
-#feedback.visible {
-  display: block;
-}
-
-#feedback.ok {
-  background: #e6f4ea;
-  color: #137333;
-}
-
-#feedback.error {
-  background: #fce8e6;
-  color: #c5221f;
+#results li.flash {
+  animation: flash 0.35s ease-in-out;
 }
 
 #help-overlay {

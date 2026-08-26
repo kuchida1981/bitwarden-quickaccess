@@ -10,19 +10,16 @@ const unlockButton = unlockForm.querySelector("button");
 const searchBox = document.getElementById("search-box");
 const resultsList = document.getElementById("results");
 const emptyMessage = document.getElementById("empty-message");
-const feedback = document.getElementById("feedback");
 const helpOverlay = document.getElementById("help-overlay");
 
 const SEARCH_DEBOUNCE_MS = 150;
 let SHORTCUT_HINTS = "";
-const FEEDBACK_DISPLAY_MS = 700;
 
 let currentItems = [];
 let focusedIndex = -1;
 let debounceTimer = null;
 let searchRequestId = 0;
 let lastKnownScreen = "unlock";
-let hidePopupTimer = null;
 
 let actionMenuOpen = false;
 let actionMenuActions = [];
@@ -33,17 +30,27 @@ let helpOpen = false;
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
   searchScreen.classList.toggle("active", name === "search");
-  feedback.textContent = "";
-  feedback.className = "";
 }
 
-function showFeedback(message, ok) {
-  feedback.textContent = message;
-  feedback.className = ok ? "visible ok" : "visible error";
+// フォーカス行を点滅させるヘルパー(design.md 決定1)。
+// アニメーション完了後に自動でクラスを外す(tasks 1.2)。
+function flashRow(element) {
+  return new Promise((resolve) => {
+    if (!element) {
+      resolve();
+      return;
+    }
+    const onEnd = () => {
+      element.removeEventListener("animationend", onEnd);
+      element.classList.remove("flash");
+      resolve();
+    };
+    element.addEventListener("animationend", onEnd, { once: true });
+    element.classList.add("flash");
+  });
 }
 
 async function handleShown() {
-  clearTimeout(hidePopupTimer);
   actionMenuOpen = false;
   actionMenuActions = [];
   actionMenuFocusIndex = -1;
@@ -289,16 +296,16 @@ function executeItemAction(item, key) {
   }
   switch (key) {
     case "username":
-      runAction(() => invoke("copy_field", { itemId: item.id, field: "username" }), t("copiedUsername"));
+      runAction(() => invoke("copy_field", { itemId: item.id, field: "username" }));
       break;
     case "password":
-      runAction(() => invoke("copy_field", { itemId: item.id, field: "password" }), t("copiedPassword"));
+      runAction(() => invoke("copy_field", { itemId: item.id, field: "password" }));
       break;
     case "totp":
-      runAction(() => invoke("copy_field", { itemId: item.id, field: "totp" }), t("copiedTotp"));
+      runAction(() => invoke("copy_field", { itemId: item.id, field: "totp" }));
       break;
     case "browser":
-      runAction(() => invoke("open_in_browser", { itemId: item.id }), t("openedInBrowser"));
+      runAction(() => invoke("open_in_browser", { itemId: item.id }));
       break;
     default:
       break;
@@ -342,24 +349,23 @@ function handleActionShortcut(event) {
   }
 }
 
-async function runAction(actionFn, successMessage) {
-  let message = successMessage;
+// 1Password Quick Accessに倣い、入力受付の合図としてフォーカス行を点滅させ、
+// 成功時のみポップアップを閉じる(design.md 決定1・2)。失敗時は閉じずに検索画面にとどまる。
+async function runAction(actionFn) {
+  const focusedEl = resultsList.children[focusedIndex];
+  const flashPromise = flashRow(focusedEl);
   let ok = true;
   try {
     await actionFn();
-  } catch (err) {
-    message = typeof err === "string" ? err : t("actionFailed");
+  } catch {
     ok = false;
   }
 
-  showFeedback(message, ok);
+  await flashPromise;
 
-  // 1Password Quick Accessと同様、成功/失敗にかかわらずアクション実行後は
-  // 短いフィードバック表示を挟んでポップアップを閉じる(design.md 決定3)。
-  clearTimeout(hidePopupTimer);
-  hidePopupTimer = setTimeout(() => {
+  if (ok) {
     invoke("hide_popup").catch(() => {});
-  }, FEEDBACK_DISPLAY_MS);
+  }
 }
 
 async function runSearch(query) {
