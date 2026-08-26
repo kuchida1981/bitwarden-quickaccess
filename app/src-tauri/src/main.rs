@@ -28,7 +28,8 @@ struct ManagedProcess(Mutex<Option<process::ProcessHandle>>);
 fn main() {
     let app_state = AppState::new();
     let idle_timer = IdleTimer::new(DEFAULT_IDLE_TIMEOUT);
-
+    let lang = i18n::resolve_lang();
+ 
     let app = tauri::Builder::default()
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -47,9 +48,11 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(app_state)
         .manage(idle_timer)
+        .manage(lang)
         .manage(ManagedProcess(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::get_lock_state,
+            commands::get_ui_locale,
             commands::unlock,
             commands::search_items,
             commands::copy_field,

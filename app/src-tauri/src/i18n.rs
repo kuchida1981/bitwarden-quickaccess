@@ -1,4 +1,3 @@
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang {
     Ja,
@@ -23,7 +22,6 @@ fn lang_from_locale_str(locale: &str) -> Lang {
     }
 }
 
-#[allow(dead_code)]
 pub fn resolve_lang() -> Lang {
     if let Some(lang) = parse_lang_override(std::env::var("BWQA_LANG").ok()) {
         return lang;

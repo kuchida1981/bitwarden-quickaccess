@@ -25,6 +25,14 @@ pub fn get_lock_state(state: tauri::State<'_, AppState>) -> &'static str {
     }
 }
 
+#[tauri::command]
+pub fn get_ui_locale(lang: tauri::State<'_, crate::i18n::Lang>) -> &'static str {
+    match *lang {
+        crate::i18n::Lang::Ja => "ja",
+        crate::i18n::Lang::En => "en",
+    }
+}
+
 /// アンロックフォームの送信から呼ばれる。成功時はアプリ内部状態も更新する。
 #[tauri::command]
 pub async fn unlock(
