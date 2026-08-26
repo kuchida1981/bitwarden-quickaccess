@@ -12,8 +12,8 @@
 
 ## 3. 不要になったi18n文字列の削除
 
-- [ ] 3.1 `app/dist/i18n.js` から `copiedUsername` / `copiedPassword` / `copiedTotp` / `openedInBrowser` / `actionFailed` の日英エントリを削除する。
-- [ ] 3.2 `app.js` 内でこれらのキーを参照していた箇所(`executeItemAction`, `runAction`)が新しい実装で参照しなくなっていることを確認する。
+- [x] 3.1 `app/dist/i18n.js` から `copiedUsername` / `copiedPassword` / `copiedTotp` / `openedInBrowser` / `actionFailed` の日英エントリを削除する。
+- [x] 3.2 `app.js` 内でこれらのキーを参照していた箇所(`executeItemAction`, `runAction`)が新しい実装で参照しなくなっていることを確認する。
 
 ## 4. 動作確認
 
