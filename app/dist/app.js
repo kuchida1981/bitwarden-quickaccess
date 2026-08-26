@@ -53,13 +53,12 @@ function flashRow(element) {
   });
 }
 
-// エラー画面表示時のメッセージ取得。取得失敗時は空のままにする。
-async function showBackendError() {
+// バックエンド接続エラーのメッセージ取得。取得失敗時は空文字を返す。
+async function fetchBackendError() {
   try {
-    const err = await invoke("get_backend_error");
-    errorMessage.textContent = err || "";
+    return (await invoke("get_backend_error")) || "";
   } catch {
-    errorMessage.textContent = "";
+    return "";
   }
 }
 
@@ -85,14 +84,24 @@ async function handleShown() {
     // 取得に失敗した場合はアンロックフォーム側にフォールバックする
   }
 
-  const actualScreen = lockState === "unlocked" ? "search" : lockState === "locked" ? "unlock" : "error";
+  // disconnectedはバックエンド起動直後(preflight/bw serve接続確認中)にも
+  // 一時的に取り得る状態で、その間はまだlast_errorが記録されていない。
+  // 実際にエラーメッセージが記録されている場合のみ専用のエラー画面を表示し、
+  // それ以外(起動中の一時的なdisconnected)は従来通りアンロック画面に
+  // フォールバックする(issue #79の対象は「エラーが起きて放置される」ケース)。
+  let backendError = "";
+  if (lockState === "disconnected") {
+    backendError = await fetchBackendError();
+  }
+  const actualScreen =
+    lockState === "unlocked" ? "search" : lockState === "locked" || !backendError ? "unlock" : "error";
 
   if (actualScreen === lastKnownScreen) {
     if (actualScreen === "search") {
       searchBox.value = "";
       await runSearch("");
     } else if (actualScreen === "error") {
-      await showBackendError();
+      errorMessage.textContent = backendError;
     }
   } else {
     showScreen(actualScreen);
@@ -105,7 +114,7 @@ async function handleShown() {
       unlockError.textContent = "";
       passwordInput.focus();
     } else if (actualScreen === "error") {
-      await showBackendError();
+      errorMessage.textContent = backendError;
     }
   }
 

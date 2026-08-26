@@ -22,6 +22,7 @@
   - シグネチャ: `fn get_backend_error(state: tauri::State<'_, AppState>) -> Option<String>`
 - **エラーメッセージの文言はそのまま(未加工)で表示する**。既存の `unlockError`(アンロック失敗時)も同様にRust側の生の文字列をそのまま表示しており、一貫した方式とする。
 - **`handleShown()` の画面判定を3値のswitch的分岐にする**: `"unlocked"` → `"search"`、`"locked"` → `"unlock"`、それ以外(`"disconnected"`)→ `"error"`。
+- **`disconnected` かつ `last_error` が空の場合はエラー画面ではなくアンロック画面にフォールバックする**(実機確認で発覚)。`disconnected` はpreflight/`bw serve`起動確認が完了する前の起動直後にも一時的に取り得る状態であり、この間はまだ `last_error` が記録されていない。この一時的な状態でエラー画面(メッセージが空欄)を出してしまうと、`bw` が正常でも起動直後にポップアップを開いただけで空のエラー画面が表示される回帰を生む。エラー画面は「実際にエラーメッセージが記録されている場合」に限定することで、本来解決したい「エラーが起きて放置される」ケースのみを対象にする。
 
 ## Risks / Trade-offs
 

@@ -29,4 +29,6 @@ GitHub issue #79: `bw`(Bitwarden CLI)が未インストール・`bw serve`未対
 - `app/dist/index.html`: `#error-screen` セクションの追加
 - `app/dist/app.js`: `showScreen()`, `handleShown()` の3値分岐対応
 - `app/dist/i18n.js`: エラー画面の見出し文言(日英)の追加
+- `app/dist/style.css`: `#error-screen` のレイアウト(中央寄せ・余白)を `#unlock-screen` に合わせて追加
+- `app/src-tauri/src/backend/process.rs`: `bw serve` プロセスがセッション中に予期せずクラッシュした場合も `last_error` にメッセージを記録するよう修正(コードレビューで発覚)
 - 破壊的変更なし。`get_lock_state` の既存の戻り値・呼び出し元への影響なし(新規コマンド追加のみ)。
