@@ -151,7 +151,10 @@ function handleActionShortcut(event) {
     return;
   }
 
-  if (!event.metaKey || event.key.toLowerCase() !== "c") {
+  // event.key ではなく event.code(物理キー位置)で判定する。
+  // macOSではOptionキーを押しながら文字キーを押すと、event.key の値が
+  // 合成された特殊文字(例: Option+C -> "ç")になり、"c" と一致しなくなるため。
+  if (!event.metaKey || event.code !== "KeyC") {
     return;
   }
 
