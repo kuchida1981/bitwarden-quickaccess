@@ -121,6 +121,7 @@ pub fn hide_popup(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window(popup::POPUP_LABEL) {
         let _ = window.hide();
     }
+    popup::restore_previous_focus(&app);
 }
 
 #[cfg(test)]
