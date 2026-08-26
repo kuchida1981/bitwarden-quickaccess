@@ -68,6 +68,10 @@ Click the tray icon to see the current lock status, whether the global hotkey re
 
 The vault automatically re-locks after 15 minutes of inactivity (no search, copy, or browser-open actions). This mirrors the previous TUI's session TTL behavior. There is currently no UI to change this timeout.
 
+### Language
+
+The UI text (menu bar, popup) follows your macOS system language: Japanese if your system language is Japanese, English otherwise. There is no in-app language switcher; changing the system language requires an app restart to take effect.
+
 ## Migrating from the old TUI
 
 The previous terminal-based tool (`bin/bw-quickaccess`, installed via `install.sh`) has been removed from this repository as of this GUI rewrite. If you previously installed it via the `curl` one-liner, it is **not automatically removed** — delete it manually:
@@ -84,5 +88,5 @@ Then install the new GUI app using one of the options above.
 
 - Linux support (planned for a future release)
 - Code signing / notarization
-- In-app localization (the UI text is currently Japanese-only; no language switching)
+- In-app language switcher (the UI language follows the macOS system language; see [Language](#language))
 - Configurable idle-lock timeout or hotkey remapping
