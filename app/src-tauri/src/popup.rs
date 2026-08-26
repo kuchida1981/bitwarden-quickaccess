@@ -14,7 +14,7 @@ const TOP_MARGIN: f64 = 80.0;
 /// プレースホルダ内容のポップアップウィンドウを、非表示状態・画面上部中央の位置で作成する。
 /// 中身の検索UIは後続change(`quickaccess-search-ui`)で実装する。
 pub fn create_popup_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let mut builder = WebviewWindowBuilder::new(app, POPUP_LABEL, WebviewUrl::App("index.html".into()))
+    let builder = WebviewWindowBuilder::new(app, POPUP_LABEL, WebviewUrl::App("index.html".into()))
         .title("bw-quickaccess")
         .inner_size(WIDTH, HEIGHT)
         .resizable(false)
@@ -23,13 +23,6 @@ pub fn create_popup_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         .skip_taskbar(true)
         .visible(false)
         .focused(false);
-
-    if let Ok(Some(monitor)) = app.primary_monitor() {
-        let scale = monitor.scale_factor();
-        let monitor_size = monitor.size().to_logical::<f64>(scale);
-        let x = ((monitor_size.width - WIDTH) / 2.0).max(0.0);
-        builder = builder.position(x, TOP_MARGIN);
-    }
 
     let window = builder.build()?;
 
@@ -43,6 +36,40 @@ pub fn create_popup_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     Ok(window)
 }
 
+/// モニターの物理座標系での位置・サイズ・スケールから、ポップアップウィンドウを
+/// 表示すべきlogical座標(中央上部)を計算する。`Monitor`型に依存しない
+/// 純粋関数にすることで単体テスト可能にする。
+fn popup_position_for_monitor(
+    monitor_position_physical: (i32, i32),
+    monitor_size_physical: (u32, u32),
+    scale_factor: f64,
+) -> (f64, f64) {
+    let position = tauri::PhysicalPosition::new(monitor_position_physical.0, monitor_position_physical.1)
+        .to_logical::<f64>(scale_factor);
+    let size = tauri::PhysicalSize::new(monitor_size_physical.0, monitor_size_physical.1)
+        .to_logical::<f64>(scale_factor);
+    let x = position.x + ((size.width - WIDTH) / 2.0).max(0.0);
+    let y = position.y + TOP_MARGIN;
+    (x, y)
+}
+
+/// ホットキー押下時点のカーソル位置が属するディスプレイの中央上部の座標を返す。
+/// カーソル位置の取得、またはそこからのディスプレイ特定に失敗した場合は
+/// `primary_monitor()` にフォールバックする(design.md 決定1)。
+fn compute_popup_position(app: &AppHandle) -> Option<(f64, f64)> {
+    let monitor = app
+        .cursor_position()
+        .ok()
+        .and_then(|pos| app.monitor_from_point(pos.x, pos.y).ok().flatten())
+        .or_else(|| app.primary_monitor().ok().flatten())?;
+
+    Some(popup_position_for_monitor(
+        (monitor.position().x, monitor.position().y),
+        (monitor.size().width, monitor.size().height),
+        monitor.scale_factor(),
+    ))
+}
+
 /// ポップアップウィンドウの表示/非表示をトグルする。ホットキー押下時に呼ばれる。
 pub fn toggle_popup(app: &AppHandle) {
     let Some(window) = app.get_webview_window(POPUP_LABEL) else {
@@ -53,8 +80,36 @@ pub fn toggle_popup(app: &AppHandle) {
     if is_visible {
         let _ = window.hide();
     } else {
+        if let Some((x, y)) = compute_popup_position(app) {
+            let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+        }
         let _ = window.show();
         let _ = window.set_focus();
         let _ = window.emit(POPUP_SHOWN_EVENT, ());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_popup_position_primary_monitor() {
+        let pos = popup_position_for_monitor((0, 0), (1920, 1080), 1.0);
+        assert_eq!(pos, (750.0, 80.0));
+    }
+
+    #[test]
+    fn test_popup_position_external_monitor() {
+        let pos = popup_position_for_monitor((1920, 0), (1920, 1080), 1.0);
+        assert_eq!(pos, (2670.0, 80.0));
+    }
+
+    #[test]
+    fn test_popup_position_retina_monitor() {
+        // 物理位置(0, 0), 物理サイズ(3840, 2160), スケール 2.0 の場合
+        // 論理位置(0, 0), 論理サイズ(1920, 1080) になるため、結果は (750.0, 80.0) になるはず
+        let pos = popup_position_for_monitor((0, 0), (3840, 2160), 2.0);
+        assert_eq!(pos, (750.0, 80.0));
     }
 }
