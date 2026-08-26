@@ -1,14 +1,14 @@
 ## 1. 点滅アニメーションの実装
 
-- [ ] 1.1 `app/dist/style.css` に、フォーカス行(`li.focused`)向けの点滅アニメーション用クラス(例: `.flash`)を追加する。既存の `#feedback` 関連スタイル(`ok`/`error`/`visible`)は削除する。
-- [ ] 1.2 `app/dist/app.js` に、指定した `<li>` 要素へ点滅クラスを付与し、アニメーション終了後(`animationend` またはアニメーション時間に合わせた `setTimeout`)に自動でクラスを外すヘルパー関数を実装する。
+- [x] 1.1 `app/dist/style.css` に、フォーカス行(`li.focused`)向けの点滅アニメーション用クラス(例: `.flash`)を追加する。既存の `#feedback` 関連スタイル(`ok`/`error`/`visible`)は削除する。
+- [x] 1.2 `app/dist/app.js` に、指定した `<li>` 要素へ点滅クラスを付与し、アニメーション終了後(`animationend` またはアニメーション時間に合わせた `setTimeout`)に自動でクラスを外すヘルパー関数を実装する。
 
 ## 2. アクション結果ハンドリングの置き換え
 
-- [ ] 2.1 `runAction`(`app.js:345-363`)を、`showFeedback` 呼び出しと `hidePopupTimer` による700ms後の自動 `hide_popup` 呼び出しを廃止し、1.2 の点滅ヘルパーを呼び出す形に置き換える。
-- [ ] 2.2 点滅アニメーション完了後、アクションが成功していれば `invoke("hide_popup")` を呼ぶ。失敗していれば何も呼ばず、検索画面のフォーカス・検索結果をそのまま維持する。
-- [ ] 2.3 `showFeedback` 関数、`feedback` DOM参照、`FEEDBACK_DISPLAY_MS` 定数など、不要になったコードを削除する。
-- [ ] 2.4 `app/dist/index.html` から `#feedback` 要素を削除する。
+- [x] 2.1 `runAction`(`app.js:345-363`)を、`showFeedback` 呼び出しと `hidePopupTimer` による700ms後の自動 `hide_popup` 呼び出しを廃止し、1.2 の点滅ヘルパーを呼び出す形に置き換える。
+- [x] 2.2 点滅アニメーション完了後、アクションが成功していれば `invoke("hide_popup")` を呼ぶ。失敗していれば何も呼ばず、検索画面のフォーカス・検索結果をそのまま維持する。
+- [x] 2.3 `showFeedback` 関数、`feedback` DOM参照、`FEEDBACK_DISPLAY_MS` 定数など、不要になったコードを削除する。
+- [x] 2.4 `app/dist/index.html` から `#feedback` 要素を削除する。
 
 ## 3. 不要になったi18n文字列の削除
 
