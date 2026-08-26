@@ -27,6 +27,11 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
+
       - name: Build and upload the macOS app to the release
         uses: tauri-apps/tauri-action@v0
         env:
