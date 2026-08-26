@@ -3,9 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <title>bw-quickaccess</title>
+    <link rel="stylesheet" href="style.css" />
   </head>
-  <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;color:#666;background:#fff;">
-    <!-- placeholder: 検索UIは quickaccess-search-ui change で実装する -->
-    <p>bw-quickaccess (placeholder popup)</p>
+  <body>
+    <section id="unlock-screen" class="screen">
+      <h1>bw-quickaccess</h1>
+      <form id="unlock-form">
+        <input
+          id="master-password"
+          type="password"
+          placeholder="マスターパスワード"
+          autocomplete="current-password"
+        />
+        <button type="submit">アンロック</button>
+        <div id="unlock-error"></div>
+      </form>
+    </section>
+
+    <section id="search-screen" class="screen">
+      <input id="search-box" type="text" placeholder="検索..." autocomplete="off" />
+      <ul id="results"></ul>
+      <div id="empty-message">アイテムが見つかりません</div>
+    </section>
+
+    <script src="app.js"></script>
   </body>
 </html>
