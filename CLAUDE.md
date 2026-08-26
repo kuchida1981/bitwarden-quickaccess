@@ -220,8 +220,8 @@ Bash ツールの `timeout` パラメータも併用し、agy プロセスが応
    → アーカイブと spec sync のコミットを PR に含める
 
 6. CI 確認 (Claude Code)
-   `.github/workflows/ci.yml` により push/PR ごとに CI(macos-latest / ubuntu-latest で
-   構文チェック・shellcheck・bats テスト)が実行される。
+   `.github/workflows/ci.yml` により push/PR ごとに CI(macos-latest 上で
+   `cargo build` / `cargo test` / `cargo clippy --all-targets -- -D warnings`)が実行される。
    PR 作成後は以下のコマンドで結果を待ち、失敗があれば修正してプッシュする:
    gh pr checks --watch
 ```
@@ -238,8 +238,9 @@ Bash ツールの `timeout` パラメータも併用し、agy プロセスが応
 ### pre-commit / CI ルール
 
 CI ワークフロー(`.github/workflows/ci.yml`)は設定済み。push/PR ごとに
-macos-latest / ubuntu-latest 上で構文チェック(`bash -n`)・`shellcheck`・
-`bats test/lib/*.bats` が実行される。pre-commit フックは現時点で未設定。
+macos-latest 上で `cargo build` / `cargo test` / `cargo clippy --all-targets -- -D warnings`
+が実行される(GUI書き換え以降、Linux向けジョブ・shellcheck・bats は対象外)。
+pre-commit フックは現時点で未設定。
 今後 pre-commit フックを追加した場合も以下を厳守する:
 
 **pre-commit のスキップ禁止**
