@@ -146,11 +146,7 @@ unlockForm.addEventListener("submit", async (event) => {
 
   try {
     await invoke("unlock", { password });
-    showScreen("search");
-    lastKnownScreen = "search";
-    searchBox.value = "";
-    searchBox.focus();
-    await runSearch("");
+    await syncScreenWithBackend();
   } catch (err) {
     unlockError.textContent = typeof err === "string" ? err : t("unlockFailed");
     passwordInput.value = "";
@@ -415,11 +411,7 @@ async function performLock() {
   } catch {
     return;
   }
-  showScreen("unlock");
-  lastKnownScreen = "unlock";
-  passwordInput.value = "";
-  unlockError.textContent = "";
-  passwordInput.focus();
+  await syncScreenWithBackend();
 }
 
 // 1Password Quick Accessに倣い、入力受付の合図としてフォーカス行を点滅させ、
