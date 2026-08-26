@@ -53,6 +53,15 @@ pub async fn unlock(
     Ok(())
 }
 
+/// トレイメニューの「今すぐロック」項目、および検索画面のショートカット(⌘L)から呼ばれる。
+#[tauri::command]
+pub async fn lock(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let client = client_for(&state)?;
+    client.lock().await.map_err(|err| err.to_string())?;
+    state.set_locked();
+    Ok(())
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct SearchResultItem {
     pub id: String,

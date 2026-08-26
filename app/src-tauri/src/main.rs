@@ -16,7 +16,7 @@ use bw_quickaccess_gui_lib::backend::{
     preflight, process,
     state::{AppState, BackendState},
 };
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 /// アイドルタイマーの期限切れをチェックする間隔。タイムアウト(既定15分)に比べ
@@ -111,6 +111,7 @@ fn main() {
             commands::get_lock_state,
             commands::get_backend_error,
             commands::get_ui_locale,
+            commands::lock,
             commands::unlock,
             commands::search_items,
             commands::copy_field,
@@ -141,6 +142,19 @@ fn main() {
             let idle_for_watcher = app.state::<IdleTimer>().inner().clone();
             tauri::async_runtime::spawn(async move {
                 watch_idle_timeout(state_for_idle, idle_for_watcher).await;
+            });
+
+            let state_for_popup_notify = app.state::<AppState>().inner().clone();
+            let app_handle_for_popup_notify = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mut rx = state_for_popup_notify.subscribe();
+                while rx.changed().await.is_ok() {
+                    if let Some(window) = app_handle_for_popup_notify.get_webview_window(popup::POPUP_LABEL) {
+                        if window.is_visible().unwrap_or(false) {
+                            let _ = window.emit(popup::BACKEND_STATE_CHANGED_EVENT, ());
+                        }
+                    }
+                }
             });
 
             Ok(())

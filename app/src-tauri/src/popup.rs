@@ -10,6 +10,13 @@ pub const POPUP_LABEL: &str = "popup";
 /// 自動フォーカスを行う(`quickaccess-search-ui` design.md 参照)。
 pub const POPUP_SHOWN_EVENT: &str = "popup-shown";
 
+/// ポップアップが表示されたまま裏でバックエンド状態(ロック/アンロック等)が
+/// 変化した場合に、WebView側へ再判定を促すために発火するイベント名。
+/// `POPUP_SHOWN_EVENT` は非表示→表示の遷移時にしか発火しないため、表示中の
+/// 状態変化を伝える手段がこれまで存在しなかった(トレイメニューからの明示的
+/// ロック等、ポップアップの外からの状態変化で顕在化する)。
+pub const BACKEND_STATE_CHANGED_EVENT: &str = "backend-state-changed";
+
 const WIDTH: f64 = 420.0;
 const HEIGHT: f64 = 480.0;
 const TOP_MARGIN: f64 = 80.0;
