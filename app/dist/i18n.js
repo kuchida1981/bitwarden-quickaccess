@@ -27,7 +27,7 @@ const MESSAGES = {
   },
 };
 
-let currentLocale = "ja";
+let currentLocale = "en";
 
 function t(key) {
   return (MESSAGES[currentLocale] && MESSAGES[currentLocale][key]) || MESSAGES.ja[key] || key;
@@ -49,7 +49,7 @@ async function initI18n() {
       currentLocale = locale;
     }
   } catch {
-    // 取得に失敗した場合は既定(ja)のまま続行する
+    // 取得に失敗した場合は既定(en、Rust側resolve_lang()の最終フォールバックと合わせる)のまま続行する
   }
   applyStaticI18n();
 }

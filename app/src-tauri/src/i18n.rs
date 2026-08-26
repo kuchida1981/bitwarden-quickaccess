@@ -22,6 +22,12 @@ fn lang_from_locale_str(locale: &str) -> Lang {
     }
 }
 
+/// 表示言語を「BWQA_LANG環境変数 → OSシステムロケール → フォールバック(En)」の順で判定する。
+///
+/// `BWQA_LANG` はあくまで開発時(`cargo run` 等、ターミナルから起動する場合)の補助的な
+/// オーバーライド手段である。macOSのGUIアプリはFinderからの起動やログイン項目からの
+/// 自動起動ではシェルの環境変数を継承しないため、パッケージ済み `.app` の通常利用では
+/// 機能しない。エンドユーザー向けの言語切り替え手段としては案内しないこと(design.md 決定3)。
 pub fn resolve_lang() -> Lang {
     if let Some(lang) = parse_lang_override(std::env::var("BWQA_LANG").ok()) {
         return lang;
