@@ -21,6 +21,8 @@ let focusedIndex = -1;
 let debounceTimer = null;
 let searchRequestId = 0;
 let lastKnownScreen = "unlock";
+let hidePopupTimer = null;
+
 
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
@@ -35,6 +37,7 @@ function showFeedback(message, ok) {
 }
 
 async function handleShown() {
+  clearTimeout(hidePopupTimer);
   showScreen(lastKnownScreen);
   if (lastKnownScreen === "search") {
     searchBox.focus();
@@ -140,6 +143,9 @@ function hasTextSelectionInSearchBox() {
 }
 
 function handleActionShortcut(event) {
+  if (event.isComposing) {
+    return;
+  }
   if (currentItems.length === 0 || focusedIndex < 0) {
     return;
   }
@@ -187,7 +193,8 @@ async function runAction(actionFn, successMessage) {
 
   // 1Password Quick Accessと同様、成功/失敗にかかわらずアクション実行後は
   // 短いフィードバック表示を挟んでポップアップを閉じる(design.md 決定3)。
-  setTimeout(() => {
+  clearTimeout(hidePopupTimer);
+  hidePopupTimer = setTimeout(() => {
     invoke("hide_popup").catch(() => {});
   }, FEEDBACK_DISPLAY_MS);
 }
