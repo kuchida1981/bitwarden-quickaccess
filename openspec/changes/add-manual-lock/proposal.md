@@ -26,4 +26,6 @@ GitHub issue #66: 現在、ユーザーが明示的にVaultをロックする手
 - `app/src-tauri/src/i18n.rs`: トレイメニュー用ラベル(`lock_now_label`)の追加(日英)
 - `app/dist/app.js`: `⌘L` ショートカットの処理、ロック実行後のアンロック画面への切り替え
 - `app/dist/index.html`: ヘルプオーバーレイへの `⌘L` の追記
+- `app/src-tauri/src/popup.rs`, `app/src-tauri/src/main.rs`: ポップアップ表示中の状態変化をwebviewへ通知する新イベント(`BACKEND_STATE_CHANGED_EVENT`)の追加(実機確認で発覚した既存の穴への対応。詳細はdesign.md参照)
+- `app/dist/app.js`: `handleShown()` から画面再判定ロジックを `syncScreenWithBackend()` として切り出し、新イベントからも呼べるようにする
 - 破壊的変更なし。既存のアイドル自動ロックの挙動には影響しない。
