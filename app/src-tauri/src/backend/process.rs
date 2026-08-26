@@ -58,7 +58,7 @@ pub(crate) fn spawn_supervised_with_command(
     let join_handle = tokio::spawn(async move {
         tokio::select! {
             _ = child.wait() => {
-                state.set_disconnected();
+                state.set_error("bw serve プロセスが予期せず終了しました。アプリを再起動してください。");
             }
             _ = kill_rx => {
                 let _ = child.start_kill();
@@ -76,7 +76,8 @@ pub(crate) fn spawn_supervised_with_command(
 }
 
 /// `bw serve` を起動し、監視タスクを立ち上げる。
-/// 子プロセスが予期せず終了した場合は `state` を `Disconnected` に更新する。
+/// 子プロセスが予期せず終了した場合は `state` を `Disconnected` に更新し、
+/// エラー画面(`backend-connection-error-display`)に表示するメッセージも記録する。
 /// 戻り値の `ProcessHandle::shutdown()` を呼ぶとプロセスを終了させ、
 /// この場合は監視タスクは `state` を更新しない(意図した終了のため)。
 pub fn spawn_supervised(port: u16, state: AppState) -> io::Result<(ProcessHandle, JoinHandle<()>)> {
@@ -129,6 +130,7 @@ mod tests {
 
         join_handle.await.expect("monitor task panicked");
         assert_eq!(state.backend_state(), BackendState::Disconnected);
+        assert!(state.last_error().is_some());
     }
 
     #[tokio::test]

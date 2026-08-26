@@ -53,6 +53,16 @@ function flashRow(element) {
   });
 }
 
+// エラー画面表示時のメッセージ取得。取得失敗時は空のままにする。
+async function showBackendError() {
+  try {
+    const err = await invoke("get_backend_error");
+    errorMessage.textContent = err || "";
+  } catch {
+    errorMessage.textContent = "";
+  }
+}
+
 async function handleShown() {
   actionMenuOpen = false;
   actionMenuActions = [];
@@ -82,12 +92,7 @@ async function handleShown() {
       searchBox.value = "";
       await runSearch("");
     } else if (actualScreen === "error") {
-      try {
-        const err = await invoke("get_backend_error");
-        errorMessage.textContent = err || "";
-      } catch {
-        errorMessage.textContent = "";
-      }
+      await showBackendError();
     }
   } else {
     showScreen(actualScreen);
@@ -100,12 +105,7 @@ async function handleShown() {
       unlockError.textContent = "";
       passwordInput.focus();
     } else if (actualScreen === "error") {
-      try {
-        const err = await invoke("get_backend_error");
-        errorMessage.textContent = err || "";
-      } catch {
-        errorMessage.textContent = "";
-      }
+      await showBackendError();
     }
   }
 
