@@ -1,3 +1,6 @@
+use std::sync::Mutex;
+
+use objc2_app_kit::{NSApplicationActivationOptions, NSRunningApplication, NSWorkspace};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 pub const POPUP_LABEL: &str = "popup";
@@ -70,6 +73,60 @@ fn compute_popup_position(app: &AppHandle) -> Option<(f64, f64)> {
     ))
 }
 
+/// ポップアップを表示する直前にフォアグラウンドだった他アプリケーションのPIDを保持する。
+/// `NSRunningApplication` インスタンス自体(`Retained<T>`)は `Send + Sync` を満たさず
+/// Tauriの `.manage()` では扱えないため、PIDのみを保持し、フォーカス復帰時に
+/// `NSRunningApplication::runningApplicationWithProcessIdentifier` で再取得する
+/// (design.md 決定3)。
+pub struct PreviousFrontmostApp(Mutex<Option<libc::pid_t>>);
+
+impl PreviousFrontmostApp {
+    pub fn new() -> Self {
+        Self(Mutex::new(None))
+    }
+}
+
+impl Default for PreviousFrontmostApp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// ポップアップを表示する直前の最前面アプリケーションのPIDを記録する。
+fn record_frontmost_app(app: &AppHandle) {
+    let pid = NSWorkspace::sharedWorkspace()
+        .frontmostApplication()
+        .map(|running_app| running_app.processIdentifier());
+
+    *app
+        .state::<PreviousFrontmostApp>()
+        .0
+        .lock()
+        .expect("PreviousFrontmostApp mutex poisoned") = pid;
+}
+
+/// ポップアップを閉じた際に、表示直前にフォアグラウンドだったアプリケーションを
+/// 再度アクティブ化する(design.md 決定3)。記録が無い、または対象アプリが
+/// 既に終了している場合は何もしない。`toggle_popup` の明示的な非表示分岐と
+/// `commands::hide_popup` の両方から呼ばれるため冪等に作る(`take()` により
+/// 2回目の呼び出しは常に `None` になる)。
+pub(crate) fn restore_previous_focus(app: &AppHandle) {
+    let pid = app
+        .state::<PreviousFrontmostApp>()
+        .0
+        .lock()
+        .expect("PreviousFrontmostApp mutex poisoned")
+        .take();
+
+    let Some(pid) = pid else {
+        return;
+    };
+
+    if let Some(running_app) = NSRunningApplication::runningApplicationWithProcessIdentifier(pid) {
+        running_app.activateWithOptions(NSApplicationActivationOptions::empty());
+    }
+}
+
 /// ポップアップウィンドウの表示/非表示をトグルする。ホットキー押下時に呼ばれる。
 pub fn toggle_popup(app: &AppHandle) {
     let Some(window) = app.get_webview_window(POPUP_LABEL) else {
@@ -79,7 +136,9 @@ pub fn toggle_popup(app: &AppHandle) {
     let is_visible = window.is_visible().unwrap_or(false);
     if is_visible {
         let _ = window.hide();
+        restore_previous_focus(app);
     } else {
+        record_frontmost_app(app);
         if let Some((x, y)) = compute_popup_position(app) {
             let _ = window.set_position(tauri::LogicalPosition::new(x, y));
         }

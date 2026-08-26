@@ -49,6 +49,7 @@ fn main() {
         .manage(app_state)
         .manage(idle_timer)
         .manage(lang)
+        .manage(popup::PreviousFrontmostApp::new())
         .manage(ManagedProcess(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::get_lock_state,
