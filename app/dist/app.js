@@ -323,6 +323,12 @@ async function runSearch(query) {
   }
   currentItems = items;
   focusedIndex = items.length > 0 ? 0 : -1;
+  // 新しい検索結果が届いたら、開いていたアクションメニューは前提(対象アイテム)が
+  // 崩れるため必ず閉じる。デバウンス中にメニューを開いた場合(先にArrowRightで
+  // メニューを開いた直後にデバウンスが解決するケース)もここで確実に閉じられる。
+  actionMenuOpen = false;
+  actionMenuActions = [];
+  actionMenuFocusIndex = -1;
   renderResults();
 }
 

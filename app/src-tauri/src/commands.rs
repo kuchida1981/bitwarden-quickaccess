@@ -136,10 +136,12 @@ pub async fn open_in_browser(
     idle.reset();
     let client = client_for(&state)?;
     let item = client.get_item(&item_id).await.map_err(|err| err.to_string())?;
+    // 先頭の要素ではなく、値を持つ最初のURIを使う。`uris` は空のURI(値なし)を含む
+    // ことがあり(design.md参照)、`SearchResultItem::from` の `has_url` 判定
+    // (値を持つURIが1つでもあれば true)と一致させる必要がある。
     let url = item
         .login
-        .and_then(|login| login.uris.into_iter().next())
-        .and_then(|uri| uri.uri)
+        .and_then(|login| login.uris.into_iter().find_map(|uri| uri.uri))
         .ok_or_else(|| "URLが設定されていません。".to_string())?;
 
     app.opener()
