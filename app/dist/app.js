@@ -62,21 +62,7 @@ async function fetchBackendError() {
   }
 }
 
-async function handleShown() {
-  actionMenuOpen = false;
-  actionMenuActions = [];
-  actionMenuFocusIndex = -1;
-  helpOpen = false;
-  helpOverlay.classList.remove("visible");
-  showScreen(lastKnownScreen);
-  if (lastKnownScreen === "search") {
-    searchBox.focus();
-  } else if (lastKnownScreen === "unlock") {
-    passwordInput.value = "";
-    unlockError.textContent = "";
-    passwordInput.focus();
-  }
-
+async function syncScreenWithBackend() {
   let lockState = "disconnected";
   try {
     lockState = await invoke("get_lock_state");
@@ -95,6 +81,14 @@ async function handleShown() {
   }
   const actualScreen =
     lockState === "unlocked" ? "search" : lockState === "locked" || !backendError ? "unlock" : "error";
+
+  if (actualScreen !== "search") {
+    actionMenuOpen = false;
+    actionMenuActions = [];
+    actionMenuFocusIndex = -1;
+    helpOpen = false;
+    helpOverlay.classList.remove("visible");
+  }
 
   if (actualScreen === lastKnownScreen) {
     if (actualScreen === "search") {
@@ -119,6 +113,24 @@ async function handleShown() {
   }
 
   lastKnownScreen = actualScreen;
+}
+
+async function handleShown() {
+  actionMenuOpen = false;
+  actionMenuActions = [];
+  actionMenuFocusIndex = -1;
+  helpOpen = false;
+  helpOverlay.classList.remove("visible");
+  showScreen(lastKnownScreen);
+  if (lastKnownScreen === "search") {
+    searchBox.focus();
+  } else if (lastKnownScreen === "unlock") {
+    passwordInput.value = "";
+    unlockError.textContent = "";
+    passwordInput.focus();
+  }
+
+  await syncScreenWithBackend();
 }
 
 unlockForm.addEventListener("submit", async (event) => {
@@ -539,6 +551,12 @@ function renderActionMenu(item) {
 
 listen("popup-shown", () => {
   handleShown();
+});
+
+// ポップアップ表示中に裏でバックエンド状態が変化した場合(例: トレイメニューからの
+// 明示的ロック)、非表示→表示を経由せずに画面を再判定する(design.md参照)。
+listen("backend-state-changed", () => {
+  syncScreenWithBackend();
 });
 
 initI18n().then(() => {
