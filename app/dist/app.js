@@ -395,6 +395,13 @@ function renderActionMenu(item) {
     hintSpan.textContent = action.shortcutHint;
     actionLi.appendChild(hintSpan);
 
+    // mousedownの既定動作(フォーカス可能要素ではないためsearchBoxがblurする)を
+    // 止め、searchBoxのDOM/ネイティブ側フォーカスを常に維持する。これを怠ると、
+    // クリック操作の後にポップアップを閉じて再度開いたときにWebView側の
+    // first responderがずれ、キー入力を受け付けなくなることがある。
+    actionLi.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
     actionLi.addEventListener("click", () => {
       executeItemAction(item, action.key);
     });
