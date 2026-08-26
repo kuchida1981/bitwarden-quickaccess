@@ -49,8 +49,7 @@ pub struct Messages {
     pub hotkey_registration_failed: &'static str,
     pub autostart_label: &'static str,
     pub quit_label: &'static str,
-    /// `{}` にバージョン番号を埋め込むテンプレート
-    pub version_label: &'static str,
+    pub repo_link_label: &'static str,
 }
 
 pub const JA: Messages = Messages {
@@ -62,7 +61,7 @@ pub const JA: Messages = Messages {
     hotkey_registration_failed: "グローバルホットキー(Shift+Cmd+Space)の登録に失敗しました: {}\n他のアプリと衝突しているか、macOSのシステム設定 > プライバシーとセキュリティ > アクセシビリティ でこのアプリの権限が許可されていない可能性があります。",
     autostart_label: "ログイン時に自動起動",
     quit_label: "終了",
-    version_label: "バージョン: {}",
+    repo_link_label: "GitHubリポジトリを開く",
 };
 
 pub const EN: Messages = Messages {
@@ -74,7 +73,7 @@ pub const EN: Messages = Messages {
     hotkey_registration_failed: "Failed to register the global hotkey (Shift+Cmd+Space): {}\nIt may conflict with another app, or this app may not have Accessibility permission under System Settings > Privacy & Security > Accessibility.",
     autostart_label: "Launch at Login",
     quit_label: "Quit",
-    version_label: "Version: {}",
+    repo_link_label: "View on GitHub",
 };
 
 pub fn messages(lang: Lang) -> &'static Messages {

@@ -5,13 +5,15 @@ use tauri::{
     AppHandle, Manager,
 };
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_opener::OpenerExt;
 
 use bw_quickaccess_gui_lib::backend::state::{AppState, BackendState};
 
 const STATUS_ITEM_ID: &str = "status";
 const HOTKEY_STATUS_ITEM_ID: &str = "hotkey_status";
 const AUTOSTART_ITEM_ID: &str = "autostart";
-const VERSION_ITEM_ID: &str = "version";
+const ABOUT_ITEM_ID: &str = "about";
+const REPO_LINK_ITEM_ID: &str = "repo_link";
 const QUIT_ITEM_ID: &str = "quit";
 
 /// `Cargo.toml` の version を単一の情報源とする(`tauri.conf.json` はversionを
@@ -62,13 +64,15 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
 
     let quit_item = MenuItem::with_id(app, QUIT_ITEM_ID, m.quit_label, true, None::<&str>)?;
 
-    let version_item = MenuItem::with_id(
+    let about_item = MenuItem::with_id(
         app,
-        VERSION_ITEM_ID,
-        m.version_label.replace("{}", APP_VERSION),
+        ABOUT_ITEM_ID,
+        format!("{} v{}", app.package_info().name, APP_VERSION),
         false,
         None::<&str>,
     )?;
+
+    let repo_link_item = MenuItem::with_id(app, REPO_LINK_ITEM_ID, m.repo_link_label, true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,
@@ -78,7 +82,8 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
             &PredefinedMenuItem::separator(app)?,
             &autostart_item,
             &PredefinedMenuItem::separator(app)?,
-            &version_item,
+            &about_item,
+            &repo_link_item,
             &quit_item,
         ],
     )?;
@@ -90,6 +95,11 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             QUIT_ITEM_ID => app.exit(0),
+            REPO_LINK_ITEM_ID => {
+                let _ = app
+                    .opener()
+                    .open_url("https://github.com/kuchida1981/bitwarden-quickaccess", None::<&str>);
+            }
             AUTOSTART_ITEM_ID => {
                 let autolaunch = app.autolaunch();
                 let currently_enabled = autolaunch.is_enabled().unwrap_or(false);
