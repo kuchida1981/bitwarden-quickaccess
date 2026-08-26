@@ -29,6 +29,7 @@
 - [x] 5.2 `app/src-tauri/src/main.rs` に、`AppState::subscribe()` を購読し、ポップアップウィンドウが可視状態(`window.is_visible()`)のときだけ `BACKEND_STATE_CHANGED_EVENT` をemitする新しい非同期タスクを追加する(`tray.rs` の状態購読ループと同様のパターン)。`setup()` 内、既存の `start_backend`/`wait_for_shutdown_signal`/`watch_idle_timeout` のspawnと並べて追加する。
 - [x] 5.3 `app/dist/app.js` の `handleShown()` から、`lockState` の取得〜画面切り替えのロジックを `async function syncScreenWithBackend()` として切り出す。切り出した関数の中で、`actualScreen !== "search"` になる場合は `actionMenuOpen`/`actionMenuActions`/`actionMenuFocusIndex`/`helpOpen`/`helpOverlay` のクローズ処理も行う。`handleShown()` は表示時固有の処理(フォーカス初期化等)を行った後に `await syncScreenWithBackend()` を呼ぶ形にする。
 - [x] 5.4 `app/dist/app.js` に `listen("backend-state-changed", () => { syncScreenWithBackend(); });` を追加する(既存の `listen("popup-shown", ...)` の近くが自然)。
+- [x] 5.5 5.1〜5.4実装後も実機で再現し続けたため一時的な診断ログで調査した結果、`app/src-tauri/capabilities/*.json` が一度も存在せず `event.listen` が常に失敗していたことが判明。`app/src-tauri/capabilities/default.json` を新設し、`popup`ウィンドウに `core:default`/`core:event:default` を付与して解消(詳細はdesign.md参照)。診断用の一時コード(`debug_log`コマンド、`console.log`)はすべて削除済み。
 
 ## 6. 動作確認(5の範囲)
 

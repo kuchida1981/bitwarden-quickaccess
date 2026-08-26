@@ -35,3 +35,11 @@
 
 - **`AppState::subscribe()`(tray.rsが既に使っているのと同じ仕組み)を`main.rs`側でも購読し、ポップアップが表示中であれば新しいイベント(`popup::BACKEND_STATE_CHANGED_EVENT`)をwebviewへemitする**。
 - **フロントエンドの `handleShown()` から「lockState取得〜画面切り替え」部分を `syncScreenWithBackend()` として切り出し**、`popup-shown` イベントと新しい `backend-state-changed` イベントの両方から呼べるようにする。検索画面以外に切り替わる場合は、開いていたヘルプ・アクションメニューも合わせて閉じる。
+
+### 追加で判明した、より根本的な原因: Tauri capabilities未設定
+
+上記の実装後もなお実機で再現し続けたため、ターミナルに直接出力する一時的な診断ログ(devtoolsのWebKitインスペクタでは同じ問題が正しく見えなかったため)を仕込んで調査した結果、**このプロジェクトには`app/src-tauri/capabilities/*.json`が一度も存在しておらず、Tauri v2の権限システムが`popup`ウィンドウに対して権限を一切付与していなかった**ことが判明した。
+
+このため `window.__TAURI__.event.listen(...)` の呼び出しは(新設した`backend-state-changed`だけでなく、既存の`popup-shown`も含めて)**常に**`event.listen not allowed`で失敗しており、`handleShown()`は起動時のページ読み込み時に一度だけ実行されるのみで、それ以降ポップアップの再表示時に再実行されたことは一度も無かった。これまで画面遷移が機能しているように見えていたのは、`unlock`/`performLock`等の各操作ハンドラがイベントに頼らず直接DOMを書き換えていたことと、たまたまテストのタイミングが噛み合っていたことによる偶然の一致だった。
+
+`app/src-tauri/capabilities/default.json` を新設し、`popup`ウィンドウに `core:default` / `core:event:default` を付与することで解消した。
