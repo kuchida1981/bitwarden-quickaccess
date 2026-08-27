@@ -81,10 +81,15 @@ pub async fn unlock(
 
 /// トレイメニューの「今すぐロック」項目、および検索画面のショートカット(⌘L)から呼ばれる。
 #[tauri::command]
-pub async fn lock(state: tauri::State<'_, AppState>) -> Result<(), String> {
+pub async fn lock(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    guard: tauri::State<'_, ClipboardGuard>,
+) -> Result<(), String> {
     let client = client_for(&state)?;
     client.lock().await.map_err(|err| err.to_string())?;
     state.set_locked();
+    clear_clipboard_if_owned(&app, &guard);
     Ok(())
 }
 

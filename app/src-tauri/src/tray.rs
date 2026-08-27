@@ -7,7 +7,10 @@ use tauri::{
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_opener::OpenerExt;
 
-use bw_quickaccess_gui_lib::backend::state::{AppState, BackendState};
+use bw_quickaccess_gui_lib::backend::{
+    clipboard_guard::ClipboardGuard,
+    state::{AppState, BackendState},
+};
 
 const STATUS_ITEM_ID: &str = "status";
 const HOTKEY_STATUS_ITEM_ID: &str = "hotkey_status";
@@ -132,7 +135,13 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
             LOCK_ITEM_ID => {
                 let app_handle = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(err) = crate::commands::lock(app_handle.state::<AppState>()).await {
+                    if let Err(err) = crate::commands::lock(
+                        app_handle.clone(),
+                        app_handle.state::<AppState>(),
+                        app_handle.state::<ClipboardGuard>(),
+                    )
+                    .await
+                    {
                         eprintln!("ロックに失敗しました: {err}");
                     }
                 });

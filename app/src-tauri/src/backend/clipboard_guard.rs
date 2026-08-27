@@ -10,6 +10,12 @@ pub struct ClipboardGuard {
     last_written: Arc<Mutex<Option<String>>>,
 }
 
+impl Default for ClipboardGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClipboardGuard {
     pub fn new() -> Self {
         Self {
