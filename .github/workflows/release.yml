@@ -39,3 +39,58 @@ jobs:
         with:
           projectPath: app
           releaseId: ${{ github.event.release.id }}
+
+      # ここから Homebrew tap 更新の自動化(issue #77)。`brew bump-cask-pr` は
+      # バージョン/sha256の更新・`brew audit`/`brew style --fix`・ブランチ作成
+      # ・コミット・プッシュ・PR作成までを1コマンドで行う(Homebrew本体のCLI
+      # サブコマンドで、GitHub Actionではない)。tapリポジトリへの書き込み権限を
+      # 持つPATが `HOMEBREW_TAP_PAT` シークレットとして事前に登録されている必要が
+      # あり、これはユーザー自身の対応が必須(design.md参照)。
+      # このステップ群はすべて non-blocking(`continue-on-error: true`)にする。
+      # アプリ本体のビルド・アップロードは既に完了しているため、PAT未登録等の
+      # 理由でtap更新が失敗しても、その一事だけでリリースジョブ全体を失敗表示に
+      # したくない(CONTRIBUTING.md参照、手動フォールバック手順を用意している)。
+      - name: Tap the Homebrew repository
+        continue-on-error: true
+        run: brew tap kuchida1981/bitwarden-quickaccess
+
+      - name: Open a Homebrew tap update PR
+        continue-on-error: true
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          # sha256は明示指定せず、bump-cask-pr自身に新URLからダウンロード・算出
+          # させる。これにより新しいダウンロードURLが実際に到達可能であることも
+          # 同時に検証される。
+          brew bump-cask-pr --no-fork --no-browse --version="$version" bw-quickaccess | tee bump-cask-pr-output.txt
+
+      - name: Resolve the tap PR branch
+        id: resolve_branch
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
+        run: |
+          # brew bump-cask-pr実行後のローカルtapのgit状態(どのブランチが
+          # チェックアウトされているか)はHomebrew内部実装に依存し確実ではないため、
+          # 出力されたPR URLからPR番号を取り出し、GitHub API経由でブランチ名を
+          # 確実に取得する(design.md 決定参照)。
+          pr_number=$(grep -oE 'pull/[0-9]+' bump-cask-pr-output.txt | head -1 | grep -oE '[0-9]+')
+          if [ -z "$pr_number" ]; then
+            echo "brew bump-cask-pr の出力からPR番号を取得できませんでした" >&2
+            exit 1
+          fi
+          branch=$(gh pr view "$pr_number" --repo kuchida1981/homebrew-bitwarden-quickaccess --json headRefName -q .headRefName)
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the cask installs (non-blocking)
+        continue-on-error: true
+        run: |
+          tap_dir="$(brew --repository)/Library/Taps/kuchida1981/homebrew-bitwarden-quickaccess"
+          branch="${{ steps.resolve_branch.outputs.branch }}"
+          git -C "$tap_dir" checkout "$branch" 2>/dev/null || {
+            git -C "$tap_dir" fetch origin "$branch"
+            git -C "$tap_dir" checkout -B "$branch" "origin/$branch"
+          }
+          brew install --cask --no-quarantine bw-quickaccess

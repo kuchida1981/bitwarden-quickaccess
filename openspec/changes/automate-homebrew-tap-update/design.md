@@ -31,6 +31,7 @@ macOSランナー(`macos-latest`)にはHomebrewがプリインストールされ
 - **`HOMEBREW_GITHUB_API_TOKEN` 環境変数にPATを渡す**。`brew`本体がGitHub API呼び出し(ブランチ作成・PR作成)に使う標準の環境変数であり、追加のツール(`gh` CLI等)を経由させる必要がない。
 - **インストール確認は、`brew bump-cask-pr` が作成したPRの実際のブランチ内容に対して行う**。`brew bump-cask-pr` 実行後のローカルtapのgit状態(コミット後にブランチを切り替えるかどうか)はHomebrew内部実装に依存し確実ではないため、`--no-browse` の標準出力からPR URLを取得し、`gh pr view --repo <tap> --json headRefName` でブランチ名をAPI経由で確実に取得してから明示的に `git checkout` し、その状態で `brew install --cask` を実行する。
 - **インストール確認は non-blocking にする**(`continue-on-error: true` 等)。PR自体は既に作成済みであり、確認ステップの失敗でジョブ全体を失敗させると「PRは出来ているのにワークフローは失敗表示」という混乱を招くため、警告のみに留める。
+- **tap更新関連のステップ(tap登録・PR作成・ブランチ解決・インストール確認)は全て non-blocking にする**(実装時に判断を拡大)。当初はインストール確認ステップのみを非ブロッキングにする想定だったが、「Open a Homebrew tap update PR」自体もPAT未登録時には確実に失敗するため、そこだけブロッキングのままだと、既に完了しているアプリ本体のビルド・アップロードとは無関係に、tap更新の失敗だけでリリースジョブ全体が失敗表示になってしまう。`continue-on-error: true` の各ステップは失敗してもUI上は警告として可視化される(完全に握りつぶされるわけではない)ため、可視性は保ちつつジョブ全体の成否には影響しない設計にした。
 
 ## Risks / Trade-offs
 
