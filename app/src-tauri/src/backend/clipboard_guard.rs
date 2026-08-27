@@ -40,6 +40,15 @@ impl ClipboardGuard {
             .expect("ClipboardGuard mutex poisoned") = None;
     }
 
+    /// 保持している値が `expected` と一致する場合に限り、内部状態をクリアする。
+    /// 一致しない場合(既に別の値で上書きされている場合)は何もしない。
+    pub fn clear_if_matches(&self, expected: &str) {
+        let mut guard = self.last_written.lock().expect("ClipboardGuard mutex poisoned");
+        if guard.as_deref() == Some(expected) {
+            *guard = None;
+        }
+    }
+
     /// 現在のクリップボードの中身(current)が、アプリが最後に書き込んだ値と
     /// 一致するかどうかを判定する。一致する場合のみクリアしてよい。
     /// 実際のクリップボードI/Oには一切触れない純粋な判定ロジックにすること
@@ -96,6 +105,23 @@ mod tests {
         guard.set("second-value".to_string());
         assert!(!guard.should_clear("first-value"));
         assert!(guard.should_clear("second-value"));
+    }
+
+    #[test]
+    fn clear_if_matches_clears_when_value_matches() {
+        let guard = ClipboardGuard::new();
+        guard.set("a".to_string());
+        guard.clear_if_matches("a");
+        assert!(!guard.should_clear("a"));
+    }
+
+    #[test]
+    fn clear_if_matches_does_not_clear_when_value_differs() {
+        let guard = ClipboardGuard::new();
+        guard.set("a".to_string());
+        guard.set("b".to_string());
+        guard.clear_if_matches("a");
+        assert!(guard.should_clear("b"));
     }
 }
 

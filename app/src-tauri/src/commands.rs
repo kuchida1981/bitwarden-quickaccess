@@ -174,13 +174,20 @@ pub async fn copy_field(
 
     let value_for_guard = value.clone();
     app.clipboard().write_text(value).map_err(|err| err.to_string())?;
-    guard.set(value_for_guard);
+    guard.set(value_for_guard.clone());
 
     let app_for_clear = app.clone();
     let guard_for_clear = guard.inner().clone();
+    let expected_for_clear = value_for_guard.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(CLIPBOARD_CLEAR_DELAY).await;
-        clear_clipboard_if_owned(&app_for_clear, &guard_for_clear);
+        let Ok(current) = app_for_clear.clipboard().read_text() else {
+            return;
+        };
+        if current == expected_for_clear {
+            let _ = app_for_clear.clipboard().write_text(String::new());
+            guard_for_clear.clear_if_matches(&expected_for_clear);
+        }
     });
 
     Ok(())
