@@ -17,7 +17,7 @@ pub const POPUP_SHOWN_EVENT: &str = "popup-shown";
 /// ロック等、ポップアップの外からの状態変化で顕在化する)。
 pub const BACKEND_STATE_CHANGED_EVENT: &str = "backend-state-changed";
 
-const WIDTH: f64 = 420.0;
+const WIDTH: f64 = 520.0;
 const HEIGHT: f64 = 480.0;
 const TOP_MARGIN: f64 = 80.0;
 
@@ -162,20 +162,20 @@ mod tests {
     #[test]
     fn test_popup_position_primary_monitor() {
         let pos = popup_position_for_monitor((0, 0), (1920, 1080), 1.0);
-        assert_eq!(pos, (750.0, 80.0));
+        assert_eq!(pos, (700.0, 80.0));
     }
 
     #[test]
     fn test_popup_position_external_monitor() {
         let pos = popup_position_for_monitor((1920, 0), (1920, 1080), 1.0);
-        assert_eq!(pos, (2670.0, 80.0));
+        assert_eq!(pos, (2620.0, 80.0));
     }
 
     #[test]
     fn test_popup_position_retina_monitor() {
         // 物理位置(0, 0), 物理サイズ(3840, 2160), スケール 2.0 の場合
-        // 論理位置(0, 0), 論理サイズ(1920, 1080) になるため、結果は (750.0, 80.0) になるはず
+        // 論理位置(0, 0), 論理サイズ(1920, 1080) になるため、結果は (700.0, 80.0) になるはず
         let pos = popup_position_for_monitor((0, 0), (3840, 2160), 2.0);
-        assert_eq!(pos, (750.0, 80.0));
+        assert_eq!(pos, (700.0, 80.0));
     }
 }
