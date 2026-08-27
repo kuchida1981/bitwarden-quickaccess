@@ -32,6 +32,11 @@ pub fn get_backend_error(state: tauri::State<'_, AppState>) -> Option<String> {
 }
 
 #[tauri::command]
+pub fn get_current_user(state: tauri::State<'_, AppState>) -> Option<String> {
+    state.user_email()
+}
+
+#[tauri::command]
 pub fn get_ui_locale(lang: tauri::State<'_, crate::i18n::Lang>) -> &'static str {
     match *lang {
         crate::i18n::Lang::Ja => "ja",

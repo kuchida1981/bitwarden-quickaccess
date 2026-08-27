@@ -12,6 +12,9 @@ const unlockButton = unlockForm.querySelector("button");
 const searchBox = document.getElementById("search-box");
 const resultsList = document.getElementById("results");
 const emptyMessage = document.getElementById("empty-message");
+const statusFooter = document.getElementById("status-footer");
+const currentUserAvatar = document.getElementById("current-user-avatar");
+const footerHints = document.getElementById("footer-hints");
 const helpOverlay = document.getElementById("help-overlay");
 
 const SEARCH_DEBOUNCE_MS = 150;
@@ -62,6 +65,24 @@ async function fetchBackendError() {
   }
 }
 
+async function refreshCurrentUser() {
+  let email = null;
+  try {
+    email = await invoke("get_current_user");
+  } catch {
+    email = null;
+  }
+  if (email) {
+    currentUserAvatar.textContent = email.charAt(0).toUpperCase();
+    currentUserAvatar.title = email;
+    currentUserAvatar.style.display = "flex";
+  } else {
+    currentUserAvatar.textContent = "";
+    currentUserAvatar.title = "";
+    currentUserAvatar.style.display = "none";
+  }
+}
+
 async function syncScreenWithBackend() {
   let lockState = "disconnected";
   try {
@@ -94,6 +115,7 @@ async function syncScreenWithBackend() {
     if (actualScreen === "search") {
       searchBox.value = "";
       await runSearch("");
+      await refreshCurrentUser();
     } else if (actualScreen === "error") {
       errorMessage.textContent = backendError;
     }
@@ -103,6 +125,7 @@ async function syncScreenWithBackend() {
       searchBox.value = "";
       searchBox.focus();
       await runSearch("");
+      await refreshCurrentUser();
     } else if (actualScreen === "unlock") {
       passwordInput.value = "";
       unlockError.textContent = "";
@@ -527,10 +550,9 @@ function buildTrailingBlock(item, index) {
   if (actionMenuOpen && index === focusedIndex) {
     return renderActionMenu(item);
   }
-  const hints = document.createElement("div");
-  hints.className = "hints";
-  hints.textContent = SHORTCUT_HINTS;
-  return hints;
+  const placeholder = document.createElement("span");
+  placeholder.className = "row-trailing-placeholder";
+  return placeholder;
 }
 
 // 矢印キー/マウスホバーによるフォーカス行の移動時に呼ぶ。アイコンを含む行全体を
@@ -615,5 +637,6 @@ listen("backend-state-changed", () => {
 
 initI18n().then(() => {
   SHORTCUT_HINTS = t("shortcutHints");
+  footerHints.textContent = SHORTCUT_HINTS;
   handleShown();
 });
