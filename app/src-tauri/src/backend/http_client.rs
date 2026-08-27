@@ -41,16 +41,14 @@ pub struct LoginDetail {
 impl LoginDetail {
     pub fn icon_domain(&self) -> Option<String> {
         let uri = self.uris.iter().find_map(|u| u.uri.as_deref())?;
-        let trimmed = uri
-            .strip_prefix("https://")
-            .or_else(|| uri.strip_prefix("http://"))
-            .unwrap_or(uri);
-        let host = trimmed.split('/').next().unwrap_or(trimmed);
-        if host.is_empty() {
-            None
+        let parse_target = if uri.contains("://") {
+            uri.to_string()
         } else {
-            Some(host.to_string())
-        }
+            format!("https://{uri}")
+        };
+        reqwest::Url::parse(&parse_target)
+            .ok()
+            .and_then(|u| u.host_str().map(str::to_string))
     }
 }
 
@@ -356,5 +354,31 @@ mod tests {
             uris: vec![UriEntry { uri: None }],
         };
         assert_eq!(none_uris_detail.icon_domain(), None);
+
+        let userinfo_detail = LoginDetail {
+            username: None,
+            password: None,
+            totp: None,
+            uris: vec![UriEntry {
+                uri: Some("https://user:pass@vault.example.com/".to_string()),
+            }],
+        };
+        assert_eq!(
+            userinfo_detail.icon_domain(),
+            Some("vault.example.com".to_string())
+        );
+
+        let port_detail = LoginDetail {
+            username: None,
+            password: None,
+            totp: None,
+            uris: vec![UriEntry {
+                uri: Some("https://vault.example.com:8443/".to_string()),
+            }],
+        };
+        assert_eq!(
+            port_detail.icon_domain(),
+            Some("vault.example.com".to_string())
+        );
     }
 }
