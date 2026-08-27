@@ -64,7 +64,7 @@ jobs:
           # sha256は明示指定せず、bump-cask-pr自身に新URLからダウンロード・算出
           # させる。これにより新しいダウンロードURLが実際に到達可能であることも
           # 同時に検証される。
-          brew bump-cask-pr --no-fork --no-browse --version="$version" bw-quickaccess | tee bump-cask-pr-output.txt
+          brew bump-cask-pr --no-fork --no-browse --version="$version" bw-quickaccess
 
       - name: Resolve the tap PR branch
         id: resolve_branch
@@ -72,16 +72,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
         run: |
-          # brew bump-cask-pr実行後のローカルtapのgit状態(どのブランチが
-          # チェックアウトされているか)はHomebrew内部実装に依存し確実ではないため、
-          # 出力されたPR URLからPR番号を取り出し、GitHub API経由でブランチ名を
-          # 確実に取得する(design.md 決定参照)。
-          pr_number=$(grep -oE 'pull/[0-9]+' bump-cask-pr-output.txt | head -1 | grep -oE '[0-9]+')
-          if [ -z "$pr_number" ]; then
-            echo "brew bump-cask-pr の出力からPR番号を取得できませんでした" >&2
+          # brewの自由形式な標準出力を正規表現で拾う方式は壊れやすいため
+          # (コードレビューで発覚)、GitHub API(gh pr list)でtapリポジトリの
+          # 最新のopen PRを直接問い合わせてブランチ名を取得する。brew
+          # bump-cask-pr実行直後であれば、これが今回作成されたPRのはずである。
+          branch=$(gh pr list --repo kuchida1981/homebrew-bitwarden-quickaccess --state open \
+            --json headRefName,createdAt --jq 'sort_by(.createdAt) | last | .headRefName // empty')
+          if [ -z "$branch" ]; then
+            echo "tap更新PRが見つかりませんでした(brew bump-cask-prが失敗した可能性があります)" >&2
             exit 1
           fi
-          branch=$(gh pr view "$pr_number" --repo kuchida1981/homebrew-bitwarden-quickaccess --json headRefName -q .headRefName)
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Verify the cask installs (non-blocking)

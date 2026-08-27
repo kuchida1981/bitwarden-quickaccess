@@ -29,7 +29,8 @@ macOSランナー(`macos-latest`)にはHomebrewがプリインストールされ
 - **`--no-fork` を指定する**。tapリポジトリへの書き込み権限を持つPATを使う前提のため、フォークは不要で、同一リポジトリ内にブランチを作成しPRを開く。
 - **sha256は明示指定せず、コマンドの自動ダウンロード・算出に任せる**。これにより「新しいURLが実際にダウンロード可能である」ことの検証も同時に行われる(明示指定するとこの検証を省略してしまう)。
 - **`HOMEBREW_GITHUB_API_TOKEN` 環境変数にPATを渡す**。`brew`本体がGitHub API呼び出し(ブランチ作成・PR作成)に使う標準の環境変数であり、追加のツール(`gh` CLI等)を経由させる必要がない。
-- **インストール確認は、`brew bump-cask-pr` が作成したPRの実際のブランチ内容に対して行う**。`brew bump-cask-pr` 実行後のローカルtapのgit状態(コミット後にブランチを切り替えるかどうか)はHomebrew内部実装に依存し確実ではないため、`--no-browse` の標準出力からPR URLを取得し、`gh pr view --repo <tap> --json headRefName` でブランチ名をAPI経由で確実に取得してから明示的に `git checkout` し、その状態で `brew install --cask` を実行する。
+- **インストール確認は、`brew bump-cask-pr` が作成したPRの実際のブランチ内容に対して行う**。`brew bump-cask-pr` 実行後のローカルtapのgit状態(コミット後にブランチを切り替えるかどうか)はHomebrew内部実装に依存し確実ではないため、明示的に `git checkout` してから `brew install --cask` を実行する。
+- **対象PRのブランチ名は `gh pr list` でtapリポジトリの最新openPRを問い合わせて取得する**(当初は `brew bump-cask-pr` の標準出力からPR URLを正規表現で抽出する方式だったが、コードレビューで2つの問題が判明し撤回した: (1) GitHub Actionsのbashはデフォルトで`set -e -o pipefail`のため、`grep`が無マッチで失敗するとその場でスクリプトが終了し、想定していたカスタム診断メッセージに到達しない、(2) brewの自由形式な標準出力を正規表現で拾う方式自体が、想定外の`pull/N`文字列(無関係なPRへの言及等)を誤って拾うリスクを持つ)。`gh pr list --state open --json headRefName,createdAt --jq 'sort_by(.createdAt) | last | .headRefName // empty'` は、brewの出力形式に一切依存せず、該当PRが無い場合も空文字列を返して正常終了する(ローカルで`jq`の挙動を検証済み)ため、後続の空チェックが確実に機能する。tapに古い未マージPRが残っている状態で新しいPRが作成された場合でも、`createdAt`でソートして最新を選ぶため正しく新しい方を拾う。
 - **インストール確認は non-blocking にする**(`continue-on-error: true` 等)。PR自体は既に作成済みであり、確認ステップの失敗でジョブ全体を失敗させると「PRは出来ているのにワークフローは失敗表示」という混乱を招くため、警告のみに留める。
 - **tap更新関連のステップ(tap登録・PR作成・ブランチ解決・インストール確認)は全て non-blocking にする**(実装時に判断を拡大)。当初はインストール確認ステップのみを非ブロッキングにする想定だったが、「Open a Homebrew tap update PR」自体もPAT未登録時には確実に失敗するため、そこだけブロッキングのままだと、既に完了しているアプリ本体のビルド・アップロードとは無関係に、tap更新の失敗だけでリリースジョブ全体が失敗表示になってしまう。`continue-on-error: true` の各ステップは失敗してもUI上は警告として可視化される(完全に握りつぶされるわけではない)ため、可視性は保ちつつジョブ全体の成否には影響しない設計にした。
 
