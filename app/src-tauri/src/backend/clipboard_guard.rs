@@ -55,3 +55,47 @@ impl ClipboardGuard {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_clear_is_false_before_any_set() {
+        let guard = ClipboardGuard::new();
+        assert!(!guard.should_clear(""));
+        assert!(!guard.should_clear("anything"));
+    }
+
+    #[test]
+    fn should_clear_is_true_when_current_matches_last_written() {
+        let guard = ClipboardGuard::new();
+        guard.set("password123".to_string());
+        assert!(guard.should_clear("password123"));
+    }
+
+    #[test]
+    fn should_clear_is_false_when_current_differs() {
+        let guard = ClipboardGuard::new();
+        guard.set("password1".to_string());
+        assert!(!guard.should_clear("other-value"));
+    }
+
+    #[test]
+    fn should_clear_is_false_after_clear() {
+        let guard = ClipboardGuard::new();
+        guard.set("password123".to_string());
+        guard.clear();
+        assert!(!guard.should_clear("password123"));
+    }
+
+    #[test]
+    fn set_overwrites_previous_value() {
+        let guard = ClipboardGuard::new();
+        guard.set("first-value".to_string());
+        guard.set("second-value".to_string());
+        assert!(!guard.should_clear("first-value"));
+        assert!(guard.should_clear("second-value"));
+    }
+}
+
