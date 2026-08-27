@@ -24,8 +24,9 @@ const TOP_MARGIN: f64 = 80.0;
 /// プレースホルダ内容のポップアップウィンドウを、非表示状態・画面上部中央の位置で作成する。
 /// 中身の検索UIは後続change(`quickaccess-search-ui`)で実装する。
 pub fn create_popup_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
+    let lang = *app.state::<crate::i18n::Lang>().inner();
     let builder = WebviewWindowBuilder::new(app, POPUP_LABEL, WebviewUrl::App("index.html".into()))
-        .title("bw-quickaccess")
+        .title(crate::i18n::messages(lang).app_display_name)
         .inner_size(WIDTH, HEIGHT)
         .resizable(false)
         .decorations(false)

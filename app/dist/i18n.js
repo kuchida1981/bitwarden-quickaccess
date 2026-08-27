@@ -1,5 +1,6 @@
 const MESSAGES = {
   ja: {
+    appDisplayName: "Bitwarden クイックアクセス",
     errorScreenTitle: "接続できません",
     masterPasswordPlaceholder: "マスターパスワード",
     unlockButton: "アンロック",
@@ -25,6 +26,7 @@ const MESSAGES = {
     helpToggleHelp: "このヘルプを表示/非表示",
   },
   en: {
+    appDisplayName: "Bitwarden Quick Access",
     errorScreenTitle: "Connection Error",
     masterPasswordPlaceholder: "Master password",
     unlockButton: "Unlock",

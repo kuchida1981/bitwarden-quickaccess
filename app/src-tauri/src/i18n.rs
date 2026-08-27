@@ -39,6 +39,7 @@ pub fn resolve_lang() -> Lang {
 }
 
 pub struct Messages {
+    pub app_display_name: &'static str,
     pub status_disconnected: &'static str,
     pub status_locked: &'static str,
     pub status_unlocked: &'static str,
@@ -54,6 +55,7 @@ pub struct Messages {
 }
 
 pub const JA: Messages = Messages {
+    app_display_name: "Bitwarden クイックアクセス",
     status_disconnected: "状態: 未接続",
     status_locked: "状態: ロック中",
     status_unlocked: "状態: アンロック済み",
@@ -67,6 +69,7 @@ pub const JA: Messages = Messages {
 };
 
 pub const EN: Messages = Messages {
+    app_display_name: "Bitwarden Quick Access",
     status_disconnected: "Status: Disconnected",
     status_locked: "Status: Locked",
     status_unlocked: "Status: Unlocked",
