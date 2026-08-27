@@ -22,7 +22,7 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes "..."
 
 ### 2. ビルド完了を待つ
 
-Releaseの公開をトリガーに `.github/workflows/release.yml` が起動し、`.app` をビルドしてリリースアセット(`bw-quickaccess_aarch64.app.tar.gz`)をアップロードする。
+Releaseの公開をトリガーに `.github/workflows/release.yml` が起動し、`.app` をビルドしてリリースアセット(`productName_aarch64.app.tar.gz`。`productName` は `app/src-tauri/tauri.conf.json` の値。例: `Bitwarden Quick Access_aarch64.app.tar.gz`)をアップロードする。
 
 ```bash
 gh run list --workflow=release.yml --limit 1
@@ -39,6 +39,15 @@ gh run watch <run-id> --exit-status
    ```
 2. 内容(`version`/`sha256`が正しいか)を確認し、問題なければマージする。
 3. リリースジョブのログで「Verify the cask installs」ステップが失敗している場合は、内容を確認した上で手動で `brew reinstall --cask bw-quickaccess` を実行し、起動・アンロックできることを実機確認する。
+
+**`productName`(`app/src-tauri/tauri.conf.json`)を変更したリリースでは、上記の自動PRをマージするだけでは不十分**: `brew bump-cask-pr` は `version`/`sha256` のみを更新し、Cask定義内のファイル名参照(`app` 行・`url` 行・`caveats` 文中の `.app` 名)は追従しない。そのリリースに限り、自動PRのマージ前後いずれかのタイミングで、tapリポジトリの `Casks/bw-quickaccess.rb` を以下のように手動編集する:
+
+1. `app "bw-quickaccess.app"` を新しい `productName` に基づくファイル名(例: `app "Bitwarden Quick Access.app"`)に書き換える。
+2. `caveats` 文中の `.app` 名の記載も同様に書き換える。
+3. `url` 行のファイル名にスペースが含まれる場合、生のスペースのままだとダウンロードURLとして不正になるため、`%20` にパーセントエンコードする(例: `.../Bitwarden%20Quick%20Access_aarch64.app.tar.gz`)。Cask名(token、`bw-quickaccess`)や `name` 行は変更しない。
+4. `brew style --cask bw-quickaccess` / `brew audit --cask bw-quickaccess` / `brew reinstall --cask bw-quickaccess` で確認する(下記トラブルシューティング手順の3〜4と同じ)。
+
+`productName` を変更しない通常のリリースでは、この追加手順は不要。
 
 **自動化が動作しない場合(トラブルシューティング)**: `HOMEBREW_TAP_PAT` シークレットが未設定・失効している、`brew bump-cask-pr` が予期しない形で失敗する等の場合は、以下の手順で手動対応する。
 

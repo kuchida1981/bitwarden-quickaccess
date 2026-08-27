@@ -34,10 +34,10 @@ brew trust --tap kuchida1981/bitwarden-quickaccess
 
 ### 方法2: GitHub Releasesからダウンロード
 
-1. [Releasesページ](https://github.com/kuchida1981/bitwarden-quickaccess/releases)から `bw-quickaccess_aarch64.app.tar.gz` をダウンロードする。このビルドは **Apple Silicon(arm64)専用**です。Intel Macは現時点でビルド済みリリースの対象外です(方法3のセルフビルドを利用してください)
-2. 展開して(Finderでダブルクリック、または `tar -xzf bw-quickaccess_aarch64.app.tar.gz`)、`bw-quickaccess.app` を `/Applications`(お好きな場所でも構いません)に移動する
+1. [Releasesページ](https://github.com/kuchida1981/bitwarden-quickaccess/releases)から `Bitwarden Quick Access_aarch64.app.tar.gz` をダウンロードする。このビルドは **Apple Silicon(arm64)専用**です。Intel Macは現時点でビルド済みリリースの対象外です(方法3のセルフビルドを利用してください)
+2. 展開して(Finderでダブルクリック、または `tar -xzf "Bitwarden Quick Access_aarch64.app.tar.gz"`)、`Bitwarden Quick Access.app` を `/Applications`(お好きな場所でも構いません)に移動する
 3. このアプリは**コード署名・notarizationされていません**。初回起動時、macOSのGatekeeperが「開発元を確認できません」という警告を出して起動をブロックします。以下の手順で起動してください:
-   - Finderで `bw-quickaccess.app` を右クリック(またはControl+クリック)し、**「開く」**を選択、表示されるダイアログでも**「開く」**を選ぶ
+   - Finderで `Bitwarden Quick Access.app` を右クリック(またはControl+クリック)し、**「開く」**を選択、表示されるダイアログでも**「開く」**を選ぶ
    - この操作は初回のみ必要です。以降は通常どおり起動できます
 
 ### 方法3: ソースからセルフビルド
@@ -48,7 +48,7 @@ cd bitwarden-quickaccess/app/src-tauri
 cargo tauri build
 ```
 
-生成された `.app` は `target/release/bundle/macos/bw-quickaccess.app` に配置されます。お好みで `/Applications` に移動してください。
+生成された `.app` は `target/release/bundle/macos/Bitwarden Quick Access.app` に配置されます。お好みで `/Applications` に移動してください。
 
 開発時(配布用バンドルを作らず、その場でアプリを実行する場合):
 
@@ -59,7 +59,7 @@ cargo run
 
 ## 使い方
 
-1. `bw-quickaccess.app` を起動します。起動時にDockアイコンやウィンドウは表示されません。メニューバーのアイコンを探してください
+1. `Bitwarden Quick Access.app` を起動します。起動時にDockアイコンやウィンドウは表示されません。メニューバーのアイコンを探してください
 2. どこからでも **⇧⌘Space**(Shift+Cmd+Space)を押すとポップアップが開閉します
 3. vaultがロックされている場合は、マスターパスワードを入力してアンロックします
 4. 入力するとインクリメンタルに検索されます。**↑ / ↓** キーでフォーカスする行を移動できます
