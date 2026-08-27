@@ -110,6 +110,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_lock_state,
             commands::get_backend_error,
+            commands::get_current_user,
             commands::get_ui_locale,
             commands::lock,
             commands::unlock,
@@ -266,18 +267,22 @@ async fn watch_idle_timeout(state: AppState, idle: IdleTimer) {
 async fn sync_initial_status(client: &BwServeClient, state: &AppState) {
     for _ in 0..10 {
         match client.status().await {
-            Ok(LockStatus::Locked) => {
-                state.set_locked();
-                return;
-            }
-            Ok(LockStatus::Unlocked) => {
-                state.set_unlocked();
-                return;
-            }
-            Ok(LockStatus::Unauthenticated) => {
-                state.set_error("bw にログインしていません。`bw login` を実行してください。");
-                return;
-            }
+            Ok(status_info) => match status_info.lock_status {
+                LockStatus::Locked => {
+                    state.set_locked();
+                    state.set_user_email(status_info.user_email);
+                    return;
+                }
+                LockStatus::Unlocked => {
+                    state.set_unlocked();
+                    state.set_user_email(status_info.user_email);
+                    return;
+                }
+                LockStatus::Unauthenticated => {
+                    state.set_error("bw にログインしていません。`bw login` を実行してください。");
+                    return;
+                }
+            },
             Err(_) => {
                 tokio::time::sleep(Duration::from_millis(200)).await;
             }

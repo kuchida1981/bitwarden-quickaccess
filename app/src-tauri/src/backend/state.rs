@@ -19,6 +19,7 @@ struct Inner {
     backend: BackendState,
     port: Option<u16>,
     last_error: Option<String>,
+    user_email: Option<String>,
 }
 
 /// アプリ全体で共有されるロック状態。`tauri::State` として `app.manage()` される。
@@ -96,6 +97,14 @@ impl AppState {
     pub fn port(&self) -> Option<u16> {
         self.inner.lock().expect("AppState mutex poisoned").port
     }
+
+    pub fn set_user_email(&self, email: Option<String>) {
+        self.inner.lock().expect("AppState mutex poisoned").user_email = email;
+    }
+
+    pub fn user_email(&self) -> Option<String> {
+        self.inner.lock().expect("AppState mutex poisoned").user_email.clone()
+    }
 }
 
 #[cfg(test)]
@@ -107,6 +116,17 @@ mod tests {
         let state = AppState::new();
         assert_eq!(state.backend_state(), BackendState::Disconnected);
         assert_eq!(state.port(), None);
+        assert_eq!(state.user_email(), None);
+    }
+
+    #[test]
+    fn user_email_setting_and_retrieval() {
+        let state = AppState::new();
+        assert_eq!(state.user_email(), None);
+        state.set_user_email(Some("user@example.com".to_string()));
+        assert_eq!(state.user_email().as_deref(), Some("user@example.com"));
+        state.set_user_email(None);
+        assert_eq!(state.user_email(), None);
     }
 
     #[test]

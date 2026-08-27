@@ -24,6 +24,12 @@ pub enum LockStatus {
     Unauthenticated,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StatusInfo {
+    pub lock_status: LockStatus,
+    pub user_email: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UriEntry {
     pub uri: Option<String>,
@@ -78,6 +84,8 @@ struct StatusData {
 #[derive(Deserialize)]
 struct StatusTemplate {
     status: String,
+    #[serde(rename = "userEmail")]
+    user_email: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -151,13 +159,17 @@ impl BwServeClient {
         }
     }
 
-    /// `/status` を叩き、ロック状態を返す。
-    pub async fn status(&self) -> Result<LockStatus, ClientError> {
+    /// `/status` を叩き、ロック状態とアカウントメールアドレスを返す。
+    pub async fn status(&self) -> Result<StatusInfo, ClientError> {
         let data: StatusData = self.get_envelope("/status").await?;
-        Ok(match data.template.status.as_str() {
+        let lock_status = match data.template.status.as_str() {
             "unlocked" => LockStatus::Unlocked,
             "unauthenticated" => LockStatus::Unauthenticated,
             _ => LockStatus::Locked,
+        };
+        Ok(StatusInfo {
+            lock_status,
+            user_email: data.template.user_email,
         })
     }
 
@@ -228,7 +240,8 @@ mod tests {
         .await;
         let client = BwServeClient::with_base_url(base_url);
         let status = client.status().await.unwrap();
-        assert_eq!(status, LockStatus::Locked);
+        assert_eq!(status.lock_status, LockStatus::Locked);
+        assert_eq!(status.user_email, Some("user@example.com".to_string()));
     }
 
     #[tokio::test]
@@ -239,7 +252,20 @@ mod tests {
         .await;
         let client = BwServeClient::with_base_url(base_url);
         let status = client.status().await.unwrap();
-        assert_eq!(status, LockStatus::Unlocked);
+        assert_eq!(status.lock_status, LockStatus::Unlocked);
+        assert_eq!(status.user_email, Some("user@example.com".to_string()));
+    }
+
+    #[tokio::test]
+    async fn status_parses_without_user_email() {
+        let base_url = spawn_mock(
+            r#"{"success":true,"data":{"object":"template","template":{"serverUrl":"https://example.com","lastSync":null,"status":"locked"}}}"#,
+        )
+        .await;
+        let client = BwServeClient::with_base_url(base_url);
+        let status = client.status().await.unwrap();
+        assert_eq!(status.lock_status, LockStatus::Locked);
+        assert_eq!(status.user_email, None);
     }
 
     #[tokio::test]
