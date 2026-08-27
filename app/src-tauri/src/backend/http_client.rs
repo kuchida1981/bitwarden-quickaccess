@@ -38,6 +38,22 @@ pub struct LoginDetail {
     pub uris: Vec<UriEntry>,
 }
 
+impl LoginDetail {
+    pub fn icon_domain(&self) -> Option<String> {
+        let uri = self.uris.iter().find_map(|u| u.uri.as_deref())?;
+        let trimmed = uri
+            .strip_prefix("https://")
+            .or_else(|| uri.strip_prefix("http://"))
+            .unwrap_or(uri);
+        let host = trimmed.split('/').next().unwrap_or(trimmed);
+        if host.is_empty() {
+            None
+        } else {
+            Some(host.to_string())
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VaultItemSummary {
     pub id: String,
@@ -283,5 +299,62 @@ mod tests {
         let base_url = spawn_mock(r#"{"success":true,"data":{"title":"Your vault is locked."}}"#).await;
         let client = BwServeClient::with_base_url(base_url);
         client.lock().await.unwrap();
+    }
+
+    #[test]
+    fn login_detail_icon_domain() {
+        let detail = LoginDetail {
+            username: None,
+            password: None,
+            totp: None,
+            uris: vec![
+                UriEntry {
+                    uri: Some("https://www.amazon.co.jp/".to_string()),
+                },
+                UriEntry {
+                    uri: Some("https://example.com".to_string()),
+                },
+            ],
+        };
+        assert_eq!(detail.icon_domain(), Some("www.amazon.co.jp".to_string()));
+
+        let http_detail = LoginDetail {
+            username: None,
+            password: None,
+            totp: None,
+            uris: vec![UriEntry {
+                uri: Some("http://sub.example.com/path/to/page".to_string()),
+            }],
+        };
+        assert_eq!(http_detail.icon_domain(), Some("sub.example.com".to_string()));
+
+        let empty_uri_detail = LoginDetail {
+            username: None,
+            password: None,
+            totp: None,
+            uris: vec![
+                UriEntry { uri: None },
+                UriEntry {
+                    uri: Some("https://google.com".to_string()),
+                },
+            ],
+        };
+        assert_eq!(empty_uri_detail.icon_domain(), Some("google.com".to_string()));
+
+        let no_uris_detail = LoginDetail {
+            username: None,
+            password: None,
+            totp: None,
+            uris: vec![],
+        };
+        assert_eq!(no_uris_detail.icon_domain(), None);
+
+        let none_uris_detail = LoginDetail {
+            username: None,
+            password: None,
+            totp: None,
+            uris: vec![UriEntry { uri: None }],
+        };
+        assert_eq!(none_uris_detail.icon_domain(), None);
     }
 }
