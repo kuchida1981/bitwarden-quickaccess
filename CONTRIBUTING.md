@@ -40,17 +40,26 @@ gh run watch <run-id> --exit-status
 2. 内容(`version`/`sha256`が正しいか)を確認し、問題なければマージする。
 3. リリースジョブのログで「Verify the cask installs」ステップが失敗している場合は、内容を確認した上で手動で `brew reinstall --cask bw-quickaccess` を実行し、起動・アンロックできることを実機確認する。
 
-**`productName`(`app/src-tauri/tauri.conf.json`)を変更したリリースでは、上記の自動PRをマージするだけでは不十分**: `brew bump-cask-pr` は `version`/`sha256` のみを更新し、Cask定義内のファイル名参照(`app` 行・`url` 行・`caveats` 文中の `.app` 名)は追従しない。そのリリースに限り、**自動作成されたPRのブランチに直接追加コミットする形で**手動修正する(自動PRをマージしてから別途直すと、修正が入るまでの間 `brew install --cask` が壊れたURLを指す状態になるため、マージ前に直すこと):
+**`productName`(`app/src-tauri/tauri.conf.json`)を変更したリリースでは、`brew bump-cask-pr` は失敗し、tap更新PR自体が作成されない**(v1.4.0のリリースで実際に発生・確認済み)。原因は、`brew bump-cask-pr` がtapリポジトリに**現在ある**Cask定義の `url` テンプレート(旧 `productName` 由来の古いファイル名)を使って新バージョンをダウンロードしようとするため。ファイル名が変わっていると404で失敗し、PRは作られない。
 
-```bash
-gh pr checkout <PR番号> --repo kuchida1981/homebrew-bitwarden-quickaccess
-```
+また、GitHub Releasesは**アセットのファイル名に含まれるスペースを自動的にドット(`.`)に置き換える**(例: ローカルの生成物は `Bitwarden Quick Access_aarch64.app.tar.gz` だが、実際にアップロードされるアセット名は `Bitwarden.Quick.Access_aarch64.app.tar.gz` になる。`%20` のようなパーセントエンコードではない)。`.app` バンドル自体の内部名(`app` 行が指すディレクトリ名)にはこの置換は適用されず、スペースを含む `productName` のまま(例: `Bitwarden Quick Access.app`)。
 
-1. `Casks/bw-quickaccess.rb` の `app "bw-quickaccess.app"` を新しい `productName` に基づくファイル名(例: `app "Bitwarden Quick Access.app"`)に書き換える。
-2. `caveats` 文中の `.app` 名の記載も同様に書き換える。
-3. `url` 行のファイル名にスペースが含まれる場合、生のスペースのままだとダウンロードURLとして不正になるため、`%20` にパーセントエンコードする(例: `.../Bitwarden%20Quick%20Access_aarch64.app.tar.gz`)。Cask名(token、`bw-quickaccess`)や `name` 行は変更しない。
+そのリリースに限り、以下の手順で **手動でCask更新PRを新規作成する**(自動PRは存在しないため、既存PRへの追加コミットではなく最初から作る):
+
+1. 実際にアップロードされたアセット名とsha256を確認する:
+   ```bash
+   gh release view vX.Y.Z --repo kuchida1981/bitwarden-quickaccess --json tagName,assets
+   ```
+   `assets[].name` がそのままアセット名(スペースはドットに置換済み)、`assets[].digest` が `sha256:...` 形式のハッシュ値。
+2. tapリポジトリをclone(または既存のローカルcloneを更新)し、新しいブランチを作成する。
+3. `Casks/bw-quickaccess.rb` を更新する:
+   - `version` / `sha256` を1で取得した値に更新する。
+   - `url` 行のファイル名を、1で取得した実際のアセット名(ドット置換後)に書き換える(例: `.../Bitwarden.Quick.Access_aarch64.app.tar.gz`)。
+   - `app "bw-quickaccess.app"` を新しい `productName` に基づくファイル名(スペースはそのまま。例: `app "Bitwarden Quick Access.app"`)に書き換える。
+   - `caveats` 文中の `.app` 名の記載も同様に書き換える。
+   - Cask名(token、`bw-quickaccess`)や `name` 行は変更しない。
 4. `brew style --cask bw-quickaccess` / `brew audit --cask bw-quickaccess` / `brew reinstall --cask bw-quickaccess` で確認する(下記トラブルシューティング手順の3〜4と同じ)。
-5. 変更をコミット・プッシュして(`git push`)、自動PRのブランチを更新した上で、通常通りそのPRをマージする。
+5. 変更をコミット・プッシュしてPRを作成し、マージする。
 
 `productName` を変更しない通常のリリースでは、この追加手順は不要。
 
