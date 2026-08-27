@@ -32,6 +32,7 @@
 ## 6. セキュリティレビュー
 
 - [x] 6.1 `/security-review` を実行する。(2026-08-27 実行、confidence 8/10以上の指摘なし。`get_current_user` は既存の `get_backend_error` と同一パターンでの露出であり、フロントエンド側も `textContent`/`title` によるプロパティ代入のみでXSSリスクなしと確認)
+- [x] 6.2 `/code-review` を実行する。(2026-08-27 実行、8つの観点で精査、指摘なし)
 
 ## 7. 実機確認
 
