@@ -51,6 +51,7 @@ pub struct Messages {
     pub lock_now_label: &'static str,
     pub quit_label: &'static str,
     pub repo_link_label: &'static str,
+    pub open_quickaccess_label: &'static str,
 }
 
 pub const JA: Messages = Messages {
@@ -64,6 +65,7 @@ pub const JA: Messages = Messages {
     lock_now_label: "今すぐロック",
     quit_label: "終了",
     repo_link_label: "GitHubリポジトリを開く",
+    open_quickaccess_label: "クイックアクセスを開く (⇧⌘Space)",
 };
 
 pub const EN: Messages = Messages {
@@ -77,6 +79,7 @@ pub const EN: Messages = Messages {
     lock_now_label: "Lock Now",
     quit_label: "Quit",
     repo_link_label: "View on GitHub",
+    open_quickaccess_label: "Open Quick Access (⇧⌘Space)",
 };
 
 pub fn messages(lang: Lang) -> &'static Messages {

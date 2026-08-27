@@ -11,6 +11,7 @@ use bw_quickaccess_gui_lib::backend::state::{AppState, BackendState};
 
 const STATUS_ITEM_ID: &str = "status";
 const HOTKEY_STATUS_ITEM_ID: &str = "hotkey_status";
+const OPEN_QUICKACCESS_ITEM_ID: &str = "open_quickaccess";
 const AUTOSTART_ITEM_ID: &str = "autostart";
 const LOCK_ITEM_ID: &str = "lock";
 const ABOUT_ITEM_ID: &str = "about";
@@ -53,6 +54,14 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
     };
     let hotkey_item = MenuItem::with_id(app, HOTKEY_STATUS_ITEM_ID, &hotkey_text, false, None::<&str>)?;
 
+    let open_quickaccess_item = MenuItem::with_id(
+        app,
+        OPEN_QUICKACCESS_ITEM_ID,
+        m.open_quickaccess_label,
+        true,
+        None::<&str>,
+    )?;
+
     let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
     let autostart_item = CheckMenuItem::with_id(
         app,
@@ -88,6 +97,7 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
         &[
             &status_item,
             &hotkey_item,
+            &open_quickaccess_item,
             &PredefinedMenuItem::separator(app)?,
             &autostart_item,
             &lock_item,
@@ -105,6 +115,7 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             QUIT_ITEM_ID => app.exit(0),
+            OPEN_QUICKACCESS_ITEM_ID => crate::popup::toggle_popup(app),
             REPO_LINK_ITEM_ID => {
                 if let Err(err) = app
                     .opener()
