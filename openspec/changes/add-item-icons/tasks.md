@@ -5,17 +5,17 @@
 
 ## 2. バックエンド実装: ドメイン抽出
 
-- [ ] 2.1 `app/src-tauri/src/backend/http_client.rs` または `app/src-tauri/src/commands.rs` に、`login.uris[0].uri` からホスト名(ドメイン)を抽出するユーティリティ関数を実装する。`uris` が空、`login` が無い場合は `None` を返す。
-- [ ] 2.2 `app/src-tauri/src/commands.rs` の `SearchResultItem` に `icon_domain: Option<String>` フィールドを追加し、`From<VaultItemSummary>` の変換ロジックでドメイン抽出結果を設定する。
-- [ ] 2.3 既存のテスト(`res_all` / `res_none` / `res_empty_login` 等、`commands.rs` の既存パターン)に合わせ、`icon_domain` が正しく設定される/されないケースのテストを追加する。
+- [x] 2.1 `app/src-tauri/src/backend/http_client.rs` に `LoginDetail::icon_domain()` を実装(agy, commit 8234aa1)。
+- [x] 2.2 `app/src-tauri/src/commands.rs` の `SearchResultItem` に `icon_domain: Option<String>` を追加し、`From<VaultItemSummary>` に反映(agy, commit 8234aa1)。
+- [x] 2.3 `icon_domain` のテストを追加(agy, commit 8234aa1)。
 
 ## 3. フロントエンド実装: アイコン取得・表示
 
-- [ ] 3.1 実装前に、想定エンドポイント(`https://icons.bitwarden.net/{domain}/icon.png` 形式)が実際に画像を返すか実機で確認する(ブラウザや `curl` で任意のドメインを指定して疎通確認)。想定と異なる場合は `design.md` を更新する。
-- [ ] 3.2 `app/dist/app.js` の `renderResults` を変更し、`icon_domain` を持つアイテムの行に `<img src="https://icons.bitwarden.net/{domain}/icon.png">` 相当の要素を追加する。
-- [ ] 3.3 `<img>` の `onerror` ハンドラで、読み込み失敗時にプレースホルダーアイコン(CSSクラス切り替え等)へフォールバックする処理を実装する。`icon_domain` を持たないアイテムも同様にプレースホルダーを表示する。
-- [ ] 3.4 アイコンの読み込みが一覧描画・上下矢印キーによる行フォーカス移動をブロックしないこと(`<img>` の非同期読み込みを利用するのみで、追加の同期待ちを入れない)を実装で担保する。
-- [ ] 3.5 `app/dist/style.css` にアイコン表示用のレイアウト(サイズ・余白)とプレースホルダースタイルを追加する。
+- [x] 3.1 実装前に、想定エンドポイント(`https://icons.bitwarden.net/{domain}/icon.png` 形式)が実際に画像を返すか確認する。(2026-08-27 `curl` で `https://icons.bitwarden.net/amazon.co.jp/icon.png` を確認し、`200 image/png` を確認済み)
+- [x] 3.2 `app/dist/app.js` の `renderResults` に `icon_domain` を持つアイテムのアイコン表示を追加(agy, commit be7e24f)。
+- [x] 3.3 `<img>` の `onerror` によるプレースホルダーへのフォールバックを実装(agy, commit be7e24f)。
+- [x] 3.4 アイコン読み込みは非同期(`<img>` 標準の読み込みのみ、同期待ちなし)であることを確認(agy, commit be7e24f)。
+- [x] 3.5 `app/dist/style.css` にアイコン・プレースホルダーのスタイルを追加(agy, commit be7e24f)。
 
 ## 4. セキュリティレビュー
 
@@ -23,7 +23,7 @@
 
 ## 5. 動作確認
 
-- [ ] 5.1 `cargo test` を実行し、既存テストおよび追加したテストが通ることを確認する。
-- [ ] 5.2 `cargo clippy --all-targets -- -D warnings` を実行し、警告が無いことを確認する。
+- [x] 5.1 `cargo test` を実行し、既存テストおよび追加したテストが通ることを確認する。(2026-08-27 全12テスト成功)
+- [x] 5.2 `cargo clippy --all-targets -- -D warnings` を実行し、警告が無いことを確認する。(2026-08-27 警告なし)
 - [ ] 5.3 実機で、URIを持つアイテム・持たないアイテムそれぞれについて、一覧行にアイコン(またはプレースホルダー)が表示されることを確認する。
 - [ ] 5.4 実機で、オフライン状態(またはアイコン取得先に到達できない状態)でもクイックアクセスの検索・行フォーカス移動が問題なく行え、プレースホルダーが表示されることを確認する。
