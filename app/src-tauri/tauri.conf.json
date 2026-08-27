@@ -9,7 +9,13 @@
     "withGlobalTauri": true,
     "windows": [],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": ["'self'"],
+        "script-src": ["'self'"],
+        "style-src": ["'self'"],
+        "img-src": ["'self'", "https://icons.bitwarden.net"],
+        "connect-src": ["ipc:", "http://ipc.localhost"]
+      }
     }
   },
   "bundle": {
