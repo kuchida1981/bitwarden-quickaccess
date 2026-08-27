@@ -58,7 +58,12 @@ fn run_shell_and_capture_stdout(
 ) -> Option<String> {
     use std::io::Read;
 
-    let mut child = command.stdout(std::process::Stdio::piped()).spawn().ok()?;
+    let mut child = command
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()?;
     let start = std::time::Instant::now();
 
     loop {
