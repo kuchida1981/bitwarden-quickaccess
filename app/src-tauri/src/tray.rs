@@ -1,8 +1,8 @@
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
+    menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     image::Image,
-    AppHandle, Manager,
+    AppHandle, Manager, Wry,
 };
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_opener::OpenerExt;
@@ -48,11 +48,14 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
 
     let status_item = MenuItem::with_id(app, STATUS_ITEM_ID, status_label(m, initial), false, None::<&str>)?;
 
-    let hotkey_text = match hotkey_warning {
-        None => m.hotkey_registered.to_string(),
-        Some(reason) => m.hotkey_unregistered_prefix.replace("{}", reason),
-    };
-    let hotkey_item = MenuItem::with_id(app, HOTKEY_STATUS_ITEM_ID, &hotkey_text, false, None::<&str>)?;
+    // ホットキーが正常に登録できている場合、その旨は後述の「クイックアクセスを開く」項目の
+    // ラベルに併記されるため冗長になる。未登録(失敗)の場合の警告のみメニューに表示する。
+    let hotkey_item = hotkey_warning
+        .map(|reason| {
+            let hotkey_text = m.hotkey_unregistered_prefix.replace("{}", reason);
+            MenuItem::with_id(app, HOTKEY_STATUS_ITEM_ID, &hotkey_text, false, None::<&str>)
+        })
+        .transpose()?;
 
     let open_quickaccess_item = MenuItem::with_id(
         app,
@@ -92,21 +95,23 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
 
     let repo_link_item = MenuItem::with_id(app, REPO_LINK_ITEM_ID, m.repo_link_label, true, None::<&str>)?;
 
-    let menu = Menu::with_items(
-        app,
-        &[
-            &status_item,
-            &hotkey_item,
-            &open_quickaccess_item,
-            &PredefinedMenuItem::separator(app)?,
-            &autostart_item,
-            &lock_item,
-            &PredefinedMenuItem::separator(app)?,
-            &about_item,
-            &repo_link_item,
-            &quit_item,
-        ],
-    )?;
+    let separator1 = PredefinedMenuItem::separator(app)?;
+    let separator2 = PredefinedMenuItem::separator(app)?;
+    let mut menu_items: Vec<&dyn IsMenuItem<Wry>> = vec![&status_item];
+    if let Some(hotkey_item) = &hotkey_item {
+        menu_items.push(hotkey_item);
+    }
+    menu_items.extend::<[&dyn IsMenuItem<Wry>; 8]>([
+        &open_quickaccess_item,
+        &separator1,
+        &autostart_item,
+        &lock_item,
+        &separator2,
+        &about_item,
+        &repo_link_item,
+        &quit_item,
+    ]);
+    let menu = Menu::with_items(app, &menu_items)?;
 
     let autostart_item_for_menu = autostart_item.clone();
     let tray = TrayIconBuilder::new()
