@@ -17,9 +17,9 @@ const ABOUT_ITEM_ID: &str = "about";
 const REPO_LINK_ITEM_ID: &str = "repo_link";
 const QUIT_ITEM_ID: &str = "quit";
 
-/// `Cargo.toml` の version を単一の情報源とする(`tauri.conf.json` はversionを
-/// 明示せず、Tauriがビルド時にCargo.tomlの値を採用する。design.md 決定3)。
-const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+/// `build.rs` で `git describe` から動的に導出されたバージョン文字列を参照する。
+/// リリースタグちょうどのビルドでは `v1.1.0`、開発中のセルフビルドでは `v1.1.0-N-gXXXXXXX` 形式になる。
+const APP_VERSION: &str = env!("BWQA_DISPLAY_VERSION");
 
 fn status_label(m: &crate::i18n::Messages, state: BackendState) -> &'static str {
     match state {
@@ -76,7 +76,7 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
     let about_item = MenuItem::with_id(
         app,
         ABOUT_ITEM_ID,
-        format!("{} v{}", app.package_info().name, APP_VERSION),
+        format!("{} {}", app.package_info().name, APP_VERSION),
         false,
         None::<&str>,
     )?;
