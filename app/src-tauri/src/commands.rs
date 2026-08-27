@@ -1,4 +1,5 @@
 use bw_quickaccess_gui_lib::backend::{
+    clipboard_guard::ClipboardGuard,
     http_client::{BwServeClient, VaultItemSummary},
     idle::IdleTimer,
     state::{AppState, BackendState},
@@ -7,6 +8,26 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::popup;
+
+/// コピーした認証情報をクリップボードから自動消去するまでの待機時間(30秒)。
+pub const CLIPBOARD_CLEAR_DELAY: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// クリップボードの中身がアプリが最後に書き込んだ値のままである場合に限り、
+/// クリップボードをクリアする。コピー後の遅延クリア、および手動/自動ロック時の
+/// 即時クリアの両方から呼ばれる共通処理。クリップボードの読み取りに失敗した
+/// 場合は安全側に倒して何もしない。
+pub fn clear_clipboard_if_owned(
+    app: &tauri::AppHandle,
+    guard: &ClipboardGuard,
+) {
+    let Ok(current) = app.clipboard().read_text() else {
+        return;
+    };
+    if guard.should_clear(&current) {
+        let _ = app.clipboard().write_text(String::new());
+        guard.clear();
+    }
+}
 
 fn client_for(state: &AppState) -> Result<BwServeClient, String> {
     let port = state
@@ -122,6 +143,7 @@ pub async fn copy_field(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     idle: tauri::State<'_, IdleTimer>,
+    guard: tauri::State<'_, ClipboardGuard>,
     item_id: String,
     field: String,
 ) -> Result<(), String> {
@@ -145,7 +167,18 @@ pub async fn copy_field(
         other => return Err(format!("不明なフィールドです: {other}")),
     };
 
-    app.clipboard().write_text(value).map_err(|err| err.to_string())
+    let value_for_guard = value.clone();
+    app.clipboard().write_text(value).map_err(|err| err.to_string())?;
+    guard.set(value_for_guard);
+
+    let app_for_clear = app.clone();
+    let guard_for_clear = guard.inner().clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(CLIPBOARD_CLEAR_DELAY).await;
+        clear_clipboard_if_owned(&app_for_clear, &guard_for_clear);
+    });
+
+    Ok(())
 }
 
 /// フォーカス行のURL(login.urisの先頭要素)をデフォルトブラウザで開く。
