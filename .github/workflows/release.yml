@@ -56,6 +56,19 @@ jobs:
         continue-on-error: true
         run: brew tap kuchida1981/bitwarden-quickaccess
 
+      # 実リリースでの実地検証(タスク3.4)で発覚: 最近のHomebrewは、サードパーティ
+      # tapのcask定義を読み込む前に明示的な信頼付けを要求する(「Refusing to load
+      # cask ... from untrusted tap ...」)。これを行わないと `brew bump-cask-pr`
+      # (既存caskを読み込んでバージョンを比較する)も、後段の `brew install --cask`
+      # も同じ理由で失敗する。バレ形式(`brew trust <tap>`)を使う。実際のCIの
+      # エラーメッセージ自身がこの構文を提示しており、ローカルでもuntrust→trust
+      # のサイクルで動作を実機確認済み(`--tap`フラグは手元のHomebrewの
+      # `--help`には存在するが、外部ドキュメントと食い違いがあったため、より
+      # 確実なバレ形式を採用した)。
+      - name: Trust the Homebrew tap
+        continue-on-error: true
+        run: brew trust kuchida1981/bitwarden-quickaccess
+
       - name: Open a Homebrew tap update PR
         id: bump_cask_pr
         continue-on-error: true
