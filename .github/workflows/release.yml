@@ -119,4 +119,8 @@ jobs:
             git -C "$tap_dir" fetch origin "$branch"
             git -C "$tap_dir" checkout -B "$branch" "origin/$branch"
           }
-          brew install --cask --no-quarantine bw-quickaccess
+          # v1.2.1の実リリースで発覚: `--no-quarantine` はこのHomebrewバージョンには
+          # 存在しないフラグ(`brew install --help`に見当たらない)。このステップの
+          # 目的はインストールが完了することの確認のみ(GUI起動確認は対象外)であり、
+          # Gatekeeper回避自体はここでは不要なため、フラグを外すだけで良い。
+          brew install --cask bw-quickaccess
