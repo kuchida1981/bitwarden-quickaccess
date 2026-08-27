@@ -18,10 +18,12 @@ jobs:
           fetch-depth: 0
 
       - name: Sync Cargo.toml version with the release tag
+        id: release_version
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           version="${RELEASE_TAG#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           sed -i '' "s/^version = \".*\"/version = \"$version\"/" app/src-tauri/Cargo.toml
 
       - name: Install Rust toolchain
@@ -59,13 +61,14 @@ jobs:
         continue-on-error: true
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.release_version.outputs.version }}
         run: |
-          version="${RELEASE_TAG#v}"
           # sha256は明示指定せず、bump-cask-pr自身に新URLからダウンロード・算出
           # させる。これにより新しいダウンロードURLが実際に到達可能であることも
-          # 同時に検証される。
-          brew bump-cask-pr --no-fork --no-browse --version="$version" bw-quickaccess
+          # 同時に検証される。バージョン文字列自体は「Sync Cargo.toml version」
+          # ステップの出力を再利用し、タグからの導出ロジックを1箇所にまとめる
+          # (コードレビューで発覚した重複への対応)。
+          brew bump-cask-pr --no-fork --no-browse --version="$VERSION" bw-quickaccess
 
       # このステップ自体が失敗した場合(PAT不正等)、後続の「最新のopen PRを探す」
       # ロジックが無関係な古いPR/他者のPRを誤って拾ってしまう可能性があるため
