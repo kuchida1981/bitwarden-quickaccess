@@ -18,10 +18,12 @@ jobs:
           fetch-depth: 0
 
       - name: Sync Cargo.toml version with the release tag
+        id: release_version
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           version="${RELEASE_TAG#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           sed -i '' "s/^version = \".*\"/version = \"$version\"/" app/src-tauri/Cargo.toml
 
       - name: Install Rust toolchain
@@ -39,3 +41,69 @@ jobs:
         with:
           projectPath: app
           releaseId: ${{ github.event.release.id }}
+
+      # ここから Homebrew tap 更新の自動化(issue #77)。`brew bump-cask-pr` は
+      # バージョン/sha256の更新・`brew audit`/`brew style --fix`・ブランチ作成
+      # ・コミット・プッシュ・PR作成までを1コマンドで行う(Homebrew本体のCLI
+      # サブコマンドで、GitHub Actionではない)。tapリポジトリへの書き込み権限を
+      # 持つPATが `HOMEBREW_TAP_PAT` シークレットとして事前に登録されている必要が
+      # あり、これはユーザー自身の対応が必須(design.md参照)。
+      # このステップ群はすべて non-blocking(`continue-on-error: true`)にする。
+      # アプリ本体のビルド・アップロードは既に完了しているため、PAT未登録等の
+      # 理由でtap更新が失敗しても、その一事だけでリリースジョブ全体を失敗表示に
+      # したくない(CONTRIBUTING.md参照、手動フォールバック手順を用意している)。
+      - name: Tap the Homebrew repository
+        continue-on-error: true
+        run: brew tap kuchida1981/bitwarden-quickaccess
+
+      - name: Open a Homebrew tap update PR
+        id: bump_cask_pr
+        continue-on-error: true
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
+          VERSION: ${{ steps.release_version.outputs.version }}
+        run: |
+          # sha256は明示指定せず、bump-cask-pr自身に新URLからダウンロード・算出
+          # させる。これにより新しいダウンロードURLが実際に到達可能であることも
+          # 同時に検証される。バージョン文字列自体は「Sync Cargo.toml version」
+          # ステップの出力を再利用し、タグからの導出ロジックを1箇所にまとめる
+          # (コードレビューで発覚した重複への対応)。
+          brew bump-cask-pr --no-fork --no-browse --version="$VERSION" bw-quickaccess
+
+      # このステップ自体が失敗した場合(PAT不正等)、後続の「最新のopen PRを探す」
+      # ロジックが無関係な古いPR/他者のPRを誤って拾ってしまう可能性があるため
+      # (コードレビューで発覚)、前段の成否で明示的にスキップする。
+      - name: Resolve the tap PR branch
+        id: resolve_branch
+        if: steps.bump_cask_pr.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
+        run: |
+          # brewの自由形式な標準出力を正規表現で拾う方式は壊れやすいため
+          # (コードレビューで発覚)、GitHub API(gh pr list)でtapリポジトリの
+          # 最新のopen PRを直接問い合わせてブランチ名を取得する。`brew
+          # bump-cask-pr` が作るブランチ名は `bump-<cask token>...` 形式
+          # (Homebrew本体の実装で確認済み)のため、無関係なPR(人間による手動PR
+          # やDependabot等)を誤って拾わないよう、ブランチ名のプレフィックスで
+          # 絞り込んだ上で最新のものを選ぶ。
+          branch=$(gh pr list --repo kuchida1981/homebrew-bitwarden-quickaccess --state open \
+            --json headRefName,createdAt --jq \
+            '[.[] | select(.headRefName | startswith("bump-bw-quickaccess"))] | sort_by(.createdAt) | last | .headRefName // empty')
+          if [ -z "$branch" ]; then
+            echo "tap更新PRが見つかりませんでした(brew bump-cask-prが失敗した可能性があります)" >&2
+            exit 1
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the cask installs (non-blocking)
+        if: steps.resolve_branch.outcome == 'success'
+        continue-on-error: true
+        run: |
+          tap_dir="$(brew --repository)/Library/Taps/kuchida1981/homebrew-bitwarden-quickaccess"
+          branch="${{ steps.resolve_branch.outputs.branch }}"
+          git -C "$tap_dir" checkout "$branch" 2>/dev/null || {
+            git -C "$tap_dir" fetch origin "$branch"
+            git -C "$tap_dir" checkout -B "$branch" "origin/$branch"
+          }
+          brew install --cask --no-quarantine bw-quickaccess
