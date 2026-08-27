@@ -34,10 +34,10 @@ The app is **not code-signed or notarized**, so installing via Homebrew does not
 
 ### Option 2: Download from GitHub Releases
 
-1. Download `bw-quickaccess_aarch64.app.tar.gz` from the [Releases page](https://github.com/kuchida1981/bitwarden-quickaccess/releases). This build targets **Apple Silicon (arm64) only**; Intel Macs are not currently supported by the prebuilt release (self-build from source instead — see Option 3).
-2. Extract it (double-click in Finder, or `tar -xzf bw-quickaccess_aarch64.app.tar.gz`) and move `bw-quickaccess.app` to `/Applications` (or anywhere you like).
+1. Download `Bitwarden Quick Access_aarch64.app.tar.gz` from the [Releases page](https://github.com/kuchida1981/bitwarden-quickaccess/releases). This build targets **Apple Silicon (arm64) only**; Intel Macs are not currently supported by the prebuilt release (self-build from source instead — see Option 3).
+2. Extract it (double-click in Finder, or `tar -xzf "Bitwarden Quick Access_aarch64.app.tar.gz"`) and move `Bitwarden Quick Access.app` to `/Applications` (or anywhere you like).
 3. The app is **not code-signed or notarized**. On first launch, macOS Gatekeeper will refuse to open it with an "unidentified developer" warning. To open it anyway:
-   - Right-click (or Control-click) `bw-quickaccess.app` in Finder and choose **Open**, then confirm **Open** in the dialog that appears.
+   - Right-click (or Control-click) `Bitwarden Quick Access.app` in Finder and choose **Open**, then confirm **Open** in the dialog that appears.
    - You only need to do this once; subsequent launches work normally.
 
 ### Option 3: Self-build from source
@@ -48,7 +48,7 @@ cd bitwarden-quickaccess/app/src-tauri
 cargo tauri build
 ```
 
-The built `.app` is placed under `target/release/bundle/macos/bw-quickaccess.app`. Move it to `/Applications` if you like.
+The built `.app` is placed under `target/release/bundle/macos/Bitwarden Quick Access.app`. Move it to `/Applications` if you like.
 
 For local development (runs the app without producing a distributable bundle):
 
@@ -59,7 +59,7 @@ cargo run
 
 ## Usage
 
-1. Launch `bw-quickaccess.app`. It has no Dock icon or window on startup — look for its icon in the menu bar.
+1. Launch `Bitwarden Quick Access.app`. It has no Dock icon or window on startup — look for its icon in the menu bar.
 2. Press **⇧⌘Space** (Shift+Cmd+Space) from anywhere to toggle the popup.
 3. If the vault is locked, enter your master password to unlock.
 4. Type to search incrementally. Use the **↑ / ↓** arrow keys to move the highlighted selection.
