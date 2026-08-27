@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use bw_quickaccess_gui_lib::backend::{
+    clipboard_guard::ClipboardGuard,
     http_client::{BwServeClient, LockStatus},
     idle::{IdleTimer, DEFAULT_IDLE_TIMEOUT},
     preflight, process,
@@ -116,6 +117,7 @@ fn main() {
 
     let app_state = AppState::new();
     let idle_timer = IdleTimer::new(DEFAULT_IDLE_TIMEOUT);
+    let clipboard_guard = ClipboardGuard::new();
     let lang = i18n::resolve_lang();
  
     let app = tauri::Builder::default()
@@ -136,6 +138,7 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(app_state)
         .manage(idle_timer)
+        .manage(clipboard_guard)
         .manage(lang)
         .manage(popup::PreviousFrontmostApp::new())
         .manage(ManagedProcess(Mutex::new(None)))
@@ -173,8 +176,10 @@ fn main() {
 
             let state_for_idle = app.state::<AppState>().inner().clone();
             let idle_for_watcher = app.state::<IdleTimer>().inner().clone();
+            let guard_for_idle = app.state::<ClipboardGuard>().inner().clone();
+            let app_handle_for_idle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                watch_idle_timeout(state_for_idle, idle_for_watcher).await;
+                watch_idle_timeout(state_for_idle, idle_for_watcher, app_handle_for_idle, guard_for_idle).await;
             });
 
             let state_for_popup_notify = app.state::<AppState>().inner().clone();
@@ -274,7 +279,12 @@ async fn wait_for_shutdown_signal() {
 /// アンロック済み状態を解除する。タイマーのリセットは各Tauri command側(unlock/
 /// search_items/copy_field/open_in_browser)が担い、ここでは期限切れの検知と
 /// ロック実行のみを一元的に行う(design.md 決定4)。
-async fn watch_idle_timeout(state: AppState, idle: IdleTimer) {
+async fn watch_idle_timeout(
+    state: AppState,
+    idle: IdleTimer,
+    app_handle: tauri::AppHandle,
+    guard: ClipboardGuard,
+) {
     loop {
         tokio::time::sleep(IDLE_CHECK_INTERVAL).await;
 
@@ -289,6 +299,7 @@ async fn watch_idle_timeout(state: AppState, idle: IdleTimer) {
         let client = BwServeClient::new(port);
         if client.lock().await.is_ok() {
             state.set_locked();
+            commands::clear_clipboard_if_owned(&app_handle, &guard);
         }
     }
 }

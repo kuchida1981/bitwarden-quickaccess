@@ -2,7 +2,7 @@
 
 Read this in English / [日本語版はこちら](README.ja.md)
 
-A menu-bar quick-access app for Bitwarden, equivalent to 1Password Quick Access, built on top of `bw` (Bitwarden CLI) via `bw serve` and [Tauri](https://tauri.app/). Press a global hotkey from anywhere to search your vault and copy the username, password, or TOTP to the clipboard — or open the item's URL in your browser.
+A menu-bar quick-access app for Bitwarden, equivalent to 1Password Quick Access, built on top of `bw` (Bitwarden CLI) via `bw serve` and [Tauri](https://tauri.app/). Press a global hotkey from anywhere to search your vault and copy the username, password, or TOTP to the clipboard — or open the item's URL in your browser. Copied values are automatically cleared from the clipboard after 30 seconds (or immediately when the vault is locked), unless you've already copied something else in the meantime.
 
 > **Coming from the old terminal (TUI) version?** See [Migrating from the old TUI](#migrating-from-the-old-tui) below.
 

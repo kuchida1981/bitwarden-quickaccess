@@ -2,7 +2,7 @@
 
 [Read this in English](README.md) / 日本語版
 
-Bitwarden向けの、1Password Quick Access 相当のメニューバー常駐アプリです。`bw`(Bitwarden CLI)の `bw serve` と [Tauri](https://tauri.app/) を組み合わせて実装されています。どこからでもグローバルホットキーを押すだけでvaultを検索し、ユーザー名・パスワード・TOTPをクリップボードにコピーしたり、アイテムのURLをブラウザで開いたりできます。
+Bitwarden向けの、1Password Quick Access 相当のメニューバー常駐アプリです。`bw`(Bitwarden CLI)の `bw serve` と [Tauri](https://tauri.app/) を組み合わせて実装されています。どこからでもグローバルホットキーを押すだけでvaultを検索し、ユーザー名・パスワード・TOTPをクリップボードにコピーしたり、アイテムのURLをブラウザで開いたりできます。コピーした内容は、他の値を上書きコピーしていない限り、30秒後(またはvaultをロックした時点)に自動的にクリップボードからクリアされます。
 
 > **旧ターミナル版(TUI)をお使いだった方へ**: 下記の[旧TUIからの移行](#旧tuiからの移行)を参照してください。
 
