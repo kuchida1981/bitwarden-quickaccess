@@ -55,6 +55,7 @@ jobs:
         run: brew tap kuchida1981/bitwarden-quickaccess
 
       - name: Open a Homebrew tap update PR
+        id: bump_cask_pr
         continue-on-error: true
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
@@ -66,18 +67,26 @@ jobs:
           # 同時に検証される。
           brew bump-cask-pr --no-fork --no-browse --version="$version" bw-quickaccess
 
+      # このステップ自体が失敗した場合(PAT不正等)、後続の「最新のopen PRを探す」
+      # ロジックが無関係な古いPR/他者のPRを誤って拾ってしまう可能性があるため
+      # (コードレビューで発覚)、前段の成否で明示的にスキップする。
       - name: Resolve the tap PR branch
         id: resolve_branch
+        if: steps.bump_cask_pr.outcome == 'success'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
         run: |
           # brewの自由形式な標準出力を正規表現で拾う方式は壊れやすいため
           # (コードレビューで発覚)、GitHub API(gh pr list)でtapリポジトリの
-          # 最新のopen PRを直接問い合わせてブランチ名を取得する。brew
-          # bump-cask-pr実行直後であれば、これが今回作成されたPRのはずである。
+          # 最新のopen PRを直接問い合わせてブランチ名を取得する。`brew
+          # bump-cask-pr` が作るブランチ名は `bump-<cask token>...` 形式
+          # (Homebrew本体の実装で確認済み)のため、無関係なPR(人間による手動PR
+          # やDependabot等)を誤って拾わないよう、ブランチ名のプレフィックスで
+          # 絞り込んだ上で最新のものを選ぶ。
           branch=$(gh pr list --repo kuchida1981/homebrew-bitwarden-quickaccess --state open \
-            --json headRefName,createdAt --jq 'sort_by(.createdAt) | last | .headRefName // empty')
+            --json headRefName,createdAt --jq \
+            '[.[] | select(.headRefName | startswith("bump-bw-quickaccess"))] | sort_by(.createdAt) | last | .headRefName // empty')
           if [ -z "$branch" ]; then
             echo "tap更新PRが見つかりませんでした(brew bump-cask-prが失敗した可能性があります)" >&2
             exit 1
@@ -85,6 +94,7 @@ jobs:
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Verify the cask installs (non-blocking)
+        if: steps.resolve_branch.outcome == 'success'
         continue-on-error: true
         run: |
           tap_dir="$(brew --repository)/Library/Taps/kuchida1981/homebrew-bitwarden-quickaccess"
