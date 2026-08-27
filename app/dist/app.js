@@ -463,6 +463,23 @@ function renderResults() {
     const li = document.createElement("li");
     li.className = index === focusedIndex ? "focused" : "";
 
+    if (item.icon_domain) {
+      const iconImg = document.createElement("img");
+      iconImg.className = "item-icon";
+      iconImg.src = `https://icons.bitwarden.net/${encodeURIComponent(item.icon_domain)}/icon.png`;
+      iconImg.alt = "";
+      iconImg.onerror = () => {
+        const placeholder = document.createElement("span");
+        placeholder.className = "item-icon-placeholder";
+        iconImg.replaceWith(placeholder);
+      };
+      li.appendChild(iconImg);
+    } else {
+      const placeholder = document.createElement("span");
+      placeholder.className = "item-icon-placeholder";
+      li.appendChild(placeholder);
+    }
+
     const nameSpan = document.createElement("span");
     nameSpan.className = "item-name";
     nameSpan.textContent = item.name;

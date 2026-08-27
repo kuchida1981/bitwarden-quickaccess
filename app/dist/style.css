@@ -130,6 +130,28 @@ body {
   color: #fff;
 }
 
+#results li .item-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+#results li .item-icon-placeholder {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: #d0d0d5;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+#results li.focused .item-icon-placeholder {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 #results li .item-name {
   font-weight: 600;
 }
