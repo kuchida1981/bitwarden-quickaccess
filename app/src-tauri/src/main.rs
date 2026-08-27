@@ -51,28 +51,55 @@ fn extract_path_from_marker(stdout: &str) -> Option<&str> {
 /// 重複してPATHが1要素目に切り詰められてしまう不具合があった。`printenv` は
 /// OSへエクスポートする際の環境変数(常にコロン区切り)をそのまま出力するため、
 /// bash/zsh/fishいずれでも同じ形式で取得できる。
+fn run_shell_and_capture_stdout(
+    mut command: std::process::Command,
+    timeout: Duration,
+    poll_interval: Duration,
+) -> Option<String> {
+    use std::io::Read;
+
+    let mut child = command.stdout(std::process::Stdio::piped()).spawn().ok()?;
+    let start = std::time::Instant::now();
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                if !status.success() {
+                    return None;
+                }
+                let mut stdout_str = String::new();
+                if let Some(mut stdout) = child.stdout.take() {
+                    let _ = stdout.read_to_string(&mut stdout_str);
+                }
+                return extract_path_from_marker(&stdout_str).map(|s| s.to_string());
+            }
+            Ok(None) => {
+                if start.elapsed() >= timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
+                }
+                std::thread::sleep(poll_interval);
+            }
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    }
+}
+
 fn fix_path_env() {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-    let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        let result = std::process::Command::new(shell)
-            .args(["-l", "-c", &format!("echo -n {PATH_MARKER}; printenv PATH")])
-            .output();
-        let _ = tx.send(result);
-    });
+    let mut cmd = std::process::Command::new(shell);
+    cmd.args(["-l", "-c", &format!("echo -n {PATH_MARKER}; printenv PATH")]);
 
-    let Ok(Ok(output)) = rx.recv_timeout(Duration::from_secs(3)) else {
-        return;
-    };
-    if !output.status.success() {
-        return;
-    }
-    let Ok(stdout) = String::from_utf8(output.stdout) else {
-        return;
-    };
-    if let Some(path) = extract_path_from_marker(&stdout) {
-        // SAFETY: この時点ではまだ他のスレッド(Tauri/tokioランタイム、トレイ等)を
-        // 起動しておらず、他のスレッドが並行してPATHを読み書きすることはない。
+    if let Some(path) =
+        run_shell_and_capture_stdout(cmd, Duration::from_secs(3), Duration::from_millis(50))
+    {
+        // SAFETY: 追加スレッドを持たず、子プロセスのkill・reapが完了してから戻るため、
+        // この時点で環境変数に触れる他スレッドは存在しない。
         unsafe {
             std::env::set_var("PATH", path);
         }
@@ -316,5 +343,50 @@ mod fix_path_env_tests {
     fn ignores_login_shell_noise_before_marker() {
         let stdout = format!("Last login: Mon Jan 1\n{PATH_MARKER}/usr/bin:/opt/homebrew/bin\n");
         assert_eq!(extract_path_from_marker(&stdout), Some("/usr/bin:/opt/homebrew/bin"));
+    }
+
+    #[test]
+    fn run_shell_success_extracts_path() {
+        let mut cmd = std::process::Command::new("sh");
+        cmd.args(["-c", &format!("echo -n {PATH_MARKER}; printenv PATH")]);
+
+        let result = run_shell_and_capture_stdout(
+            cmd,
+            Duration::from_secs(1),
+            Duration::from_millis(5),
+        );
+        assert!(result.is_some());
+        assert!(!result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn run_shell_timeout_kills_and_returns_none_quickly() {
+        let mut cmd = std::process::Command::new("sh");
+        cmd.args(["-c", "sleep 5"]);
+
+        let start = std::time::Instant::now();
+        let result = run_shell_and_capture_stdout(
+            cmd,
+            Duration::from_millis(50),
+            Duration::from_millis(5),
+        );
+        let elapsed = start.elapsed();
+
+        assert_eq!(result, None);
+        assert!(
+            elapsed < Duration::from_secs(1),
+            "Expected timeout and kill to finish in less than 1s, but took {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn run_shell_spawn_failure_returns_none() {
+        let cmd = std::process::Command::new("/nonexistent-shell-xyz-12345");
+        let result = run_shell_and_capture_stdout(
+            cmd,
+            Duration::from_millis(50),
+            Duration::from_millis(5),
+        );
+        assert_eq!(result, None);
     }
 }
