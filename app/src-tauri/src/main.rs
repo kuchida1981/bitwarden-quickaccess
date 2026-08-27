@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use bw_quickaccess_gui_lib::backend::{
+    clipboard_guard::ClipboardGuard,
     http_client::{BwServeClient, LockStatus},
     idle::{IdleTimer, DEFAULT_IDLE_TIMEOUT},
     preflight, process,
@@ -116,6 +117,7 @@ fn main() {
 
     let app_state = AppState::new();
     let idle_timer = IdleTimer::new(DEFAULT_IDLE_TIMEOUT);
+    let clipboard_guard = ClipboardGuard::new();
     let lang = i18n::resolve_lang();
  
     let app = tauri::Builder::default()
@@ -136,6 +138,7 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(app_state)
         .manage(idle_timer)
+        .manage(clipboard_guard)
         .manage(lang)
         .manage(popup::PreviousFrontmostApp::new())
         .manage(ManagedProcess(Mutex::new(None)))
