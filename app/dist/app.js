@@ -236,8 +236,9 @@ function moveFocus(delta) {
   if (currentItems.length === 0) {
     return;
   }
+  const previousIndex = focusedIndex;
   focusedIndex = Math.min(Math.max(focusedIndex + delta, 0), currentItems.length - 1);
-  renderResults();
+  updateFocusRows(previousIndex);
 }
 
 // 選択中アイテムの実行可能アクション一覧を組み立てる(design.md 決定4)。
@@ -263,14 +264,14 @@ function openActionMenu() {
   actionMenuActions = actions;
   actionMenuOpen = true;
   actionMenuFocusIndex = 0;
-  renderResults();
+  refreshFocusedRowTrailing();
 }
 
 function closeActionMenu() {
   actionMenuOpen = false;
   actionMenuActions = [];
   actionMenuFocusIndex = -1;
-  renderResults();
+  refreshFocusedRowTrailing();
 }
 
 // アクションメニュー展開中のキー操作(design.md 決定3)。
@@ -280,13 +281,13 @@ function handleActionMenuKeydown(event) {
   if (event.key === "ArrowDown") {
     event.preventDefault();
     actionMenuFocusIndex = Math.min(actionMenuFocusIndex + 1, actionMenuActions.length - 1);
-    renderResults();
+    refreshFocusedRowTrailing();
     return;
   }
   if (event.key === "ArrowUp") {
     event.preventDefault();
     actionMenuFocusIndex = Math.max(actionMenuFocusIndex - 1, 0);
-    renderResults();
+    refreshFocusedRowTrailing();
     return;
   }
   if (event.key === "ArrowLeft") {
@@ -463,6 +464,23 @@ function renderResults() {
     const li = document.createElement("li");
     li.className = index === focusedIndex ? "focused" : "";
 
+    if (item.icon_domain) {
+      const iconImg = document.createElement("img");
+      iconImg.className = "item-icon";
+      iconImg.src = `https://icons.bitwarden.net/${encodeURIComponent(item.icon_domain)}/icon.png`;
+      iconImg.alt = "";
+      iconImg.onerror = () => {
+        const placeholder = document.createElement("span");
+        placeholder.className = "item-icon-placeholder";
+        iconImg.replaceWith(placeholder);
+      };
+      li.appendChild(iconImg);
+    } else {
+      const placeholder = document.createElement("span");
+      placeholder.className = "item-icon-placeholder";
+      li.appendChild(placeholder);
+    }
+
     const nameSpan = document.createElement("span");
     nameSpan.className = "item-name";
     nameSpan.textContent = item.name;
@@ -476,14 +494,7 @@ function renderResults() {
       li.appendChild(userSpan);
     }
 
-    if (actionMenuOpen && index === focusedIndex) {
-      li.appendChild(renderActionMenu(item));
-    } else {
-      const hints = document.createElement("div");
-      hints.className = "hints";
-      hints.textContent = SHORTCUT_HINTS;
-      li.appendChild(hints);
-    }
+    li.appendChild(buildTrailingBlock(item, index));
 
     li.addEventListener("mouseenter", () => {
       // メニュー表示中に他行へフォーカスが移ると、開いているメニューの前提
@@ -491,8 +502,12 @@ function renderResults() {
       if (actionMenuOpen) {
         return;
       }
+      if (focusedIndex === index) {
+        return;
+      }
+      const previousIndex = focusedIndex;
       focusedIndex = index;
-      renderResults();
+      updateFocusRows(previousIndex);
     });
 
     resultsList.appendChild(li);
@@ -504,6 +519,53 @@ function renderResults() {
       focusedEl.scrollIntoView({ block: "nearest" });
     }
   }
+}
+
+// フォーカス行の末尾ブロック(ショートカットヒント、またはアクションメニュー展開中は
+// アクションメニュー)を作る。
+function buildTrailingBlock(item, index) {
+  if (actionMenuOpen && index === focusedIndex) {
+    return renderActionMenu(item);
+  }
+  const hints = document.createElement("div");
+  hints.className = "hints";
+  hints.textContent = SHORTCUT_HINTS;
+  return hints;
+}
+
+// 矢印キー/マウスホバーによるフォーカス行の移動時に呼ぶ。アイコンを含む行全体を
+// 作り直さず、影響を受ける2行(旧フォーカス行・新フォーカス行)の `.focused` クラスと
+// 末尾ブロックだけを更新する。行のDOM要素自体(アイコン含む)を作り直さないことで、
+// (1) アイコンが移動のたびに再読み込みされてチラつく問題と、(2) 一覧再構築でカーソル
+// 直下に新しい要素が現れることでブラウザが mouseenter を誤発火させ、フォーカスが
+// カーソル位置の行へ巻き戻ってしまう問題の両方を防ぐ。
+function updateFocusRows(previousIndex) {
+  [previousIndex, focusedIndex].forEach((index) => {
+    if (index < 0 || index >= currentItems.length) {
+      return;
+    }
+    const li = resultsList.children[index];
+    if (!li) {
+      return;
+    }
+    li.className = index === focusedIndex ? "focused" : "";
+    li.lastElementChild.replaceWith(buildTrailingBlock(currentItems[index], index));
+  });
+
+  const focusedEl = resultsList.children[focusedIndex];
+  if (focusedEl) {
+    focusedEl.scrollIntoView({ block: "nearest" });
+  }
+}
+
+// アクションメニューの開閉・メニュー内フォーカス移動時に呼ぶ。フォーカス行(1行)の
+// 末尾ブロックだけを作り直し、他の行(アイコン等)には触れない。
+function refreshFocusedRowTrailing() {
+  const li = resultsList.children[focusedIndex];
+  if (!li) {
+    return;
+  }
+  li.lastElementChild.replaceWith(buildTrailingBlock(currentItems[focusedIndex], focusedIndex));
 }
 
 function renderActionMenu(item) {

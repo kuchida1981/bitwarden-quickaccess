@@ -70,6 +70,7 @@ pub struct SearchResultItem {
     pub has_password: bool,
     pub has_totp: bool,
     pub has_url: bool,
+    pub icon_domain: Option<String>,
 }
 
 impl From<VaultItemSummary> for SearchResultItem {
@@ -82,6 +83,7 @@ impl From<VaultItemSummary> for SearchResultItem {
             .as_ref()
             .map(|l| l.uris.iter().any(|u| u.uri.is_some()))
             .unwrap_or(false);
+        let icon_domain = item.login.as_ref().and_then(|l| l.icon_domain());
 
         Self {
             id: item.id,
@@ -90,6 +92,7 @@ impl From<VaultItemSummary> for SearchResultItem {
             has_password,
             has_totp,
             has_url,
+            icon_domain,
         }
     }
 }
@@ -215,6 +218,7 @@ mod tests {
         assert!(res_all.has_password);
         assert!(res_all.has_totp);
         assert!(res_all.has_url);
+        assert_eq!(res_all.icon_domain, Some("example.com".to_string()));
 
         // 2. loginがNone
         let item_none = VaultItemSummary {
@@ -229,6 +233,7 @@ mod tests {
         assert!(!res_none.has_password);
         assert!(!res_none.has_totp);
         assert!(!res_none.has_url);
+        assert_eq!(res_none.icon_domain, None);
 
         // 3. loginはあるがpassword/totpがNone、urisが空配列
         let item_empty_login = VaultItemSummary {
@@ -248,5 +253,6 @@ mod tests {
         assert!(!res_empty_login.has_password);
         assert!(!res_empty_login.has_totp);
         assert!(!res_empty_login.has_url);
+        assert_eq!(res_empty_login.icon_domain, None);
     }
 }
