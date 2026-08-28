@@ -20,10 +20,10 @@ pub fn pick_free_port() -> io::Result<u16> {
     Ok(listener.local_addr()?.port())
 }
 
-/// `bw serve` の起動用コマンドを組み立てる。
+/// `bw serve` の起動用コマンドを組み立てる(`--hostname 127.0.0.1` でIPv4ループバックに固定)。
 pub fn build_bw_serve_command(port: u16) -> Command {
     let mut cmd = Command::new("bw");
-    cmd.args(["serve", "--hostname", "localhost", "--port", &port.to_string()])
+    cmd.args(["serve", "--hostname", "127.0.0.1", "--port", &port.to_string()])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -288,5 +288,21 @@ mod tests {
         // confirm後の終了は supervise_until_exit により予期せぬ終了として扱われる。
         assert_eq!(state.backend_state(), BackendState::Disconnected);
         assert!(state.last_error().is_some());
+    }
+
+    #[test]
+    fn build_bw_serve_command_binds_to_ipv4_loopback() {
+        let cmd = build_bw_serve_command(8087);
+        let args: Vec<&std::ffi::OsStr> = cmd.as_std().get_args().collect();
+        assert_eq!(
+            args,
+            &[
+                std::ffi::OsStr::new("serve"),
+                std::ffi::OsStr::new("--hostname"),
+                std::ffi::OsStr::new("127.0.0.1"),
+                std::ffi::OsStr::new("--port"),
+                std::ffi::OsStr::new("8087"),
+            ]
+        );
     }
 }
