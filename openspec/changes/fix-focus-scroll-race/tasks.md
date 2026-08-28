@@ -1,14 +1,21 @@
 ## 1. 実装
 
-- [x] 1.1 `app/dist/app.js` にモジュールスコープの `suppressMouseEnterFocus` フラグを追加する
-- [x] 1.2 `renderResults()` 内の `scrollIntoView` 呼び出し(app.js:542付近)の直前で `suppressMouseEnterFocus = true` をセットする
-- [x] 1.3 `updateFocusRows()` 内の `scrollIntoView` 呼び出し(app.js:579付近)の直前で `suppressMouseEnterFocus = true` をセットする
-- [x] 1.4 `resultsList` に `mousemove` リスナーを追加し、発火時に `suppressMouseEnterFocus = false` に戻す
-- [x] 1.5 各行の `mouseenter` ハンドラ(app.js:522-534)の先頭で `suppressMouseEnterFocus` が真の場合は処理をスキップするようにする
+- [x] 1.1 `app/dist/app.js` にモジュールスコープの `lastRealMouseX` / `lastRealMouseY` を追加する
+- [x] 1.2 `resultsList` に `mousemove` リスナーを追加し、発火のたびに `lastRealMouseX`/`lastRealMouseY` を更新する(フォーカス変更は行わない)
+- [x] 1.3 各行の `mouseenter` ハンドラで、発火時の `event.clientX`/`clientY` が `lastRealMouseX`/`lastRealMouseY` と一致する場合(=カーソルは物理的に動いていない=亡霊イベント)は無視するようにする
+- [x] 1.4 `renderResults()` / `updateFocusRows()` 内の `scrollIntoView` 呼び出しは素の呼び出しのまま(フラグ管理が不要になったため変更なし)
+
+  補足: この結論に至るまで3回の誤った実装を試みた(詳細はdesign.md参照)。
+  1. `mouseenter` を一時的に無視するフラグを `mousemove` で解除する方式 → コードレビューでイベント発火順序の誤りが判明
+  2. 同フラグを `requestAnimationFrame` で解除する方式 → 実機確認で不具合再発(WKWebViewでの発火タイミングの前提が誤り)
+  3. `mouseenter` を廃止し `mousemove` 委譲(`closest("li")`)に完全置換する方式 → 実機確認で不具合再発(スクロールが発生しない状況でも、行内の微小なマウスジッターのたびにフォーカスが奪われる回帰)
+
+  最終的に、`mouseenter` の「行の境界を跨いだ時にしか発火しない」性質を活かしたまま、判定基準を「タイミング」から「直近の本物の `mousemove` 座標との一致比較」に置き換えることで、タイミングにもジッターにも影響されない解決とした。
 
 ## 2. 動作確認
 
 - [x] 2.1 `cargo run` でアプリを起動し、検索結果を一覧のスクロール対象になる件数まで表示させる
 - [x] 2.2 一覧内の途中の行にマウスカーソルを置いたまま↓キーを連打し、スクロールが発生する境目でもキー操作した行にフォーカスが留まり続けることを確認する(#128の再現手順の解消確認)
-- [x] 2.3 マウスを実際に別の行へ動かした場合は、従来通りホバーでフォーカスが切り替わることを確認する(意図した挙動が壊れていないことの確認)
+- [x] 2.3 マウスを実際に別の行へ動かした場合は、従来通りホバーでフォーカスが切り替わることを確認する(意図した挙動が壊れていないことの確認)。特にキー操作でスクロールが発生した**直後**にマウスを別行へ動かした最初の1回で確実にフォーカスが切り替わることを確認する
+- [x] 2.5 スクロールが発生しない場面でも、マウスカーソルを一覧内のある行に置いたまま(意図的に動かさず)キー操作でフォーカスを別の行へ何度も移動させ、フォーカスが引き戻されないことを確認する(3回目の実装が失敗した具体的なシナリオの再確認)
 - [x] 2.4 `cargo test` / `cargo clippy --all-targets -- -D warnings` を実行し、既存のRust側テストに影響がないことを確認する
