@@ -50,25 +50,31 @@ impl ProcessHandle {
     }
 }
 
+/// 子プロセスの終了を待ち、「予期せぬ終了」であれば `state` にエラーとして記録する。
+/// `kill_rx` 経由の明示的なshutdownの場合は `state` を変更しない。
+/// `spawn_supervised_with_command` と `spawn_supervised_for_startup_with_command`
+/// (confirm受信後)の両方から共有される。
+async fn supervise_until_exit(mut child: Child, state: AppState, mut kill_rx: oneshot::Receiver<()>) {
+    tokio::select! {
+        _ = child.wait() => {
+            state.set_error("bw serve プロセスが予期せず終了しました。アプリを再起動してください。");
+        }
+        _ = &mut kill_rx => {
+            let _ = child.start_kill();
+            let _ = child.wait().await;
+        }
+    }
+}
+
 /// 指定された Command を起動し、監視タスクを立ち上げる。
 pub(crate) fn spawn_supervised_with_command(
     mut command: Command,
     state: AppState,
 ) -> io::Result<(ProcessHandle, JoinHandle<()>)> {
-    let mut child = command.spawn()?;
+    let child = command.spawn()?;
     let (kill_tx, kill_rx) = oneshot::channel();
 
-    let join_handle = tokio::spawn(async move {
-        tokio::select! {
-            _ = child.wait() => {
-                state.set_error("bw serve プロセスが予期せず終了しました。アプリを再起動してください。");
-            }
-            _ = kill_rx => {
-                let _ = child.start_kill();
-                let _ = child.wait().await;
-            }
-        }
-    });
+    let join_handle = tokio::spawn(supervise_until_exit(child, state, kill_rx));
 
     Ok((
         ProcessHandle {
@@ -130,15 +136,7 @@ pub fn spawn_supervised_for_startup_with_command(
         }
 
         // ここに到達するのは confirm を受信した場合のみ。以後は現行同様の監視に切り替える。
-        tokio::select! {
-            _ = child.wait() => {
-                state.set_error("bw serve プロセスが予期せず終了しました。アプリを再起動してください。");
-            }
-            _ = &mut kill_rx => {
-                let _ = child.start_kill();
-                let _ = child.wait().await;
-            }
-        }
+        supervise_until_exit(child, state, kill_rx).await;
     });
 
     Ok(StartupHandles {

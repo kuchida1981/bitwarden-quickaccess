@@ -112,6 +112,10 @@ select! {
 
 同じレビューで、`state.set_port(port)` を `acquire_backend_process` の戻り値を受け取った後(=リトライループ全体の成功後)に呼んでいたため、`readiness_check`(実運用では `sync_initial_status`)が完了時に内部で呼ぶ `state.set_locked()`/`set_unlocked()` より後になってしまう不整合も見つかった。「ロック状態はセット済みだが `state.port()` は `None`」という一瞬のウィンドウが生まれ、その間に `commands::client_for` が「バックエンドサービスの準備がまだできていません」を誤って返しうる。`state.set_port(port)` は各試行でspawn成功直後(`register_process` の直後、`readiness_check` を待つ前)に呼ぶよう修正し、この順序を固定する回帰テスト(`port_is_recorded_before_readiness_check_runs`)を追加した。
 
+**さらなるレビューでの修正(2件)**:
+1. `state.set_port(port)` を試行のたびに呼ぶようにした副作用として、全試行が早期終了で尽きた場合に `state.port()` が最後の(死んだ)試行のポート番号を保持したまま残ってしまう問題が見つかった。個別に `clear_port()` を呼ぶのではなく、`AppState::set_error()` 自体が `port` を同時にクリアするよう修正した(エラー状態になった時点でその `port` はどのみち無効なので、`set_error` を呼ぶ全箇所——起動失敗・プロセスクラッシュ・ログイン未実施等——で一貫して安全になる)。
+2. `process.rs` の `spawn_supervised_with_command` と `spawn_supervised_for_startup_with_command`(confirm受信後)で、「予期せぬ終了→`state.set_error()`」の監視ロジックが重複していた。共通の `async fn supervise_until_exit(child, state, kill_rx)` に切り出し、両方から呼ぶように統合した。
+
 ## Risks / Trade-offs
 
 - [Risk] readinessポーリングの2秒ウィンドウを過ぎてから発生した遅延クラッシュは今回のリトライ対象外 → Mitigation: 現行通り「予期せぬ終了」として `state.set_error()` される(挙動は変わらないだけで悪化はしない)

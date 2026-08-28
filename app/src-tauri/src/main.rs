@@ -583,6 +583,9 @@ mod acquire_backend_process_tests {
             process::MAX_STARTUP_ATTEMPTS as usize
         );
         assert!(state.last_error().is_some());
+        // 全試行が失敗した場合、最後の(死んだ)試行のポート番号が残ってはならない
+        // (client_forが無効なポートへの接続を試みてしまうため)。
+        assert_eq!(state.port(), None);
         assert_eq!(
             handles_store.lock().unwrap().len(),
             process::MAX_STARTUP_ATTEMPTS as usize
