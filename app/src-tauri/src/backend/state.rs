@@ -71,10 +71,14 @@ impl AppState {
     }
 
     /// 前提チェック失敗等、致命的なエラーをDisconnectedとして記録する。
+    /// `port` も同時にクリアする。エラー状態になった時点でその値が指す
+    /// `bw serve` は(起動に失敗した/クラッシュした等により)もはや有効ではないため、
+    /// `commands::client_for` が古いポート番号への接続を試みてしまうのを防ぐ。
     pub fn set_error(&self, message: impl Into<String>) {
         let mut inner = self.inner.lock().expect("AppState mutex poisoned");
         inner.backend = BackendState::Disconnected;
         inner.last_error = Some(message.into());
+        inner.port = None;
         drop(inner);
         let _ = self.changes.send(BackendState::Disconnected);
     }
@@ -152,6 +156,16 @@ mod tests {
         state.set_error("bw command not found");
         assert_eq!(state.backend_state(), BackendState::Disconnected);
         assert_eq!(state.last_error().as_deref(), Some("bw command not found"));
+    }
+
+    #[test]
+    fn error_clears_stale_port() {
+        let state = AppState::new();
+        state.set_port(12345);
+        state.set_error("bw serve プロセスが予期せず終了しました。");
+        // エラー時点でportは無効になっているため、client_forが古いポートへの
+        // 接続を試みないようクリアされていなければならない。
+        assert_eq!(state.port(), None);
     }
 
     #[tokio::test]
