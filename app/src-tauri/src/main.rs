@@ -219,15 +219,23 @@ fn main() {
 /// `build_command`(ポートを渡して起動コマンドを組み立てる)と `readiness_check`
 /// (起動確認が完了するまで待つ)を引数として切り出すことで、実プロセスなしに
 /// リトライの分岐(早期終了→リトライ / 起動確認完了→成功)をテストできるようにしている。
-async fn acquire_backend_process<F, R, Fut>(
+///
+/// `register_process` は各試行でプロセスをspawnした直後、起動確認を待つ前に呼ばれる。
+/// リトライループ全体が終わるまで登録を遅らせると、その間にアプリが終了した場合に
+/// 起動済みの子プロセスが `ManagedProcess` に登録されておらずkillされない(孤児化する)
+/// ため、試行のたびに最新のハンドルへ差し替える(古いハンドルは既に終了しているので
+/// 破棄して問題ない)。
+async fn acquire_backend_process<F, R, Fut, Reg>(
     state: &AppState,
     mut build_command: F,
     mut readiness_check: R,
-) -> Option<(u16, process::ProcessHandle)>
+    mut register_process: Reg,
+) -> Option<u16>
 where
     F: FnMut(u16) -> tokio::process::Command,
     R: FnMut(u16) -> Fut,
     Fut: std::future::Future<Output = ()>,
+    Reg: FnMut(process::ProcessHandle),
 {
     for attempt in 1..=process::MAX_STARTUP_ATTEMPTS {
         let port = match process::pick_free_port() {
@@ -238,25 +246,32 @@ where
             }
         };
 
-        let mut handles =
-            match process::spawn_supervised_for_startup_with_command(build_command(port), state.clone()) {
-                Ok(handles) => handles,
-                Err(err) => {
-                    state.set_error(format!("bw serve の起動に失敗しました: {err}"));
-                    return None;
-                }
-            };
+        let process::StartupHandles {
+            process_handle,
+            monitor: _monitor,
+            exited,
+            confirm,
+        } = match process::spawn_supervised_for_startup_with_command(build_command(port), state.clone()) {
+            Ok(handles) => handles,
+            Err(err) => {
+                state.set_error(format!("bw serve の起動に失敗しました: {err}"));
+                return None;
+            }
+        };
 
+        register_process(process_handle);
+
+        let mut exited = exited;
         tokio::select! {
             _ = readiness_check(port) => {
                 // 成功/タイムアウトいずれの場合も readiness ポーリングは完了しているため、
                 // 以後の監視は現行通り「予期せぬ終了→state.set_error()」に切り替える。
-                let _ = handles.confirm.send(());
-                return Some((port, handles.process_handle));
+                let _ = confirm.send(());
+                return Some(port);
             }
-            _ = &mut handles.exited => {
+            _ = &mut exited => {
                 eprintln!(
-                    "bw serve がport {port}での起動確認中に終了しました(試行 {attempt}/{}) 。ポートを再取得してリトライします。",
+                    "bw serve がport {port}での起動確認中に終了しました(試行 {attempt}/{})。ポートを再取得してリトライします。",
                     process::MAX_STARTUP_ATTEMPTS
                 );
             }
@@ -277,21 +292,27 @@ async fn start_backend(app_handle: tauri::AppHandle, state: AppState) {
     }
 
     let state_for_readiness = state.clone();
-    let result = acquire_backend_process(&state, process::build_bw_serve_command, move |port| {
-        let client = BwServeClient::new(port);
-        let state = state_for_readiness.clone();
-        async move { sync_initial_status(&client, &state).await }
-    })
+    let port = acquire_backend_process(
+        &state,
+        process::build_bw_serve_command,
+        move |port| {
+            let client = BwServeClient::new(port);
+            let state = state_for_readiness.clone();
+            async move { sync_initial_status(&client, &state).await }
+        },
+        move |process_handle| {
+            app_handle
+                .state::<ManagedProcess>()
+                .0
+                .lock()
+                .expect("ManagedProcess mutex poisoned")
+                .replace(process_handle);
+        },
+    )
     .await;
 
-    if let Some((port, process_handle)) = result {
+    if let Some(port) = port {
         state.set_port(port);
-        app_handle
-            .state::<ManagedProcess>()
-            .0
-            .lock()
-            .expect("ManagedProcess mutex poisoned")
-            .replace(process_handle);
     }
 }
 
@@ -462,7 +483,7 @@ mod acquire_backend_process_tests {
     use super::*;
     use std::process::Stdio;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
     use tokio::process::Command;
 
     /// readiness_check が反応するまでの猶予。`sh -c "exit 1"` の実際の終了(通常数十ms)は
@@ -496,11 +517,22 @@ mod acquire_backend_process_tests {
         tokio::time::sleep(READINESS_DELAY).await;
     }
 
+    /// `ProcessHandle` の drop は(`kill_tx` が閉じることで)監視タスクへの
+    /// 暗黙のkill指示として働くため、`register_process` で受け取ったハンドルを
+    /// テスト関数が終わるまで生かしておく必要がある(即座にdropすると、
+    /// まだ生きているはずの子プロセスがそこでkillされてしまう)。
+    fn retaining_register(
+        store: Arc<Mutex<Vec<process::ProcessHandle>>>,
+    ) -> impl FnMut(process::ProcessHandle) {
+        move |handle| store.lock().expect("handle store poisoned").push(handle)
+    }
+
     #[tokio::test]
     async fn retries_after_early_exit_then_succeeds() {
         let state = AppState::new();
         let attempts = Arc::new(AtomicUsize::new(0));
         let attempts_for_build = attempts.clone();
+        let handles_store = Arc::new(Mutex::new(Vec::new()));
 
         let result = acquire_backend_process(
             &state,
@@ -513,12 +545,16 @@ mod acquire_backend_process_tests {
                 }
             },
             readiness_after_delay,
+            retaining_register(handles_store.clone()),
         )
         .await;
 
         assert!(result.is_some(), "2回目の試行で起動確認に成功するはず");
         assert_eq!(attempts.load(Ordering::SeqCst), 2);
         assert!(state.last_error().is_none());
+        // 失敗した1回目も含め、試行のたびにプロセスハンドルが登録される
+        // (アプリ終了時に確実にkillできるようにするため)。
+        assert_eq!(handles_store.lock().unwrap().len(), 2);
     }
 
     #[tokio::test]
@@ -526,6 +562,7 @@ mod acquire_backend_process_tests {
         let state = AppState::new();
         let attempts = Arc::new(AtomicUsize::new(0));
         let attempts_for_build = attempts.clone();
+        let handles_store = Arc::new(Mutex::new(Vec::new()));
 
         let result = acquire_backend_process(
             &state,
@@ -534,6 +571,7 @@ mod acquire_backend_process_tests {
                 exits_immediately(port)
             },
             readiness_after_delay,
+            retaining_register(handles_store.clone()),
         )
         .await;
 
@@ -543,6 +581,10 @@ mod acquire_backend_process_tests {
             process::MAX_STARTUP_ATTEMPTS as usize
         );
         assert!(state.last_error().is_some());
+        assert_eq!(
+            handles_store.lock().unwrap().len(),
+            process::MAX_STARTUP_ATTEMPTS as usize
+        );
     }
 
     #[tokio::test]
@@ -551,6 +593,8 @@ mod acquire_backend_process_tests {
         let attempts = Arc::new(AtomicUsize::new(0));
         let attempts_for_build = attempts.clone();
 
+        let handles_store = Arc::new(Mutex::new(Vec::new()));
+
         let result = acquire_backend_process(
             &state,
             move |port| {
@@ -558,6 +602,7 @@ mod acquire_backend_process_tests {
                 stays_alive(port)
             },
             readiness_after_delay,
+            retaining_register(handles_store),
         )
         .await;
 

@@ -104,7 +104,11 @@ select! {
 - 全試行が早期終了で尽きた場合のみ、`start_backend` 側で `state.set_error(format!("bw serve の起動に{MAX_STARTUP_ATTEMPTS}回失敗しました。アプリを再起動してください。"))` を呼ぶ
 - 既存の `spawn_supervised` / `spawn_supervised_with_command`(および既存テスト `crash_updates_state_to_disconnected` 等)はそのまま温存し、`spawn_supervised_for_startup` は同じ構築パーツ(`build_bw_serve_command`・`kill_on_drop` 等)を再利用しつつ2フェーズ監視のためだけに新設する
 
-**実装時の補足**: `main.rs::start_backend` のリトライループ本体は `acquire_backend_process(state, build_command, readiness_check)` という汎用関数として切り出した。`build_command: FnMut(u16) -> Command` と `readiness_check: FnMut(u16) -> impl Future<Output = ()>` を注入可能にすることで、実際の `bw` CLIやHTTPサーバなしにリトライ分岐(早期終了→リトライ / 起動確認完了→成功/上限到達→エラー)を単体テストできるようにしている。本番経路では `build_command` に `process::build_bw_serve_command` を、`readiness_check` に `sync_initial_status(&BwServeClient::new(port), &state)` をラップしたクロージャを渡す。`BwServeClient::new` は `http://localhost:{port}` を用いる(hostname解決に依存する。この点は別change `bw-serve-hostname-ipv4` の対象外であり、既存の挙動のまま)ため、テストでは実HTTP通信を避け `readiness_check` 自体をダミーの遅延完了に差し替えている。
+**実装時の補足**: `main.rs::start_backend` のリトライループ本体は `acquire_backend_process(state, build_command, readiness_check, register_process)` という汎用関数として切り出した。`build_command: FnMut(u16) -> Command` と `readiness_check: FnMut(u16) -> impl Future<Output = ()>` を注入可能にすることで、実際の `bw` CLIやHTTPサーバなしにリトライ分岐(早期終了→リトライ / 起動確認完了→成功/上限到達→エラー)を単体テストできるようにしている。本番経路では `build_command` に `process::build_bw_serve_command` を、`readiness_check` に `sync_initial_status(&BwServeClient::new(port), &state)` をラップしたクロージャを渡す。`BwServeClient::new` は `http://localhost:{port}` を用いる(hostname解決に依存する。この点は別change `bw-serve-hostname-ipv4` の対象外であり、既存の挙動のまま)ため、テストでは実HTTP通信を避け `readiness_check` 自体をダミーの遅延完了に差し替えている。
+
+**実装レビューでの修正**: 当初、`ManagedProcess`(トレイの終了処理が参照する `ProcessHandle` の置き場)への登録はリトライループ全体が成功で終わった後にまとめて行っていたが、これだと最大3試行×起動確認ウィンドウ分の間にアプリが終了された場合、起動済みの子プロセスが `ManagedProcess` に登録されておらずkillされない(孤児化する)問題があった(agyおよびClaude Codeのコードレビューで指摘)。`register_process: FnMut(ProcessHandle)` を追加し、各試行でspawnした直後・起動確認を待つ前に呼び出す形に修正した。試行が失敗して次のポートで再spawnする際は、新しいハンドルで上書き登録する(古いハンドルは対応する監視タスクが既に終了しているため、破棄してよい)。
+
+`ProcessHandle` の drop は `kill_tx`(oneshot Sender)を閉じることになり、これは監視タスクにとって明示的な `shutdown()` 呼び出しと区別がつかない(既存の `spawn_supervised`/`ProcessHandle` の設計から踏襲した挙動)。そのため `register_process` に渡すクロージャでハンドルを即座にdropしてはならない(テストでこの点を誤り、生存しているはずの子プロセスを早期killしてしまうバグを一度作り込んだ)。
 
 ## Risks / Trade-offs
 
