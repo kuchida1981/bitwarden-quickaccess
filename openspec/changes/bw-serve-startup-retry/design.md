@@ -110,6 +110,8 @@ select! {
 
 `ProcessHandle` の drop は `kill_tx`(oneshot Sender)を閉じることになり、これは監視タスクにとって明示的な `shutdown()` 呼び出しと区別がつかない(既存の `spawn_supervised`/`ProcessHandle` の設計から踏襲した挙動)。そのため `register_process` に渡すクロージャでハンドルを即座にdropしてはならない(テストでこの点を誤り、生存しているはずの子プロセスを早期killしてしまうバグを一度作り込んだ)。
 
+同じレビューで、`state.set_port(port)` を `acquire_backend_process` の戻り値を受け取った後(=リトライループ全体の成功後)に呼んでいたため、`readiness_check`(実運用では `sync_initial_status`)が完了時に内部で呼ぶ `state.set_locked()`/`set_unlocked()` より後になってしまう不整合も見つかった。「ロック状態はセット済みだが `state.port()` は `None`」という一瞬のウィンドウが生まれ、その間に `commands::client_for` が「バックエンドサービスの準備がまだできていません」を誤って返しうる。`state.set_port(port)` は各試行でspawn成功直後(`register_process` の直後、`readiness_check` を待つ前)に呼ぶよう修正し、この順序を固定する回帰テスト(`port_is_recorded_before_readiness_check_runs`)を追加した。
+
 ## Risks / Trade-offs
 
 - [Risk] readinessポーリングの2秒ウィンドウを過ぎてから発生した遅延クラッシュは今回のリトライ対象外 → Mitigation: 現行通り「予期せぬ終了」として `state.set_error()` される(挙動は変わらないだけで悪化はしない)

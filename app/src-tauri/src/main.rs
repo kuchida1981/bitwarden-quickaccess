@@ -260,6 +260,12 @@ where
         };
 
         register_process(process_handle);
+        // readiness_check(実運用では sync_initial_status)は完了時に内部で
+        // state.set_locked()/set_unlocked() を呼ぶため、port はそれより前に
+        // 記録しておく必要がある(そうしないと「ロック状態はセット済みだが
+        // port は未セット」という一瞬の不整合が生まれ、client_for が
+        // 「バックエンドサービスの準備がまだできていません」を誤って返しうる)。
+        state.set_port(port);
 
         let mut exited = exited;
         tokio::select! {
@@ -292,7 +298,7 @@ async fn start_backend(app_handle: tauri::AppHandle, state: AppState) {
     }
 
     let state_for_readiness = state.clone();
-    let port = acquire_backend_process(
+    acquire_backend_process(
         &state,
         process::build_bw_serve_command,
         move |port| {
@@ -310,10 +316,6 @@ async fn start_backend(app_handle: tauri::AppHandle, state: AppState) {
         },
     )
     .await;
-
-    if let Some(port) = port {
-        state.set_port(port);
-    }
 }
 
 /// SIGTERM/SIGINT(`kill` やターミナルでのCtrl-Cなど)を待ち受ける。
@@ -608,5 +610,29 @@ mod acquire_backend_process_tests {
 
         assert!(result.is_some());
         assert_eq!(attempts.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn port_is_recorded_before_readiness_check_runs() {
+        // readiness_check(実運用ではsync_initial_status)は内部でstate.set_locked()/
+        // set_unlocked()を呼ぶため、readiness_checkが呼ばれる時点で既にstate.port()が
+        // セットされていなければならない(でないと「ロック状態はセット済みだがportは
+        // 未セット」という不整合ウィンドウが生まれる)。
+        let state = AppState::new();
+        let handles_store = Arc::new(Mutex::new(Vec::new()));
+        let state_for_check = state.clone();
+
+        let result = acquire_backend_process(
+            &state,
+            stays_alive,
+            move |port| {
+                assert_eq!(state_for_check.port(), Some(port));
+                async {}
+            },
+            retaining_register(handles_store),
+        )
+        .await;
+
+        assert!(result.is_some());
     }
 }
