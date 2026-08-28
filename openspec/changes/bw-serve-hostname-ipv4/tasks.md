@@ -7,3 +7,8 @@
 ## 2. ドキュメント
 
 - [x] 2.1 `cargo test` / `cargo clippy --all-targets -- -D warnings` が通ることを確認する
+
+## 3. コードレビューで判明した追加修正
+
+- [x] 3.1 `app/src-tauri/src/backend/http_client.rs` の `BwServeClient::new` が `http://localhost:{port}` を使っており、サーバー側だけ`127.0.0.1`に固定してもクライアント側の名前解決不一致が解消されないことが判明したため、`http://127.0.0.1:{port}` に修正する
+- [x] 3.2 `BwServeClient::new` が実際に127.0.0.1へ接続することを検証する回帰テストを追加する

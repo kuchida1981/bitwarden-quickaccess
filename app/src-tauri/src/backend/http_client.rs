@@ -104,8 +104,11 @@ struct UnlockBody<'a> {
 }
 
 impl BwServeClient {
+    /// `bw serve` は `127.0.0.1`(IPv4ループバック)に明示バインドされている
+    /// (`process::build_bw_serve_command` 参照)。ここで `localhost` を使うと
+    /// 環境によってIPv6(`::1`)に名前解決され、接続に失敗しうる。
     pub fn new(port: u16) -> Self {
-        Self::with_base_url(format!("http://localhost:{port}"))
+        Self::with_base_url(format!("http://127.0.0.1:{port}"))
     }
 
     pub fn with_base_url(base_url: impl Into<String>) -> Self {
@@ -230,6 +233,27 @@ mod tests {
         });
 
         format!("http://127.0.0.1:{port}")
+    }
+
+    #[tokio::test]
+    async fn new_connects_via_ipv4_loopback() {
+        // `bw serve` は127.0.0.1に明示バインドされている(process::build_bw_serve_command
+        // 参照)。BwServeClient::new が誤って"localhost"を使うと、環境によっては
+        // IPv6(::1)に名前解決されて接続に失敗しうる。spawn_mockは127.0.0.1にのみ
+        // bindしているため、newが正しく127.0.0.1へ向くことをこのテストで確認する。
+        let base_url = spawn_mock(
+            r#"{"success":true,"data":{"object":"template","template":{"serverUrl":"https://example.com","lastSync":null,"userEmail":null,"userId":"u1","status":"locked"}}}"#,
+        )
+        .await;
+        let port: u16 = base_url
+            .rsplit(':')
+            .next()
+            .and_then(|p| p.parse().ok())
+            .expect("mock base_url should end with a port number");
+
+        let client = BwServeClient::new(port);
+        let status = client.status().await.unwrap();
+        assert_eq!(status.lock_status, LockStatus::Locked);
     }
 
     #[tokio::test]
