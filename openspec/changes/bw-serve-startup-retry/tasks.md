@@ -21,3 +21,12 @@
 ## 4. ドキュメント・確認
 
 - [x] 4.1 `cargo test` / `cargo clippy --all-targets -- -D warnings` が通ることを確認する
+
+## 5. コードレビューで判明した追加修正(実装後)
+
+- [x] 5.1 リトライ中(起動確認待機中)にアプリを終了しても `bw serve` 子プロセスが `ManagedProcess` に登録されずkillされない問題を修正(`register_process` を各試行のspawn直後に呼ぶ)
+- [x] 5.2 `state.set_port(port)` が `readiness_check` 完了後(=ロック状態セット後)に呼ばれており不整合ウィンドウが生じる問題を修正(spawn直後に呼ぶ)
+- [x] 5.3 全試行失敗後も `state.port()` に最後の(死んだ)ポート番号が残る問題を修正(`AppState::set_error()` が `port` も同時にクリアするようにした)
+- [x] 5.4 `process.rs` の監視ロジック(`spawn_supervised_with_command` と confirm後の分岐)の重複を `supervise_until_exit` に共通化
+- [x] 5.5 リトライ導入で不要になった `spawn_supervised` / `spawn_supervised_with_command` / `spawn_supervised_for_startup`(いずれも `_with_command` 以外)のdead codeを削除
+- [x] 5.6 起動確認待機中のアプリ終了(`ProcessHandle::shutdown()`)をクラッシュと誤認してリトライしてしまう問題を修正(`StartupExit::Crashed`/`ShutdownRequested` を導入して区別)

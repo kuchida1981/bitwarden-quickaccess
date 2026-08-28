@@ -275,7 +275,14 @@ where
                 let _ = confirm.send(());
                 return Some(port);
             }
-            _ = &mut exited => {
+            reason = &mut exited => {
+                // アプリ終了処理中の明示的なshutdown(ProcessHandle::shutdown())による終了は、
+                // クラッシュとは区別してリトライせずそのまま終了する。次の試行でさらに
+                // bw serveをspawnしてしまうと、その新しいプロセスがどこにも登録されない
+                // まま(ManagedProcessは既にRunEvent::Exitで空にされている)孤児化しうるため。
+                if matches!(reason, Ok(process::StartupExit::ShutdownRequested)) {
+                    return None;
+                }
                 eprintln!(
                     "bw serve がport {port}での起動確認中に終了しました(試行 {attempt}/{})。ポートを再取得してリトライします。",
                     process::MAX_STARTUP_ATTEMPTS
@@ -557,6 +564,40 @@ mod acquire_backend_process_tests {
         // 失敗した1回目も含め、試行のたびにプロセスハンドルが登録される
         // (アプリ終了時に確実にkillできるようにするため)。
         assert_eq!(handles_store.lock().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn stops_retrying_when_shutdown_requested_during_startup() {
+        // アプリ終了処理(RunEvent::Exit)がProcessHandle::shutdown()を呼んだ場合、
+        // クラッシュと誤認してさらにbw serveをspawnしてはならない(新しいプロセスが
+        // ManagedProcessに登録されないまま孤児化してしまうため)。
+        let state = AppState::new();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_build = attempts.clone();
+
+        let result = acquire_backend_process(
+            &state,
+            move |port| {
+                attempts_for_build.fetch_add(1, Ordering::SeqCst);
+                stays_alive(port)
+            },
+            readiness_after_delay,
+            |mut process_handle: process::ProcessHandle| {
+                process_handle.shutdown();
+            },
+        )
+        .await;
+
+        assert!(result.is_none());
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            1,
+            "shutdown後は追加のプロセスをspawnしてリトライしてはならない"
+        );
+        assert!(
+            state.last_error().is_none(),
+            "アプリ終了処理中はエラーメッセージを残さない"
+        );
     }
 
     #[tokio::test]

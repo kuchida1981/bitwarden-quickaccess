@@ -118,6 +118,10 @@ select! {
 
 **4回目のレビューでの修正**: リトライ機構の導入により `start_backend` が `spawn_supervised_for_startup_with_command` 経由の起動しか使わなくなった結果、単発起動用の `spawn_supervised(port, state)` がどこからも呼ばれないdead codeになっていた(`pub` だが実質的に呼び出し元がない)。この関数と、それが内部で使っていた `spawn_supervised_with_command`(テストからしか呼ばれておらずこちらもdead code化していた)を削除し、共有ロジック `supervise_until_exit` を対象テストが直接呼ぶ形に整理した。あわせて `crash_updates_state_to_disconnected` は `spawn_supervised_for_startup_with_command` 経由の `crash_after_confirm_updates_state_to_disconnected` と同じシナリオを検証する重複テストだったため、`supervise_until_exit` を直接検証する形に統合した。
 
+**5回目のレビューでの修正(2件)**:
+1. 同様の理由で `spawn_supervised_for_startup(port, state)`(`_with_command` ではない方のラッパー)もどこからも呼ばれないdead codeになっていたため削除した。
+2. より重要な指摘として、`acquire_backend_process` のリトライ判定が「起動確認完了前のexit」を理由を問わず一律リトライしていたため、アプリ終了処理(`RunEvent::Exit` → `ProcessHandle::shutdown()`)が発行された場合と純粋なクラッシュを区別できていなかった。リトライ中(起動確認ウィンドウ内)にユーザーがアプリを終了すると、`ManagedProcess` は既に空になっている(`RunEvent::Exit` のハンドラが `guard.take()` 済み)にもかかわらず、ループが「クラッシュした」と誤認して新しいポートで `bw serve` を再spawnし、その新プロセスがどこにも登録されず孤児化しうる欠陥があった。`process::StartupExit`(`Crashed` / `ShutdownRequested`)を導入して `exited` チャンネルに理由を持たせ、`ShutdownRequested` の場合はリトライせず即座に処理を終了するよう修正した。
+
 ## Risks / Trade-offs
 
 - [Risk] readinessポーリングの2秒ウィンドウを過ぎてから発生した遅延クラッシュは今回のリトライ対象外 → Mitigation: 現行通り「予期せぬ終了」として `state.set_error()` される(挙動は変わらないだけで悪化はしない)
