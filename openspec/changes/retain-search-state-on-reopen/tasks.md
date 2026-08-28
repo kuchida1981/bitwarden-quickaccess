@@ -1,15 +1,15 @@
 ## 1. 非表示時刻の記録
 
-- [ ] 1.1 `app/dist/app.js` に非表示時刻を保持する変数(例: `let hiddenAt = null;`)を追加する
-- [ ] 1.2 Escapeキー押下時・アクション成功時(`runAction`内)など、`invoke("hide_popup")`を呼ぶ箇所すべてで `hiddenAt = Date.now()` を記録する
-- [ ] 1.3 `window` の `blur` イベントをリッスンし、フォーカスロスによる非表示(`popup.rs`の`WindowEvent::Focused(false)`経由)の場合も同様に `hiddenAt = Date.now()` を記録する
+- [x] 1.1 `app/dist/app.js` に非表示時刻を保持する変数(例: `let hiddenAt = null;`)を追加する
+- [x] 1.2 Escapeキー押下時・アクション成功時(`runAction`内)など、`invoke("hide_popup")`を呼ぶ箇所すべてで `hiddenAt = Date.now()` を記録する
+- [x] 1.3 `window` の `blur` イベントをリッスンし、フォーカスロスによる非表示(`popup.rs`の`WindowEvent::Focused(false)`経由)の場合も同様に `hiddenAt = Date.now()` を記録する
 
 ## 2. TTL判定と検索状態保持ロジック
 
-- [ ] 2.1 非表示からの経過時間が30秒以内かどうかを判定するヘルパー関数(例: `shouldRetainSearchState()`)を追加する
-- [ ] 2.2 `syncScreenWithBackend` 内の `actualScreen === lastKnownScreen && actualScreen === "search"` の分岐で、無条件の `searchBox.value = ""` + `runSearch("")` を、TTL判定に基づく条件分岐に置き換える(TTL以内なら何もしない、TTL超過なら従来通りクリアする)
-- [ ] 2.3 `handleShown` 内の `lastKnownScreen === "search"` の分岐で、TTL以内の場合は `searchBox.focus()` の後に `searchBox.select()` を呼び全選択状態にする
-- [ ] 2.4 ⌘Lロック(`performLock`)後やバックエンド切断(エラー画面遷移)後は、`actualScreen !== lastKnownScreen` により従来通り検索状態がリセットされることをコードレベルで確認する(新規実装は不要)
+- [x] 2.1 非表示からの経過時間が30秒以内かどうかを判定するヘルパー関数(例: `shouldRetainSearchState()`)を追加する
+- [x] 2.2 `syncScreenWithBackend` 内の `actualScreen === lastKnownScreen && actualScreen === "search"` の分岐で、無条件の `searchBox.value = ""` + `runSearch("")` を、TTL判定に基づく条件分岐に置き換える(TTL以内なら何もしない、TTL超過なら従来通りクリアする)
+- [x] 2.3 `handleShown` 内の `lastKnownScreen === "search"` の分岐で、TTL以内の場合は `searchBox.focus()` の後に `searchBox.select()` を呼び全選択状態にする
+- [x] 2.4 ⌘Lロック(`performLock`)後やバックエンド切断(エラー画面遷移)後は、`actualScreen !== lastKnownScreen` により従来通り検索状態がリセットされることをコードレベルで確認する(新規実装は不要)
 
 ## 3. 動作確認
 

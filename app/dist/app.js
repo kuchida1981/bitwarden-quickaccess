@@ -25,6 +25,13 @@ let focusedIndex = -1;
 let debounceTimer = null;
 let searchRequestId = 0;
 let lastKnownScreen = "unlock";
+let hiddenAt = null;
+
+const SEARCH_STATE_RETENTION_MS = 30000;
+
+function shouldRetainSearchState() {
+  return hiddenAt !== null && Date.now() - hiddenAt < SEARCH_STATE_RETENTION_MS;
+}
 
 let actionMenuOpen = false;
 let actionMenuActions = [];
@@ -112,8 +119,10 @@ async function syncScreenWithBackend() {
 
   if (actualScreen === lastKnownScreen) {
     if (actualScreen === "search") {
-      searchBox.value = "";
-      await runSearch("");
+      if (!shouldRetainSearchState()) {
+        searchBox.value = "";
+        await runSearch("");
+      }
       await refreshCurrentUser();
     } else if (actualScreen === "error") {
       errorMessage.textContent = backendError;
@@ -146,6 +155,9 @@ async function handleShown() {
   showScreen(lastKnownScreen);
   if (lastKnownScreen === "search") {
     searchBox.focus();
+    if (shouldRetainSearchState()) {
+      searchBox.select();
+    }
   } else if (lastKnownScreen === "unlock") {
     passwordInput.value = "";
     unlockError.textContent = "";
@@ -194,6 +206,11 @@ function isHelpToggleShortcut(event) {
   return event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey;
 }
 
+// フォーカスロスによる非表示(WindowEvent::Focused(false)経由)でも非表示時刻を記録する。
+window.addEventListener("blur", () => {
+  hiddenAt = Date.now();
+});
+
 // フォーカス要素(検索ボックス/パスワード入力欄等)に関わらずEscapeキーで
 // ポップアップやオーバーレイを閉じられるよう、documentレベルで集約して処理する(issue #76)。
 document.addEventListener("keydown", (event) => {
@@ -211,6 +228,7 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   event.preventDefault();
+  hiddenAt = Date.now();
   invoke("hide_popup").catch(() => {});
 });
 
@@ -465,6 +483,7 @@ async function runAction(actionFn) {
   await flashPromise;
 
   if (ok) {
+    hiddenAt = Date.now();
     invoke("hide_popup").catch(() => {});
   }
 }
