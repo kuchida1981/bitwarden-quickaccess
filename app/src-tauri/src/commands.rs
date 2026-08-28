@@ -220,9 +220,10 @@ pub async fn open_in_browser(
 /// コピー/ブラウザ起動アクション実行後、フィードバック表示を挟んでポップアップを閉じる際に呼ばれる。
 #[tauri::command]
 pub fn hide_popup(app: tauri::AppHandle) {
-    use tauri::Manager;
+    use tauri::{Emitter, Manager};
     if let Some(window) = app.get_webview_window(popup::POPUP_LABEL) {
         let _ = window.hide();
+        let _ = window.emit(popup::POPUP_HIDDEN_EVENT, ());
     }
     popup::restore_previous_focus(&app);
 }

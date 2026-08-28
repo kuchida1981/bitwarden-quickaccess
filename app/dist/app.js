@@ -25,6 +25,13 @@ let focusedIndex = -1;
 let debounceTimer = null;
 let searchRequestId = 0;
 let lastKnownScreen = "unlock";
+let hiddenAt = null;
+
+const SEARCH_STATE_RETENTION_MS = 30000;
+
+function shouldRetainSearchState() {
+  return hiddenAt !== null && Date.now() - hiddenAt < SEARCH_STATE_RETENTION_MS;
+}
 
 let actionMenuOpen = false;
 let actionMenuActions = [];
@@ -112,8 +119,10 @@ async function syncScreenWithBackend() {
 
   if (actualScreen === lastKnownScreen) {
     if (actualScreen === "search") {
-      searchBox.value = "";
-      await runSearch("");
+      if (!shouldRetainSearchState()) {
+        searchBox.value = "";
+        await runSearch("");
+      }
       await refreshCurrentUser();
     } else if (actualScreen === "error") {
       errorMessage.textContent = backendError;
@@ -146,6 +155,9 @@ async function handleShown() {
   showScreen(lastKnownScreen);
   if (lastKnownScreen === "search") {
     searchBox.focus();
+    if (shouldRetainSearchState()) {
+      searchBox.select();
+    }
   } else if (lastKnownScreen === "unlock") {
     passwordInput.value = "";
     unlockError.textContent = "";
@@ -654,6 +666,10 @@ listen("popup-shown", () => {
   lastRealMouseX = null;
   lastRealMouseY = null;
   handleShown();
+});
+
+listen("popup-hidden", () => {
+  hiddenAt = Date.now();
 });
 
 // ポップアップ表示中に裏でバックエンド状態が変化した場合(例: トレイメニューからの

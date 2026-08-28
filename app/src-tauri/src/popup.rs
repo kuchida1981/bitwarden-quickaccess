@@ -10,6 +10,12 @@ pub const POPUP_LABEL: &str = "popup";
 /// 自動フォーカスを行う(`quickaccess-search-ui` design.md 参照)。
 pub const POPUP_SHOWN_EVENT: &str = "popup-shown";
 
+/// ポップアップウィンドウが非表示になるたびにWebView側へ通知するイベント名。
+/// 非表示のトリガー(ホットキー再押下・トレイメニュー・フォーカスロス・
+/// `commands::hide_popup`)によらず一貫して発火させることで、フロントエンドが
+/// 非表示時刻を確実に記録できるようにする(`retain-search-state-on-reopen` design.md 参照)。
+pub const POPUP_HIDDEN_EVENT: &str = "popup-hidden";
+
 /// ポップアップが表示されたまま裏でバックエンド状態(ロック/アンロック等)が
 /// 変化した場合に、WebView側へ再判定を促すために発火するイベント名。
 /// `POPUP_SHOWN_EVENT` は非表示→表示の遷移時にしか発火しないため、表示中の
@@ -41,6 +47,7 @@ pub fn create_popup_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::Focused(false) = event {
             let _ = window_for_blur.hide();
+            let _ = window_for_blur.emit(POPUP_HIDDEN_EVENT, ());
         }
     });
 
@@ -144,6 +151,7 @@ pub fn toggle_popup(app: &AppHandle) {
     let is_visible = window.is_visible().unwrap_or(false);
     if is_visible {
         let _ = window.hide();
+        let _ = window.emit(POPUP_HIDDEN_EVENT, ());
         restore_previous_focus(app);
     } else {
         record_frontmost_app(app);
