@@ -206,10 +206,7 @@ function isHelpToggleShortcut(event) {
   return event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey;
 }
 
-// フォーカスロスによる非表示(WindowEvent::Focused(false)経由)でも非表示時刻を記録する。
-window.addEventListener("blur", () => {
-  hiddenAt = Date.now();
-});
+
 
 // フォーカス要素(検索ボックス/パスワード入力欄等)に関わらずEscapeキーで
 // ポップアップやオーバーレイを閉じられるよう、documentレベルで集約して処理する(issue #76)。
@@ -228,7 +225,6 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   event.preventDefault();
-  hiddenAt = Date.now();
   invoke("hide_popup").catch(() => {});
 });
 
@@ -483,7 +479,6 @@ async function runAction(actionFn) {
   await flashPromise;
 
   if (ok) {
-    hiddenAt = Date.now();
     invoke("hide_popup").catch(() => {});
   }
 }
@@ -673,6 +668,10 @@ listen("popup-shown", () => {
   lastRealMouseX = null;
   lastRealMouseY = null;
   handleShown();
+});
+
+listen("popup-hidden", () => {
+  hiddenAt = Date.now();
 });
 
 // ポップアップ表示中に裏でバックエンド状態が変化した場合(例: トレイメニューからの
