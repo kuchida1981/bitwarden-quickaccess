@@ -31,6 +31,12 @@ let actionMenuActions = [];
 let actionMenuFocusIndex = -1;
 let helpOpen = false;
 
+// scrollIntoView() によるレイアウト変更でカーソル直下の行が変わり、mouseenter が
+// 誤発火してフォーカスが奪われる問題(#128)への対策フラグ。scrollIntoView() 呼び出し
+// 直前に true をセットし、実際の mousemove が観測されるまで mouseenter によるフォーカス
+// 変更を無視する。
+let suppressMouseEnterFocus = false;
+
 
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
@@ -253,6 +259,12 @@ searchBox.addEventListener("keydown", (event) => {
     return;
   }
   handleActionShortcut(event);
+});
+
+// 実際にマウスが動いたことを示すシグナル。scrollIntoView() 直後の mouseenter 誤発火を
+// 無視するためのフラグをここで解除する(#128)。
+resultsList.addEventListener("mousemove", () => {
+  suppressMouseEnterFocus = false;
 });
 
 function moveFocus(delta) {
@@ -525,6 +537,10 @@ function renderResults() {
       if (actionMenuOpen) {
         return;
       }
+      // scrollIntoView() 起因のレイアウト変更による誤発火を無視する(#128)。
+      if (suppressMouseEnterFocus) {
+        return;
+      }
       if (focusedIndex === index) {
         return;
       }
@@ -539,6 +555,7 @@ function renderResults() {
   if (focusedIndex >= 0) {
     const focusedEl = resultsList.children[focusedIndex];
     if (focusedEl) {
+      suppressMouseEnterFocus = true;
       focusedEl.scrollIntoView({ block: "nearest" });
     }
   }
@@ -576,6 +593,7 @@ function updateFocusRows(previousIndex) {
 
   const focusedEl = resultsList.children[focusedIndex];
   if (focusedEl) {
+    suppressMouseEnterFocus = true;
     focusedEl.scrollIntoView({ block: "nearest" });
   }
 }
