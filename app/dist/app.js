@@ -206,8 +206,6 @@ function isHelpToggleShortcut(event) {
   return event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey;
 }
 
-
-
 // フォーカス要素(検索ボックス/パスワード入力欄等)に関わらずEscapeキーで
 // ポップアップやオーバーレイを閉じられるよう、documentレベルで集約して処理する(issue #76)。
 document.addEventListener("keydown", (event) => {
