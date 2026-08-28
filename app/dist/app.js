@@ -645,6 +645,14 @@ function renderActionMenu(item) {
 }
 
 listen("popup-shown", () => {
+  // ポップアップウィンドウは非表示/表示を繰り返しても再生成されず(hide()/show()のみ)、
+  // JSの状態はそのまま保持され続ける。前回表示時の座標を持ち越すと、今回のカーソル位置とは
+  // 無関係な値と比較してしまい mouseenter の亡霊判定(#128)を誤らせるおそれがあるため、
+  // 表示のたびに基準座標をリセットする。null にリセットした直後は「一度も本物の
+  // mousemove を観測していない」状態になり、design.md に記載の残存リスク(その状態で
+  // 発火した mouseenter は無条件で本物の進入として扱われる)と同じ扱いに揃う。
+  lastRealMouseX = null;
+  lastRealMouseY = null;
   handleShown();
 });
 
