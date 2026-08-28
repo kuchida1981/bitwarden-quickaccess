@@ -210,38 +210,89 @@ fn main() {
     });
 }
 
+/// `bw serve` を起動し、起動確認(readinessポーリング)が完了するまでの間に子プロセスが
+/// 終了した場合は、原因を問わず起動失敗とみなしてポートを再取得のうえ再試行する
+/// (`process::MAX_STARTUP_ATTEMPTS` 回まで)。ポート確保のTOCTOU(bind→解放→起動の間の
+/// 競合)への対処であり、readinessポーリングそのものの待ち時間は増やさない
+/// (design.md の「決定3」参照)。
+///
+/// `build_command`(ポートを渡して起動コマンドを組み立てる)と `readiness_check`
+/// (起動確認が完了するまで待つ)を引数として切り出すことで、実プロセスなしに
+/// リトライの分岐(早期終了→リトライ / 起動確認完了→成功)をテストできるようにしている。
+async fn acquire_backend_process<F, R, Fut>(
+    state: &AppState,
+    mut build_command: F,
+    mut readiness_check: R,
+) -> Option<(u16, process::ProcessHandle)>
+where
+    F: FnMut(u16) -> tokio::process::Command,
+    R: FnMut(u16) -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    for attempt in 1..=process::MAX_STARTUP_ATTEMPTS {
+        let port = match process::pick_free_port() {
+            Ok(port) => port,
+            Err(err) => {
+                state.set_error(format!("空きポートの確保に失敗しました: {err}"));
+                return None;
+            }
+        };
+
+        let mut handles =
+            match process::spawn_supervised_for_startup_with_command(build_command(port), state.clone()) {
+                Ok(handles) => handles,
+                Err(err) => {
+                    state.set_error(format!("bw serve の起動に失敗しました: {err}"));
+                    return None;
+                }
+            };
+
+        tokio::select! {
+            _ = readiness_check(port) => {
+                // 成功/タイムアウトいずれの場合も readiness ポーリングは完了しているため、
+                // 以後の監視は現行通り「予期せぬ終了→state.set_error()」に切り替える。
+                let _ = handles.confirm.send(());
+                return Some((port, handles.process_handle));
+            }
+            _ = &mut handles.exited => {
+                eprintln!(
+                    "bw serve がport {port}での起動確認中に終了しました(試行 {attempt}/{}) 。ポートを再取得してリトライします。",
+                    process::MAX_STARTUP_ATTEMPTS
+                );
+            }
+        }
+    }
+
+    state.set_error(format!(
+        "bw serve の起動に{}回失敗しました。アプリを再起動してください。",
+        process::MAX_STARTUP_ATTEMPTS
+    ));
+    None
+}
+
 async fn start_backend(app_handle: tauri::AppHandle, state: AppState) {
     if let Err(err) = preflight::check_bw_cli().await {
         state.set_error(err.to_string());
         return;
     }
 
-    let port = match process::pick_free_port() {
-        Ok(port) => port,
-        Err(err) => {
-            state.set_error(format!("空きポートの確保に失敗しました: {err}"));
-            return;
-        }
-    };
+    let state_for_readiness = state.clone();
+    let result = acquire_backend_process(&state, process::build_bw_serve_command, move |port| {
+        let client = BwServeClient::new(port);
+        let state = state_for_readiness.clone();
+        async move { sync_initial_status(&client, &state).await }
+    })
+    .await;
 
-    let (process_handle, _monitor) = match process::spawn_supervised(port, state.clone()) {
-        Ok(pair) => pair,
-        Err(err) => {
-            state.set_error(format!("bw serve の起動に失敗しました: {err}"));
-            return;
-        }
-    };
-
-    state.set_port(port);
-    app_handle
-        .state::<ManagedProcess>()
-        .0
-        .lock()
-        .expect("ManagedProcess mutex poisoned")
-        .replace(process_handle);
-
-    let client = BwServeClient::new(port);
-    sync_initial_status(&client, &state).await;
+    if let Some((port, process_handle)) = result {
+        state.set_port(port);
+        app_handle
+            .state::<ManagedProcess>()
+            .0
+            .lock()
+            .expect("ManagedProcess mutex poisoned")
+            .replace(process_handle);
+    }
 }
 
 /// SIGTERM/SIGINT(`kill` やターミナルでのCtrl-Cなど)を待ち受ける。
@@ -403,5 +454,114 @@ mod fix_path_env_tests {
             Duration::from_millis(5),
         );
         assert_eq!(result, None);
+    }
+}
+
+#[cfg(test)]
+mod acquire_backend_process_tests {
+    use super::*;
+    use std::process::Stdio;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use tokio::process::Command;
+
+    /// readiness_check が反応するまでの猶予。`sh -c "exit 1"` の実際の終了(通常数十ms)は
+    /// 十分前に観測できる長さにしてある。
+    const READINESS_DELAY: Duration = Duration::from_millis(300);
+
+    fn exits_immediately(_port: u16) -> Command {
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "exit 1"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        cmd
+    }
+
+    fn stays_alive(_port: u16) -> Command {
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "sleep 5"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        cmd
+    }
+
+    /// 実際の `bw serve` の代わりに、一定時間後に「起動確認完了」を返すだけの
+    /// readiness_check。早期終了する試行では、この時間が来る前に `exited` が
+    /// 先に発火するため、実プロセスなしにリトライ分岐を検証できる。
+    async fn readiness_after_delay(_port: u16) {
+        tokio::time::sleep(READINESS_DELAY).await;
+    }
+
+    #[tokio::test]
+    async fn retries_after_early_exit_then_succeeds() {
+        let state = AppState::new();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_build = attempts.clone();
+
+        let result = acquire_backend_process(
+            &state,
+            move |port| {
+                let n = attempts_for_build.fetch_add(1, Ordering::SeqCst);
+                if n == 0 {
+                    exits_immediately(port)
+                } else {
+                    stays_alive(port)
+                }
+            },
+            readiness_after_delay,
+        )
+        .await;
+
+        assert!(result.is_some(), "2回目の試行で起動確認に成功するはず");
+        assert_eq!(attempts.load(Ordering::SeqCst), 2);
+        assert!(state.last_error().is_none());
+    }
+
+    #[tokio::test]
+    async fn gives_up_after_max_attempts() {
+        let state = AppState::new();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_build = attempts.clone();
+
+        let result = acquire_backend_process(
+            &state,
+            move |port| {
+                attempts_for_build.fetch_add(1, Ordering::SeqCst);
+                exits_immediately(port)
+            },
+            readiness_after_delay,
+        )
+        .await;
+
+        assert!(result.is_none());
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            process::MAX_STARTUP_ATTEMPTS as usize
+        );
+        assert!(state.last_error().is_some());
+    }
+
+    #[tokio::test]
+    async fn succeeds_immediately_without_retry_when_first_attempt_is_healthy() {
+        let state = AppState::new();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_build = attempts.clone();
+
+        let result = acquire_backend_process(
+            &state,
+            move |port| {
+                attempts_for_build.fetch_add(1, Ordering::SeqCst);
+                stays_alive(port)
+            },
+            readiness_after_delay,
+        )
+        .await;
+
+        assert!(result.is_some());
+        assert_eq!(attempts.load(Ordering::SeqCst), 1);
     }
 }

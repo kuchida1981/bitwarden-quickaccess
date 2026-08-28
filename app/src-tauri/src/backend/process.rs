@@ -8,6 +8,9 @@ use tokio::task::JoinHandle;
 
 use super::state::AppState;
 
+/// `bw serve` が起動確認(readinessポーリング)完了前に終了した場合の最大試行回数(初回含む)。
+pub const MAX_STARTUP_ATTEMPTS: u32 = 3;
+
 /// OSに空きポートを割り当てさせ、そのポート番号を返す(`bw serve --port` に渡す用途)。
 /// 一時的にbindしてすぐ解放するだけなので、割り当てから実際の起動までの間に
 /// 他プロセスに奪われる可能性はゼロではないが、固定ポートの衝突回避が目的であり
@@ -85,6 +88,69 @@ pub fn spawn_supervised(port: u16, state: AppState) -> io::Result<(ProcessHandle
     spawn_supervised_with_command(cmd, state)
 }
 
+/// 起動確認中の監視ハンドル一式。呼び出し元は起動確認(readinessポーリング)が完了したら
+/// `confirm` を送信しなければならない。送信前に `bw serve` が終了した場合は `exited` が
+/// 一度だけ発火し、`state` は一切変更されない(呼び出し元がリトライするかどうかを判断できるように)。
+pub struct StartupHandles {
+    pub process_handle: ProcessHandle,
+    pub monitor: JoinHandle<()>,
+    pub exited: oneshot::Receiver<()>,
+    pub confirm: oneshot::Sender<()>,
+}
+
+/// `bw serve` を起動する。`confirm` が送信されるまでの間に子プロセスが終了した場合は
+/// `state` に触れず `exited` で通知するだけに留め(起動失敗としてリトライ可能にするため)、
+/// `confirm` 送信後は現行の `spawn_supervised` と同じ「予期せぬ終了→`state.set_error()`」
+/// 監視に切り替わる。
+pub fn spawn_supervised_for_startup(port: u16, state: AppState) -> io::Result<StartupHandles> {
+    spawn_supervised_for_startup_with_command(build_bw_serve_command(port), state)
+}
+
+pub fn spawn_supervised_for_startup_with_command(
+    mut command: Command,
+    state: AppState,
+) -> io::Result<StartupHandles> {
+    let mut child = command.spawn()?;
+    let (kill_tx, mut kill_rx) = oneshot::channel();
+    let (exited_tx, exited_rx) = oneshot::channel();
+    let (confirm_tx, mut confirm_rx) = oneshot::channel();
+
+    let monitor = tokio::spawn(async move {
+        tokio::select! {
+            _ = child.wait() => {
+                let _ = exited_tx.send(());
+                return;
+            }
+            _ = &mut confirm_rx => {}
+            _ = &mut kill_rx => {
+                let _ = child.start_kill();
+                let _ = child.wait().await;
+                return;
+            }
+        }
+
+        // ここに到達するのは confirm を受信した場合のみ。以後は現行同様の監視に切り替える。
+        tokio::select! {
+            _ = child.wait() => {
+                state.set_error("bw serve プロセスが予期せず終了しました。アプリを再起動してください。");
+            }
+            _ = &mut kill_rx => {
+                let _ = child.start_kill();
+                let _ = child.wait().await;
+            }
+        }
+    });
+
+    Ok(StartupHandles {
+        process_handle: ProcessHandle {
+            kill_tx: Some(kill_tx),
+        },
+        monitor,
+        exited: exited_rx,
+        confirm: confirm_tx,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,5 +223,55 @@ mod tests {
 
         // 明示的なshutdownでは state は変更されない(呼び出し側がアプリ終了処理中のため)。
         assert_eq!(state.backend_state(), BackendState::Unlocked);
+    }
+
+    #[tokio::test]
+    async fn exits_before_confirm_notifies_without_touching_state() {
+        let state = AppState::new();
+        state.set_unlocked();
+
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "exit 1"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+
+        let handles = spawn_supervised_for_startup_with_command(cmd, state.clone())
+            .expect("failed to spawn supervised command");
+
+        handles.exited.await.expect("exited channel should fire before confirm");
+        handles.monitor.await.expect("monitor task panicked");
+
+        // confirmを送っていないので、起動失敗として state には一切触れない(呼び出し側がリトライ判断する)。
+        assert_eq!(state.backend_state(), BackendState::Unlocked);
+        assert!(state.last_error().is_none());
+    }
+
+    #[tokio::test]
+    async fn crash_after_confirm_updates_state_to_disconnected() {
+        let state = AppState::new();
+        state.set_unlocked();
+
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "sleep 0.2; exit 0"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+
+        let handles = spawn_supervised_for_startup_with_command(cmd, state.clone())
+            .expect("failed to spawn supervised command");
+
+        handles
+            .confirm
+            .send(())
+            .expect("monitor task should still be waiting for confirm");
+
+        handles.monitor.await.expect("monitor task panicked");
+
+        // confirm後の終了は現行の spawn_supervised と同様、予期せぬ終了として扱われる。
+        assert_eq!(state.backend_state(), BackendState::Disconnected);
+        assert!(state.last_error().is_some());
     }
 }

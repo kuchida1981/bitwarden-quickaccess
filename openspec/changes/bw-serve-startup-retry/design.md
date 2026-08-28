@@ -104,6 +104,8 @@ select! {
 - 全試行が早期終了で尽きた場合のみ、`start_backend` 側で `state.set_error(format!("bw serve の起動に{MAX_STARTUP_ATTEMPTS}回失敗しました。アプリを再起動してください。"))` を呼ぶ
 - 既存の `spawn_supervised` / `spawn_supervised_with_command`(および既存テスト `crash_updates_state_to_disconnected` 等)はそのまま温存し、`spawn_supervised_for_startup` は同じ構築パーツ(`build_bw_serve_command`・`kill_on_drop` 等)を再利用しつつ2フェーズ監視のためだけに新設する
 
+**実装時の補足**: `main.rs::start_backend` のリトライループ本体は `acquire_backend_process(state, build_command, readiness_check)` という汎用関数として切り出した。`build_command: FnMut(u16) -> Command` と `readiness_check: FnMut(u16) -> impl Future<Output = ()>` を注入可能にすることで、実際の `bw` CLIやHTTPサーバなしにリトライ分岐(早期終了→リトライ / 起動確認完了→成功/上限到達→エラー)を単体テストできるようにしている。本番経路では `build_command` に `process::build_bw_serve_command` を、`readiness_check` に `sync_initial_status(&BwServeClient::new(port), &state)` をラップしたクロージャを渡す。`BwServeClient::new` は `http://localhost:{port}` を用いる(hostname解決に依存する。この点は別change `bw-serve-hostname-ipv4` の対象外であり、既存の挙動のまま)ため、テストでは実HTTP通信を避け `readiness_check` 自体をダミーの遅延完了に差し替えている。
+
 ## Risks / Trade-offs
 
 - [Risk] readinessポーリングの2秒ウィンドウを過ぎてから発生した遅延クラッシュは今回のリトライ対象外 → Mitigation: 現行通り「予期せぬ終了」として `state.set_error()` される(挙動は変わらないだけで悪化はしない)
