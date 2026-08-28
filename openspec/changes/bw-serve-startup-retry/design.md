@@ -116,6 +116,8 @@ select! {
 1. `state.set_port(port)` を試行のたびに呼ぶようにした副作用として、全試行が早期終了で尽きた場合に `state.port()` が最後の(死んだ)試行のポート番号を保持したまま残ってしまう問題が見つかった。個別に `clear_port()` を呼ぶのではなく、`AppState::set_error()` 自体が `port` を同時にクリアするよう修正した(エラー状態になった時点でその `port` はどのみち無効なので、`set_error` を呼ぶ全箇所——起動失敗・プロセスクラッシュ・ログイン未実施等——で一貫して安全になる)。
 2. `process.rs` の `spawn_supervised_with_command` と `spawn_supervised_for_startup_with_command`(confirm受信後)で、「予期せぬ終了→`state.set_error()`」の監視ロジックが重複していた。共通の `async fn supervise_until_exit(child, state, kill_rx)` に切り出し、両方から呼ぶように統合した。
 
+**4回目のレビューでの修正**: リトライ機構の導入により `start_backend` が `spawn_supervised_for_startup_with_command` 経由の起動しか使わなくなった結果、単発起動用の `spawn_supervised(port, state)` がどこからも呼ばれないdead codeになっていた(`pub` だが実質的に呼び出し元がない)。この関数と、それが内部で使っていた `spawn_supervised_with_command`(テストからしか呼ばれておらずこちらもdead code化していた)を削除し、共有ロジック `supervise_until_exit` を対象テストが直接呼ぶ形に整理した。あわせて `crash_updates_state_to_disconnected` は `spawn_supervised_for_startup_with_command` 経由の `crash_after_confirm_updates_state_to_disconnected` と同じシナリオを検証する重複テストだったため、`supervise_until_exit` を直接検証する形に統合した。
+
 ## Risks / Trade-offs
 
 - [Risk] readinessポーリングの2秒ウィンドウを過ぎてから発生した遅延クラッシュは今回のリトライ対象外 → Mitigation: 現行通り「予期せぬ終了」として `state.set_error()` される(挙動は変わらないだけで悪化はしない)

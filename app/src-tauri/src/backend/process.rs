@@ -52,8 +52,7 @@ impl ProcessHandle {
 
 /// 子プロセスの終了を待ち、「予期せぬ終了」であれば `state` にエラーとして記録する。
 /// `kill_rx` 経由の明示的なshutdownの場合は `state` を変更しない。
-/// `spawn_supervised_with_command` と `spawn_supervised_for_startup_with_command`
-/// (confirm受信後)の両方から共有される。
+/// `spawn_supervised_for_startup_with_command`(confirm受信後)から使われる。
 async fn supervise_until_exit(mut child: Child, state: AppState, mut kill_rx: oneshot::Receiver<()>) {
     tokio::select! {
         _ = child.wait() => {
@@ -64,34 +63,6 @@ async fn supervise_until_exit(mut child: Child, state: AppState, mut kill_rx: on
             let _ = child.wait().await;
         }
     }
-}
-
-/// 指定された Command を起動し、監視タスクを立ち上げる。
-pub(crate) fn spawn_supervised_with_command(
-    mut command: Command,
-    state: AppState,
-) -> io::Result<(ProcessHandle, JoinHandle<()>)> {
-    let child = command.spawn()?;
-    let (kill_tx, kill_rx) = oneshot::channel();
-
-    let join_handle = tokio::spawn(supervise_until_exit(child, state, kill_rx));
-
-    Ok((
-        ProcessHandle {
-            kill_tx: Some(kill_tx),
-        },
-        join_handle,
-    ))
-}
-
-/// `bw serve` を起動し、監視タスクを立ち上げる。
-/// 子プロセスが予期せず終了した場合は `state` を `Disconnected` に更新し、
-/// エラー画面(`backend-connection-error-display`)に表示するメッセージも記録する。
-/// 戻り値の `ProcessHandle::shutdown()` を呼ぶとプロセスを終了させ、
-/// この場合は監視タスクは `state` を更新しない(意図した終了のため)。
-pub fn spawn_supervised(port: u16, state: AppState) -> io::Result<(ProcessHandle, JoinHandle<()>)> {
-    let cmd = build_bw_serve_command(port);
-    spawn_supervised_with_command(cmd, state)
 }
 
 /// 起動確認中の監視ハンドル一式。呼び出し元は起動確認(readinessポーリング)が完了したら
@@ -106,8 +77,8 @@ pub struct StartupHandles {
 
 /// `bw serve` を起動する。`confirm` が送信されるまでの間に子プロセスが終了した場合は
 /// `state` に触れず `exited` で通知するだけに留め(起動失敗としてリトライ可能にするため)、
-/// `confirm` 送信後は現行の `spawn_supervised` と同じ「予期せぬ終了→`state.set_error()`」
-/// 監視に切り替わる。
+/// `confirm` 送信後は「予期せぬ終了→`state.set_error()`」監視(`supervise_until_exit`)
+/// に切り替わる。
 pub fn spawn_supervised_for_startup(port: u16, state: AppState) -> io::Result<StartupHandles> {
     spawn_supervised_for_startup_with_command(build_bw_serve_command(port), state)
 }
@@ -178,7 +149,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn crash_updates_state_to_disconnected() {
+    async fn supervise_until_exit_records_crash() {
         let state = AppState::new();
         state.set_unlocked();
 
@@ -188,17 +159,17 @@ mod tests {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .kill_on_drop(true);
+        let child = cmd.spawn().expect("failed to spawn command");
+        let (_kill_tx, kill_rx) = oneshot::channel();
 
-        let (_handle, join_handle) = spawn_supervised_with_command(cmd, state.clone())
-            .expect("failed to spawn supervised command");
+        supervise_until_exit(child, state.clone(), kill_rx).await;
 
-        join_handle.await.expect("monitor task panicked");
         assert_eq!(state.backend_state(), BackendState::Disconnected);
         assert!(state.last_error().is_some());
     }
 
     #[tokio::test]
-    async fn explicit_shutdown_does_not_mark_disconnected() {
+    async fn supervise_until_exit_explicit_shutdown_does_not_mark_disconnected() {
         let state = AppState::new();
         state.set_unlocked();
 
@@ -208,16 +179,14 @@ mod tests {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .kill_on_drop(true);
+        let child = cmd.spawn().expect("failed to spawn command");
+        let (kill_tx, kill_rx) = oneshot::channel();
 
-        let (mut handle, join_handle) = spawn_supervised_with_command(cmd, state.clone())
-            .expect("failed to spawn supervised command");
+        kill_tx.send(()).expect("kill_rx should still be alive");
 
-        handle.shutdown();
-
-        tokio::time::timeout(Duration::from_secs(3), join_handle)
+        tokio::time::timeout(Duration::from_secs(3), supervise_until_exit(child, state.clone(), kill_rx))
             .await
-            .expect("monitor task should finish quickly after shutdown")
-            .expect("monitor task panicked");
+            .expect("supervise_until_exit should finish quickly after shutdown signal");
 
         // 明示的なshutdownでは state は変更されない(呼び出し側がアプリ終了処理中のため)。
         assert_eq!(state.backend_state(), BackendState::Unlocked);
@@ -268,7 +237,7 @@ mod tests {
 
         handles.monitor.await.expect("monitor task panicked");
 
-        // confirm後の終了は現行の spawn_supervised と同様、予期せぬ終了として扱われる。
+        // confirm後の終了は supervise_until_exit により予期せぬ終了として扱われる。
         assert_eq!(state.backend_state(), BackendState::Disconnected);
         assert!(state.last_error().is_some());
     }
