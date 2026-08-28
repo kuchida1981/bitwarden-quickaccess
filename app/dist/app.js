@@ -31,7 +31,6 @@ let actionMenuActions = [];
 let actionMenuFocusIndex = -1;
 let helpOpen = false;
 
-
 function showScreen(name) {
   unlockScreen.classList.toggle("active", name === "unlock");
   errorScreen.classList.toggle("active", name === "error");
@@ -253,6 +252,19 @@ searchBox.addEventListener("keydown", (event) => {
     return;
   }
   handleActionShortcut(event);
+});
+
+// 直近の「本物の」マウスカーソル位置(#128)。scrollIntoView() 等のレイアウト変更で
+// カーソル直下の要素が変わっても、この座標はブラウザが合成する mouseenter/mouseover では
+// 更新されない(mousemove は実際にポインタが物理的に動いた場合にのみ発火するため)。
+// 各行の mouseenter ハンドラは、この座標と発火時の座標を比較することで、本物の移動による
+// 進入か、レイアウト変更による亡霊イベントかを区別する。
+let lastRealMouseX = null;
+let lastRealMouseY = null;
+
+resultsList.addEventListener("mousemove", (event) => {
+  lastRealMouseX = event.clientX;
+  lastRealMouseY = event.clientY;
 });
 
 function moveFocus(delta) {
@@ -519,10 +531,16 @@ function renderResults() {
 
     li.appendChild(buildTrailingBlock(item, index));
 
-    li.addEventListener("mouseenter", () => {
+    li.addEventListener("mouseenter", (event) => {
       // メニュー表示中に他行へフォーカスが移ると、開いているメニューの前提
       // (対象アイテム)が崩れるため無視する(design.md 決定2関連のリスク対策)。
       if (actionMenuOpen) {
+        return;
+      }
+      // scrollIntoView() 等のレイアウト変更による亡霊 mouseenter を無視する(#128)。
+      // カーソルが物理的に動いていなければ、発火時の座標は直近の本物の mousemove の
+      // 座標と一致する。本物の移動による進入なら、必ずどちらかの座標が変化している。
+      if (event.clientX === lastRealMouseX && event.clientY === lastRealMouseY) {
         return;
       }
       if (focusedIndex === index) {
@@ -558,9 +576,10 @@ function buildTrailingBlock(item, index) {
 // 矢印キー/マウスホバーによるフォーカス行の移動時に呼ぶ。アイコンを含む行全体を
 // 作り直さず、影響を受ける2行(旧フォーカス行・新フォーカス行)の `.focused` クラスと
 // 末尾ブロックだけを更新する。行のDOM要素自体(アイコン含む)を作り直さないことで、
-// (1) アイコンが移動のたびに再読み込みされてチラつく問題と、(2) 一覧再構築でカーソル
-// 直下に新しい要素が現れることでブラウザが mouseenter を誤発火させ、フォーカスが
-// カーソル位置の行へ巻き戻ってしまう問題の両方を防ぐ。
+// アイコンが移動のたびに再読み込みされてチラつく問題を防ぐ。
+// マウスホバーによるフォーカス変更(mouseenter)がスクロール等の亡霊イベントで
+// 誤発火しないための座標比較については、行生成時の mouseenter リスナーの
+// コメントを参照(#128)。
 function updateFocusRows(previousIndex) {
   [previousIndex, focusedIndex].forEach((index) => {
     if (index < 0 || index >= currentItems.length) {
@@ -626,6 +645,14 @@ function renderActionMenu(item) {
 }
 
 listen("popup-shown", () => {
+  // ポップアップウィンドウは非表示/表示を繰り返しても再生成されず(hide()/show()のみ)、
+  // JSの状態はそのまま保持され続ける。前回表示時の座標を持ち越すと、今回のカーソル位置とは
+  // 無関係な値と比較してしまい mouseenter の亡霊判定(#128)を誤らせるおそれがあるため、
+  // 表示のたびに基準座標をリセットする。null にリセットした直後は「一度も本物の
+  // mousemove を観測していない」状態になり、design.md に記載の残存リスク(その状態で
+  // 発火した mouseenter は無条件で本物の進入として扱われる)と同じ扱いに揃う。
+  lastRealMouseX = null;
+  lastRealMouseY = null;
   handleShown();
 });
 
