@@ -268,13 +268,12 @@ where
         state.set_port(port);
 
         let mut exited = exited;
+        // biased: exited(早期終了の通知)を最優先でチェックする。readiness_checkの成功と
+        // ほぼ同時にbw serveがクラッシュした場合、両方が同時にreadyになりうるが、
+        // 「死んだプロセスを成功として扱ってしまう」よりは「生きているプロセスを
+        // 誤ってリトライする」方が安全側に倒れるため、exitedを優先する。
         tokio::select! {
-            _ = readiness_check(port) => {
-                // 成功/タイムアウトいずれの場合も readiness ポーリングは完了しているため、
-                // 以後の監視は現行通り「予期せぬ終了→state.set_error()」に切り替える。
-                let _ = confirm.send(());
-                return Some(port);
-            }
+            biased;
             reason = &mut exited => {
                 // アプリ終了処理中の明示的なshutdown(ProcessHandle::shutdown())による終了は、
                 // クラッシュとは区別してリトライせずそのまま終了する。次の試行でさらに
@@ -287,6 +286,28 @@ where
                     "bw serve がport {port}での起動確認中に終了しました(試行 {attempt}/{})。ポートを再取得してリトライします。",
                     process::MAX_STARTUP_ATTEMPTS
                 );
+            }
+            _ = readiness_check(port) => {
+                // readiness_checkの成功とbw serveのクラッシュがほぼ同時に起きた場合、
+                // 監視タスク側のselectで child.wait() が先に確定してexited_txへ送信・
+                // 終了してしまうと、この select はもう exited を見ていないため confirm を
+                // 送っても誰も受け取らず、死んだプロセスを「成功」として扱ってしまう
+                // おそれがある。confirmを送る直前にexitedへ既に通知が届いていないか
+                // 非ブロッキングで確認することで、この取りこぼしの窓を可能な限り狭める。
+                if let Ok(reason) = exited.try_recv() {
+                    if matches!(reason, process::StartupExit::ShutdownRequested) {
+                        return None;
+                    }
+                    eprintln!(
+                        "bw serve がport {port}での起動確認完了とほぼ同時に終了していたため(試行 {attempt}/{})、ポートを再取得してリトライします。",
+                        process::MAX_STARTUP_ATTEMPTS
+                    );
+                } else {
+                    // 成功/タイムアウトいずれの場合も readiness ポーリングは完了しているため、
+                    // 以後の監視は現行通り「予期せぬ終了→state.set_error()」に切り替える。
+                    let _ = confirm.send(());
+                    return Some(port);
+                }
             }
         }
     }

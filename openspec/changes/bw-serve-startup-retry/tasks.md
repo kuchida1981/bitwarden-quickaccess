@@ -30,3 +30,4 @@
 - [x] 5.4 `process.rs` の監視ロジック(`spawn_supervised_with_command` と confirm後の分岐)の重複を `supervise_until_exit` に共通化
 - [x] 5.5 リトライ導入で不要になった `spawn_supervised` / `spawn_supervised_with_command` / `spawn_supervised_for_startup`(いずれも `_with_command` 以外)のdead codeを削除
 - [x] 5.6 起動確認待機中のアプリ終了(`ProcessHandle::shutdown()`)をクラッシュと誤認してリトライしてしまう問題を修正(`StartupExit::Crashed`/`ShutdownRequested` を導入して区別)
+- [x] 5.7 readiness_check成功とbw serveのクラッシュがほぼ同時に起きた場合に、死んだプロセスを「成功」として扱ってしまう可能性のあるレースを緩和(外側selectを`biased`化 + `confirm`送信直前に`exited`を非ブロッキングで再確認)。完全には閉じられないナノ秒オーダーの残存リスクをdesign.mdに明記

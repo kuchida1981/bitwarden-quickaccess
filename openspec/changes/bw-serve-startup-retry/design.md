@@ -122,6 +122,11 @@ select! {
 1. 同様の理由で `spawn_supervised_for_startup(port, state)`(`_with_command` ではない方のラッパー)もどこからも呼ばれないdead codeになっていたため削除した。
 2. より重要な指摘として、`acquire_backend_process` のリトライ判定が「起動確認完了前のexit」を理由を問わず一律リトライしていたため、アプリ終了処理(`RunEvent::Exit` → `ProcessHandle::shutdown()`)が発行された場合と純粋なクラッシュを区別できていなかった。リトライ中(起動確認ウィンドウ内)にユーザーがアプリを終了すると、`ManagedProcess` は既に空になっている(`RunEvent::Exit` のハンドラが `guard.take()` 済み)にもかかわらず、ループが「クラッシュした」と誤認して新しいポートで `bw serve` を再spawnし、その新プロセスがどこにも登録されず孤児化しうる欠陥があった。`process::StartupExit`(`Crashed` / `ShutdownRequested`)を導入して `exited` チャンネルに理由を持たせ、`ShutdownRequested` の場合はリトライせず即座に処理を終了するよう修正した。
 
+**6回目のレビューでの修正・既知の限界**: readiness_check(`sync_initial_status`)の成功と `bw serve` のクラッシュがほぼ同時に起きた場合、監視タスク側の `select!` で `child.wait()` が(呼び出し元がまだ `confirm` を送っていないタイミングで)先に確定してしまうと、`exited_tx` への通知は「呼び出し元は既に readiness_check 成功の分岐を選んでおり、もう `exited` を見ていない」ため誰にも読まれず失われ、実際には死んでいるプロセスを `state.set_port()`/`state.set_locked()` 済みの「成功」として扱ってしまう可能性が指摘された。
+
+- 対策として、(a) `acquire_backend_process` の外側の `select!` に `biased` を付けて `exited` を最優先でチェックするようにし(同一ポーリングで両方readyになった場合に確実に安全側=リトライへ倒す)、(b) `readiness_check` 成功分岐で `confirm` を送る直前に `exited.try_recv()` で非ブロッキングの再確認を行い、既に(`exited` チャンネルに)クラッシュ通知が届いていればそちらを優先するようにした。
+- **既知の限界**: この対策は「クラッシュ検知が readiness_check 成功より十分前(ミリ秒オーダー)に起きるケース」と「同一ポーリング内でのタイ」を実用上ほぼ確実にカバーするが、`exited.try_recv()` を実行した直後・`confirm.send()` を実行する前のごく短いウィンドウ(ネイティブ命令数個分、ナノ秒オーダー)に限っては、マルチスレッドランタイム上で監視タスクが別コアで真に並行してクラッシュを検知する可能性を理論上排除できない。これを完全に閉じるには、成功と確定する前に一定時間待つ(=既存の設計方針である「追加の待機時間を発生させない」に反する)か、より重いプロセス間同期が必要になる。`bw serve` が readiness 応答を送出した直後の数ナノ秒間にクラッシュするという極めて起こりにくい事象であるため、追加の待機時間を導入するコストに見合わないと判断し、既知の限界として受け入れる。process.rs内の監視タスクの `select!` に付けた `biased`(`confirm_rx` を先にチェック)は、この対策の一部として残しているが、単体では(監視タスクが `confirm` を一度も見ないまま `child.wait()` 側で確定して終了してしまう場合があるため)このレースを解消しない。実際にこの前提でテストを書いたところ失敗し、対策の主眼は main.rs 側の `try_recv()` 安全確認にあることを確認した。
+
 ## Risks / Trade-offs
 
 - [Risk] readinessポーリングの2秒ウィンドウを過ぎてから発生した遅延クラッシュは今回のリトライ対象外 → Mitigation: 現行通り「予期せぬ終了」として `state.set_error()` される(挙動は変わらないだけで悪化はしない)

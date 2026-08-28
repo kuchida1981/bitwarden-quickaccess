@@ -99,12 +99,20 @@ pub fn spawn_supervised_for_startup_with_command(
     let (confirm_tx, mut confirm_rx) = oneshot::channel();
 
     let monitor = tokio::spawn(async move {
+        // biased: confirm_rx を最優先でチェックする。呼び出し元(main.rs)は
+        // readiness_check 成功とほぼ同時に bw serve がクラッシュした場合に備え、
+        // confirm を送る直前に exited を非ブロッキングで再確認してから初めて
+        // confirm を送る(詳細は acquire_backend_process 参照)。このbiasedは、
+        // その安全確認と同一ポーリング内で confirm_rx / child.wait() が両方
+        // readyになった際の分岐を決定的にするための補助であり、これ単体で
+        // レースを解消するものではない。
         tokio::select! {
+            biased;
+            _ = &mut confirm_rx => {}
             _ = child.wait() => {
                 let _ = exited_tx.send(StartupExit::Crashed);
                 return;
             }
-            _ = &mut confirm_rx => {}
             _ = &mut kill_rx => {
                 let _ = child.start_kill();
                 let _ = child.wait().await;
