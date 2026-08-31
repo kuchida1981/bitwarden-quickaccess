@@ -20,9 +20,9 @@ pub fn pick_free_port() -> io::Result<u16> {
     Ok(listener.local_addr()?.port())
 }
 
-/// `bw serve` の起動用コマンドを組み立てる(`--hostname 127.0.0.1` でIPv4ループバックに固定)。
-pub fn build_bw_serve_command(port: u16) -> Command {
-    let mut cmd = Command::new("bw");
+/// `bw serve` の起動用コマンドを組み立てる(`bw_path` で指定された実行ファイルを使用し、`--hostname 127.0.0.1` でIPv4ループバックに固定)。
+pub fn build_bw_serve_command(port: u16, bw_path: &str) -> Command {
+    let mut cmd = Command::new(bw_path);
     cmd.args([
         "serve",
         "--hostname",
@@ -38,8 +38,8 @@ pub fn build_bw_serve_command(port: u16) -> Command {
 }
 
 /// `bw serve` を子プロセスとして起動する。標準入出力は継承せず破棄する。
-pub fn spawn_bw_serve(port: u16) -> io::Result<Child> {
-    build_bw_serve_command(port).spawn()
+pub fn spawn_bw_serve(port: u16, bw_path: &str) -> io::Result<Child> {
+    build_bw_serve_command(port, bw_path).spawn()
 }
 
 /// 起動中の `bw serve` プロセスへのハンドル。`shutdown()` で明示的に終了できる。
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn build_bw_serve_command_binds_to_ipv4_loopback() {
-        let cmd = build_bw_serve_command(8087);
+        let cmd = build_bw_serve_command(8087, "bw");
         let args: Vec<&std::ffi::OsStr> = cmd.as_std().get_args().collect();
         assert_eq!(
             args,
