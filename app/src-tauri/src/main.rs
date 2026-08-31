@@ -325,7 +325,7 @@ async fn watch_idle_timeout(
         let client = BwServeClient::new(port);
         if client.lock().await.is_ok() {
             state.set_locked();
-            commands::clear_clipboard_if_owned(&app_handle, &guard);
+            commands::clear_clipboard_now(&app_handle, &guard);
         }
     }
 }
