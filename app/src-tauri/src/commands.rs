@@ -12,17 +12,17 @@ use crate::popup;
 /// コピーした認証情報をクリップボードから自動消去するまでの待機時間(30秒)。
 pub const CLIPBOARD_CLEAR_DELAY: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// クリップボードの中身がアプリが最後に書き込んだ値のままである場合に限り、
-/// クリップボードをクリアする。コピー後の遅延クリア、および手動/自動ロック時の
-/// 即時クリアの両方から呼ばれる共通処理。クリップボードの読み取りに失敗した
-/// 場合は安全側に倒して何もしない。
-pub fn clear_clipboard_if_owned(app: &tauri::AppHandle, guard: &ClipboardGuard) {
+/// クリップボードの中身が `expected` のままである場合に限り、クリップボードを
+/// クリアする。コピー後の遅延クリア、および手動/自動ロック時の即時クリアの
+/// 両方から呼ばれる共通処理。クリップボードの読み取りに失敗した場合は安全側に
+/// 倒して何もしない。
+pub fn clear_clipboard_if_owned(app: &tauri::AppHandle, guard: &ClipboardGuard, expected: &str) {
     let Ok(current) = app.clipboard().read_text() else {
         return;
     };
-    if guard.should_clear(&current) {
+    if current == expected {
         let _ = app.clipboard().write_text(String::new());
-        guard.clear();
+        guard.clear_if_matches(expected);
     }
 }
 
@@ -89,7 +89,9 @@ pub async fn lock(
     let client = client_for(&state)?;
     client.lock().await.map_err(|err| err.to_string())?;
     state.set_locked();
-    clear_clipboard_if_owned(&app, &guard);
+    if let Some(expected) = guard.last_value() {
+        clear_clipboard_if_owned(&app, &guard, &expected);
+    }
     Ok(())
 }
 
@@ -199,13 +201,7 @@ pub async fn copy_field(
     let expected_for_clear = value_for_guard.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(CLIPBOARD_CLEAR_DELAY).await;
-        let Ok(current) = app_for_clear.clipboard().read_text() else {
-            return;
-        };
-        if current == expected_for_clear {
-            let _ = app_for_clear.clipboard().write_text(String::new());
-            guard_for_clear.clear_if_matches(&expected_for_clear);
-        }
+        clear_clipboard_if_owned(&app_for_clear, &guard_for_clear, &expected_for_clear);
     });
 
     Ok(())
