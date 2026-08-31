@@ -1,3 +1,4 @@
+pub mod bw_locate;
 pub mod clipboard_guard;
 pub mod http_client;
 pub mod idle;

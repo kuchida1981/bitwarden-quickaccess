@@ -1,8 +1,8 @@
 ## 1. bwパス解決モジュールの新規実装
 
-- [ ] 1.1 `app/src-tauri/src/backend/bw_locate.rs`(新規モジュール)を作成し、`app/src-tauri/src/backend/mod.rs` に登録する。設定ファイルパス(`$XDG_CONFIG_HOME/bw-quickaccess/bw_path.txt`、未設定時 `~/.config/bw-quickaccess/bw_path.txt`)・既知パスのリスト(`/opt/homebrew/bin/bw` → `/usr/local/bin/bw`)・PATHフォールバック(`"bw"`)を順に試す解決関数(例: `resolve_bw_path() -> String`)を実装する。既存の `preflight::check_bw_cli_with` と同様に、候補パス群を引数として注入できる内部関数(例: `resolve_bw_path_with(config_path: Option<&Path>, known_paths: &[&str]) -> String`)に切り出し、`resolve_bw_path()` はそれを固定引数で呼ぶ薄いラッパーとする。`cargo test` で当該モジュールのユニットテストが通ることを確認する。
-- [ ] 1.2 設定ファイルが (a) 存在しない、(b) 存在するが記載パスが実行可能ファイルとして存在しない、(c) 存在し記載パスが有効、の3パターンをユニットテストでカバーする(一時ディレクトリに実ファイルを配置する方式。`preflight.rs` の既存テストパターンを踏襲)。`cargo test` で通ることを確認する。
-- [ ] 1.3 既知パス探索とPATHフォールバックの優先順位(設定ファイル → 既知パス → `"bw"`)をユニットテストで検証する(既知パスの実在確認は一時ディレクトリに配置したダミー実行ファイルで代替し、実際の `/opt/homebrew` 等には依存しない形にする)。`cargo test` で通ることを確認する。
+- [x] 1.1 `app/src-tauri/src/backend/bw_locate.rs`(新規モジュール)を作成し、`app/src-tauri/src/backend/mod.rs` に登録する。設定ファイルパス(`$XDG_CONFIG_HOME/bw-quickaccess/bw_path.txt`、未設定時 `~/.config/bw-quickaccess/bw_path.txt`)・既知パスのリスト(`/opt/homebrew/bin/bw` → `/usr/local/bin/bw`)・PATHフォールバック(`"bw"`)を順に試す解決関数(例: `resolve_bw_path() -> String`)を実装する。既存の `preflight::check_bw_cli_with` と同様に、候補パス群を引数として注入できる内部関数(例: `resolve_bw_path_with(config_path: Option<&Path>, known_paths: &[&str]) -> String`)に切り出し、`resolve_bw_path()` はそれを固定引数で呼ぶ薄いラッパーとする。`cargo test` で当該モジュールのユニットテストが通ることを確認する。
+- [x] 1.2 設定ファイルが (a) 存在しない、(b) 存在するが記載パスが実行可能ファイルとして存在しない、(c) 存在し記載パスが有効、の3パターンをユニットテストでカバーする(一時ディレクトリに実ファイルを配置する方式。`preflight.rs` の既存テストパターンを踏襲)。`cargo test` で通ることを確認する。
+- [x] 1.3 既知パス探索とPATHフォールバックの優先順位(設定ファイル → 既知パス → `"bw"`)をユニットテストで検証する(既知パスの実在確認は一時ディレクトリに配置したダミー実行ファイルで代替し、実際の `/opt/homebrew` 等には依存しない形にする)。`cargo test` で通ることを確認する。
 
 ## 2. 既存呼び出し箇所の書き換え
 
