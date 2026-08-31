@@ -23,14 +23,14 @@ jobs:
         with:
           workspaces: app/src-tauri
 
+      - name: cargo fmt
+        run: cargo fmt --check
+
       - name: cargo build
         run: cargo build --verbose
 
       - name: cargo test
         run: cargo test --verbose
-
-      - name: cargo fmt
-        run: cargo fmt --check
 
       - name: cargo clippy
         run: cargo clippy --all-targets -- -D warnings
