@@ -11,6 +11,21 @@ A menu-bar quick-access app for Bitwarden, equivalent to 1Password Quick Access,
 - macOS (Linux support is planned for a future release; not yet supported)
 - [`bw` (Bitwarden CLI)](https://bitwarden.com/help/cli/) — must already be logged in via `bw login` (the vault can be locked; the app handles unlocking)
 
+### If the Bitwarden CLI (`bw`) isn't found
+
+If you installed the Bitwarden CLI via Homebrew (`/opt/homebrew/bin/bw` or `/usr/local/bin/bw`), it is detected automatically and no extra configuration is needed.
+
+However, if you installed it via `npm install -g @bitwarden/cli` under a Node version manager (such as nvm, volta, or asdf) or manually placed a native binary in a custom directory, you need to explicitly configure the absolute path to `bw`.
+
+Create the configuration file `$XDG_CONFIG_HOME/bw-quickaccess/bw_path.txt` (or `~/.config/bw-quickaccess/bw_path.txt` if `XDG_CONFIG_HOME` is unset) and write the single-line absolute path to the `bw` executable.
+
+Running `which bw` in your everyday terminal prints the full path to `bw`, so you can set it up with:
+
+```bash
+mkdir -p ~/.config/bw-quickaccess
+echo "$(which bw)" > ~/.config/bw-quickaccess/bw_path.txt
+```
+
 To **self-build**, you additionally need:
 - [Rust toolchain](https://www.rust-lang.org/tools/install) (stable, via `rustup`)
 - [Tauri CLI](https://v2.tauri.app/reference/cli/): `cargo install tauri-cli --locked`

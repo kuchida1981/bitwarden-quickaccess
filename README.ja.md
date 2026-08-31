@@ -11,6 +11,21 @@ Bitwarden向けの、1Password Quick Access 相当のメニューバー常駐ア
 - macOS(Linux対応は将来のリリースで予定していますが、現時点では未対応です)
 - [`bw`(Bitwarden CLI)](https://bitwarden.com/help/cli/) — `bw login` 済みであること(vaultはロック状態で構いません。アプリ側でアンロックできます)
 
+### Bitwarden CLI (`bw`) が見つからない場合
+
+Homebrew 経由で Bitwarden CLI をインストールしている場合(`/opt/homebrew/bin/bw` または `/usr/local/bin/bw`)、自動的に検出されるため通常は追加の設定は不要です。
+
+一方、Node バージョン管理ツール(nvm, volta, asdf 等)経由で `npm install -g @bitwarden/cli` を実行した場合や、ネイティブバイナリを手動配置した場合は、既知のパスと異なるため設定ファイルで `bw` の絶対パスを指定する必要があります。
+
+設定ファイル `$XDG_CONFIG_HOME/bw-quickaccess/bw_path.txt`(`XDG_CONFIG_HOME` が未設定の場合は `~/.config/bw-quickaccess/bw_path.txt`)を作成し、`bw` 実行ファイルの絶対パスを1行で記述してください。
+
+普段お使いのシェル上で `which bw` を実行すると `bw` の絶対パスが出力されるため、以下のように設定ファイルを作成できます:
+
+```bash
+mkdir -p ~/.config/bw-quickaccess
+echo "$(which bw)" > ~/.config/bw-quickaccess/bw_path.txt
+```
+
 **セルフビルド**する場合は、追加で以下が必要です:
 - [Rust toolchain](https://www.rust-lang.org/tools/install)(stable、`rustup` 経由)
 - [Tauri CLI](https://v2.tauri.app/reference/cli/): `cargo install tauri-cli --locked`
