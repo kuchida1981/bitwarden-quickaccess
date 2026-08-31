@@ -60,81 +60,11 @@ impl ClipboardGuard {
             .expect("ClipboardGuard mutex poisoned")
             .clone()
     }
-
-    /// 現在のクリップボードの中身(current)が、アプリが最後に書き込んだ値と
-    /// 一致するかどうかを判定する。一致する場合のみクリアしてよい。
-    /// 実際のクリップボードI/Oには一切触れない純粋な判定ロジックにすること
-    /// (ユニットテストで検証可能にするため)。
-    pub fn should_clear(&self, current: &str) -> bool {
-        let guard = self
-            .last_written
-            .lock()
-            .expect("ClipboardGuard mutex poisoned");
-        match &*guard {
-            Some(last) => last == current,
-            None => false,
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn should_clear_is_false_before_any_set() {
-        let guard = ClipboardGuard::new();
-        assert!(!guard.should_clear(""));
-        assert!(!guard.should_clear("anything"));
-    }
-
-    #[test]
-    fn should_clear_is_true_when_current_matches_last_written() {
-        let guard = ClipboardGuard::new();
-        guard.set("password123".to_string());
-        assert!(guard.should_clear("password123"));
-    }
-
-    #[test]
-    fn should_clear_is_false_when_current_differs() {
-        let guard = ClipboardGuard::new();
-        guard.set("password1".to_string());
-        assert!(!guard.should_clear("other-value"));
-    }
-
-    #[test]
-    fn should_clear_is_false_after_clear() {
-        let guard = ClipboardGuard::new();
-        guard.set("password123".to_string());
-        guard.clear();
-        assert!(!guard.should_clear("password123"));
-    }
-
-    #[test]
-    fn set_overwrites_previous_value() {
-        let guard = ClipboardGuard::new();
-        guard.set("first-value".to_string());
-        guard.set("second-value".to_string());
-        assert!(!guard.should_clear("first-value"));
-        assert!(guard.should_clear("second-value"));
-    }
-
-    #[test]
-    fn clear_if_matches_clears_when_value_matches() {
-        let guard = ClipboardGuard::new();
-        guard.set("a".to_string());
-        guard.clear_if_matches("a");
-        assert!(!guard.should_clear("a"));
-    }
-
-    #[test]
-    fn clear_if_matches_does_not_clear_when_value_differs() {
-        let guard = ClipboardGuard::new();
-        guard.set("a".to_string());
-        guard.set("b".to_string());
-        guard.clear_if_matches("a");
-        assert!(guard.should_clear("b"));
-    }
 
     #[test]
     fn last_value_is_none_before_any_set() {
@@ -143,10 +73,17 @@ mod tests {
     }
 
     #[test]
-    fn last_value_is_some_after_set() {
+    fn last_value_matches_after_set() {
         let guard = ClipboardGuard::new();
         guard.set("password123".to_string());
         assert_eq!(guard.last_value(), Some("password123".to_string()));
+    }
+
+    #[test]
+    fn last_value_does_not_match_different_value() {
+        let guard = ClipboardGuard::new();
+        guard.set("password1".to_string());
+        assert_ne!(guard.last_value(), Some("other-value".to_string()));
     }
 
     #[test]
@@ -155,5 +92,38 @@ mod tests {
         guard.set("password123".to_string());
         guard.clear();
         assert_eq!(guard.last_value(), None);
+    }
+
+    #[test]
+    fn set_overwrites_previous_value() {
+        let guard = ClipboardGuard::new();
+        guard.set("first-value".to_string());
+        guard.set("second-value".to_string());
+        assert_eq!(guard.last_value(), Some("second-value".to_string()));
+    }
+
+    #[test]
+    fn clear_if_matches_clears_when_value_matches() {
+        let guard = ClipboardGuard::new();
+        guard.set("a".to_string());
+        guard.clear_if_matches("a");
+        assert_eq!(guard.last_value(), None);
+    }
+
+    #[test]
+    fn clear_if_matches_does_not_clear_when_value_differs() {
+        let guard = ClipboardGuard::new();
+        guard.set("a".to_string());
+        guard.clear_if_matches("other");
+        assert_eq!(guard.last_value(), Some("a".to_string()));
+    }
+
+    #[test]
+    fn clear_if_matches_does_not_clear_when_overwritten_by_newer_value() {
+        let guard = ClipboardGuard::new();
+        guard.set("V1".to_string()); // 1回目のコピー
+        guard.set("V2".to_string()); // 30秒以内に2回目のコピー(V1のタイマーがまだ生きている状態を模す)
+        guard.clear_if_matches("V1"); // V1のタイマーが発火し、V1をexpectedとしてクリアを試みる
+        assert_eq!(guard.last_value(), Some("V2".to_string())); // V2は消えず保持されたまま
     }
 }
