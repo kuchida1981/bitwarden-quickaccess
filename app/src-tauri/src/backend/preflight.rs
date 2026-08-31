@@ -6,7 +6,7 @@ use tokio::process::Command;
 /// `bw` CLI が見つからない、または `bw serve` に対応していない場合のエラー。
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum PreflightError {
-    #[error("`{0}` コマンドが見つかりません。Bitwarden CLI (bw) をインストールし、PATH に追加してください。")]
+    #[error("`{0}` コマンドが見つかりません。Bitwarden CLI (bw) をインストールし PATH に追加するか、設定ファイル ($XDG_CONFIG_HOME/bw-quickaccess/bw_path.txt または ~/.config/bw-quickaccess/bw_path.txt) に bw 実行ファイルの絶対パスを記述してください。")]
     BwNotFound(String),
     #[error("`{0} serve --help` が失敗しました。この bw CLI のバージョンは `bw serve` に対応していません。")]
     ServeUnsupported(String),
@@ -14,12 +14,7 @@ pub enum PreflightError {
     ExecutionFailed(String, String),
 }
 
-/// `bw` コマンドの存在確認と `serve` サブコマンド対応の確認を行う。
-pub async fn check_bw_cli() -> Result<(), PreflightError> {
-    check_bw_cli_with("bw").await
-}
-
-/// テスト用に `bw` 実行ファイルのパスを差し替え可能にしたバージョン。
+/// `bw` コマンドの存在確認と `serve` サブコマンド対応の確認を行う。呼び出し元が解決済みの `bw` 実行ファイルパスを渡す。
 pub async fn check_bw_cli_with(bw_path: &str) -> Result<(), PreflightError> {
     let output = Command::new(bw_path)
         .args(["serve", "--help"])
