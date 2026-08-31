@@ -19,3 +19,10 @@
 #### Scenario: productName変更後も内部識別子が維持される
 - **WHEN** `productName` が変更される
 - **THEN** `tauri.conf.json` の `identifier` の値、および `Cargo.toml` の `package.name`・`[[bin]] name` の値は変更前と同じままである
+
+### Requirement: 所有ドメインに基づくバンドル識別子
+バンドル識別子(`tauri.conf.json` の `identifier`)は、開発者が所有するドメインに基づく逆引きドメイン記法でなければならない(SHALL)。GitHubアカウント名など、開発者本人の意思によらず変わりうる識別子をベースにしてはならない(SHALL NOT)。
+
+#### Scenario: バンドル識別子が所有ドメインに基づいている
+- **WHEN** `tauri.conf.json` の `identifier` を確認する
+- **THEN** 値は開発者が所有するドメイン `u-rei.com` に基づく `com.u-rei.bw-quickaccess` である
