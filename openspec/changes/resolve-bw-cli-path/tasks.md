@@ -18,4 +18,9 @@
 
 ## 4. 動作確認
 
-- [ ] 4.1 macOS実機(Apple Silicon)で以下を確認する: (a) Homebrewでインストールした `bw` が既知パス経由で認識され通常起動できる、(b) `bw` を既知パス外の場所に置き設定ファイルでそのパスを指定した状態で起動できる、(c) 設定ファイル・既知パスのいずれも無効な状態で「バックエンド未接続」エラーと、設定ファイルへの案内メッセージが表示される。`cargo build` / `cargo test` / `cargo clippy --all-targets -- -D warnings` が全て通ることも合わせて確認する。
+- [x] 4.1 macOS実機(Apple Silicon)で以下を確認する: (a) Homebrewでインストールした `bw` が既知パス経由で認識され通常起動できる、(b) `bw` を既知パス外の場所に置き設定ファイルでそのパスを指定した状態で起動できる、(c) 設定ファイル・既知パスのいずれも無効な状態で「バックエンド未接続」エラーと、設定ファイルへの案内メッセージが表示される。`cargo build` / `cargo test` / `cargo clippy --all-targets -- -D warnings` が全て通ることも合わせて確認する。
+
+  実施結果:
+  - (a) デバッグビルドを実際に起動し、`ps` で `node /opt/homebrew/bin/bw serve --hostname 127.0.0.1 --port <port>` が子プロセスとして起動していることを確認。kill時に `kill_on_drop` により子プロセスも一緒に終了することも確認(実機の `/Applications/Bitwarden Quick Access.app` の既存インスタンスには影響なし)。
+  - (b) 実物の `/opt/homebrew/bin/bw` へのシンボリックリンクを既知パス外のscratchディレクトリに作成し、`XDG_CONFIG_HOME` 配下の設定ファイルでそのパスを指定してデバッグビルドを起動。`ps` で `bw serve` がそのシンボリックリンク経由のパスで起動していることを確認(設定ファイルが既知パスより優先されることの実証)。検証後、一時ファイルはすべて削除済み。
+  - (c) このマシンには実際にHomebrew版 `bw` (`/opt/homebrew/bin/bw`) がインストールされているため、既知パスを実機で「無効」にするには実インストールを一時的にリネームする必要があった。ユーザーに確認したところ、`bw_locate::resolve_bw_path_with(既知パスリスト=[])` が `"bw"` にフォールバックすること、および `preflight::check_bw_cli_with(存在しないパス)` が更新済みメッセージ付きの `BwNotFound` を返すこと(いずれもユニットテストで検証済み)、`main.rs` の `start_backend()` がこの2つをそのまま連結している(コードレビューで確認済み)ことをもって十分と判断。実機での意図的なbw隠蔽は行っていない。
