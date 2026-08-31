@@ -30,6 +30,7 @@ See proposal.md - Why. `/opsx:explore` での調査(本change作成前の対話)
 ## Risks / Trade-offs
 
 - [Risk] 更新後、既存インストールでグローバルホットキーが動作しなくなる(Accessibility権限が新しい `identifier` に対して未許可のため) → [Mitigation] 利用者は開発者本人のみであり、System Settings > Privacy & Security > Accessibility で再許可すれば解消する。既存のエラーメッセージがこの手順を案内している。
+  - **実機確認結果(タスク2.3)**: 実際には再許可は不要で、ホットキーはそのまま動作した。macOSのTCCがこの環境では実行ファイルパスや署名の同一性など `identifier` 以外の要素も加味して既存の許可を引き継いだ可能性がある。ただし一般的な保証ではないため、リスクの記述自体は残す(環境やmacOSバージョンによって再許可が必要になるケースは引き続き起こりうる)。
 - [Risk] 将来利用者が増えた状態で同様の `identifier` 変更が必要になった場合、再許可の影響範囲が拡大する → [Mitigation] 今回追加する新要件([[app-bundle-naming]] の「所有ドメインに基づくバンドル識別子」)により、`identifier` は安定した所有ドメインに基づく値となるため、今後同様の変更が発生する可能性は低い。
 
 ## Migration Plan
