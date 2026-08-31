@@ -28,6 +28,9 @@ issue の実装ノートでは `cargo fmt --check` ステップに個別の `wor
 **4. `rustfmt.toml` は追加しない**
 デフォルト設定で 53 箇所の差分はすべて解消可能であり、プロジェクト固有のスタイル要件は今のところ存在しない。将来スタイルの調整が必要になった時点で別 change として追加する。
 
+**5. `cargo fmt --check` は `cargo build` / `cargo test` より前に配置する**
+`/code-review` の指摘により、コンパイル不要で数秒で終わる `cargo fmt --check` を、数分かかる `cargo build` / `cargo test` より先に実行する構成に変更した。フォーマット違反だけの些細な問題で不要なビルド・テストが走ることを避け、フェイルファストにする。決定3で述べた「既存3ステップの構成に合わせる」方針とは、ステップの記述スタイル(`working-directory` を省略する等)を指しており、実行順序まで固定するものではない。
+
 ## Risks / Trade-offs
 
 - [Risk] `cargo fmt` の一括適用により 12 ファイルに整形差分が入り、`git blame` の履歴が一時的に読みにくくなる → [Mitigation] 単一の "chore: cargo fmt" コミットに閉じ込め、コミットメッセージで明示する。将来 `git blame --ignore-revs-file` 等での除外を検討可能だが本changeのスコープ外とする。
