@@ -22,7 +22,7 @@
 
 ## Impact
 
-- 影響ファイル: `app/src-tauri/src/commands.rs`, `app/src-tauri/src/backend/clipboard_guard.rs` の2ファイルのみ。
-- `clear_clipboard_if_owned` のシグネチャ変更に伴い、既存の呼び出し箇所(`lock()`)も追随して修正が必要。
+- 影響ファイル: `app/src-tauri/src/commands.rs`, `app/src-tauri/src/backend/clipboard_guard.rs`, `app/src-tauri/src/main.rs` の3ファイル(実装時に、アイドル自動ロック処理(`main.rs` の `watch_idle_timeout`)にも `clear_clipboard_if_owned` の呼び出し箇所があることが判明したため追加)。
+- `clear_clipboard_if_owned` のシグネチャ変更に伴い、既存の呼び出し箇所(`lock()` および `watch_idle_timeout` によるアイドル自動ロック)も追随して修正が必要。
 - 外部API・UI・依存関係への影響なし。
 - 既存のユニットテスト(`clipboard_guard.rs`, `commands.rs`)を維持しつつ、上記の競合状態(連続コピー時の早期クリア防止)を検証する回帰テストを追加する。
