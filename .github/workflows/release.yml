@@ -10,6 +10,10 @@ permissions:
 jobs:
   release:
     runs-on: macos-latest
+    env:
+      # secrets コンテキストはステップの if: 条件式で直接参照できないため
+      # (actionlintで検出)、job レベルの env 経由で真偽値として渡す。
+      HOMEBREW_TAP_PAT_CONFIGURED: ${{ secrets.HOMEBREW_TAP_PAT != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -48,12 +52,28 @@ jobs:
       # サブコマンドで、GitHub Actionではない)。tapリポジトリへの書き込み権限を
       # 持つPATが `HOMEBREW_TAP_PAT` シークレットとして事前に登録されている必要が
       # あり、これはユーザー自身の対応が必須(design.md参照)。
-      # このステップ群はすべて non-blocking(`continue-on-error: true`)にする。
-      # アプリ本体のビルド・アップロードは既に完了しているため、PAT未登録等の
-      # 理由でtap更新が失敗しても、その一事だけでリリースジョブ全体を失敗表示に
-      # したくない(CONTRIBUTING.md参照、手動フォールバック手順を用意している)。
+      #
+      # PAT が未登録の場合のみ、このステップ群一式を(job env の
+      # `HOMEBREW_TAP_PAT_CONFIGURED` 経由で)スキップする(アプリ本体の
+      # ビルド・アップロードは既に完了しており、この既知の未設定状態だけで
+      # リリースジョブ全体を失敗表示にしたくないため。CONTRIBUTING.md参照、
+      # 手動フォールバック手順を用意している)。`secrets` コンテキストは
+      # ステップの `if:` で直接参照できない(actionlintで検出)ため、job env
+      # を経由させている。
+      # PAT が登録済みにも関わらず、このPR作成ステップ(Tap/Trust/Open a
+      # Homebrew tap update PR)が何らかの理由で失敗した場合(v1.5.0リリースで
+      # 実際に発生: tauri-action v1へのアップグレードでリリースアセットの命名
+      # 規則が変わり、tap側のurlテンプレートが古いままだったため404で失敗)は、
+      # `continue-on-error` を使わずジョブを失敗表示にする。以前は全ステップに
+      # 無条件で `continue-on-error: true` を付けていたため、この種の実際の不具合
+      # も気づかれずに握りつぶされていた。
+      # 一方、この後段の「インストール確認」系ステップ(Resolve the tap PR
+      # branch / Verify the cask installs)は、spec(homebrew-tap-release-
+      # automation の「インストール確認(非ブロッキング)」要件)により失敗して
+      # もジョブを失敗にしてはならない(SHALL NOT)ため、引き続き
+      # `continue-on-error: true` を維持する。
       - name: Tap the Homebrew repository
-        continue-on-error: true
+        if: ${{ env.HOMEBREW_TAP_PAT_CONFIGURED == 'true' }}
         run: brew tap kuchida1981/bitwarden-quickaccess
 
       # 実リリースでの実地検証(タスク3.4)で発覚: 最近のHomebrewは、サードパーティ
@@ -66,12 +86,12 @@ jobs:
       # `--help`には存在するが、外部ドキュメントと食い違いがあったため、より
       # 確実なバレ形式を採用した)。
       - name: Trust the Homebrew tap
-        continue-on-error: true
+        if: ${{ env.HOMEBREW_TAP_PAT_CONFIGURED == 'true' }}
         run: brew trust kuchida1981/bitwarden-quickaccess
 
       - name: Open a Homebrew tap update PR
         id: bump_cask_pr
-        continue-on-error: true
+        if: ${{ env.HOMEBREW_TAP_PAT_CONFIGURED == 'true' }}
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
           VERSION: ${{ steps.release_version.outputs.version }}
@@ -86,6 +106,11 @@ jobs:
       # このステップ自体が失敗した場合(PAT不正等)、後続の「最新のopen PRを探す」
       # ロジックが無関係な古いPR/他者のPRを誤って拾ってしまう可能性があるため
       # (コードレビューで発覚)、前段の成否で明示的にスキップする。
+      # このステップ以降(インストール確認)は spec(homebrew-tap-release-
+      # automation の「インストール確認(非ブロッキング)」要件)により、失敗して
+      # もリリースジョブ全体を失敗にしてはならない(SHALL NOT)ため、
+      # continue-on-error を維持する。ジョブを失敗表示にすべきなのは、あくまで
+      # 「Open a Homebrew tap update PR」(PR自体が作成できない)までの実失敗のみ。
       - name: Resolve the tap PR branch
         id: resolve_branch
         if: steps.bump_cask_pr.outcome == 'success'
