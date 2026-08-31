@@ -14,12 +14,7 @@ pub enum PreflightError {
     ExecutionFailed(String, String),
 }
 
-/// `bw` コマンドの存在確認と `serve` サブコマンド対応の確認を行う。
-pub async fn check_bw_cli() -> Result<(), PreflightError> {
-    check_bw_cli_with("bw").await
-}
-
-/// テスト用に `bw` 実行ファイルのパスを差し替え可能にしたバージョン。
+/// `bw` コマンドの存在確認と `serve` サブコマンド対応の確認を行う。呼び出し元が解決済みの `bw` 実行ファイルパスを渡す。
 pub async fn check_bw_cli_with(bw_path: &str) -> Result<(), PreflightError> {
     let output = Command::new(bw_path)
         .args(["serve", "--help"])
