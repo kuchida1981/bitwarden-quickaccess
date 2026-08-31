@@ -13,4 +13,4 @@
 ## 3. 検証
 
 - [x] 3.1 `app/src-tauri` で `cargo fmt --check` をローカル実行し、追加した CI ステップと同じコマンドが差分なしで成功することを確認する
-- [ ] 3.2 PR 作成後に `gh pr checks --watch` で CI(`cargo build` / `cargo test` / `cargo fmt --check` / `cargo clippy`)がすべて成功することを確認する
+- [x] 3.2 PR 作成後に `gh pr checks --watch` で CI(`cargo build` / `cargo test` / `cargo fmt --check` / `cargo clippy`)がすべて成功することを確認する(PR #138, 1m2sでpass)
