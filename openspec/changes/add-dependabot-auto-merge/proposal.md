@@ -5,8 +5,7 @@
 ## What Changes
 
 - `.github/dependabot.yml` を新規作成し、`cargo`(`app/src-tauri`)と `github-actions`(`/`)の週次更新を有効化する
-- main ブランチ保護ルールを新規追加し、CI(`test` ジョブ)を必須ステータスチェックにする **BREAKING**(今後すべてのPRがマージ前にCI通過必須になる。Dependabot以外の通常PRのマージ手順にも影響する)
-- リポジトリ設定 `allow_auto_merge` を有効化する
+- リポジトリ設定 `allow_auto_merge` を有効化する(main は既存の ruleset `default` で CI(`test`)が既に必須ステータスチェックとして設定済みのため、追加のブランチ保護は不要)
 - `.github/workflows/dependabot-auto-merge.yml` を新規作成し、Dependabot PR のうち `semver-patch` / `semver-minor` の更新を CI 通過後にマージコミット方式で自動マージする(`semver-major` は対象外、手動レビューに残す)
 
 ## Capabilities
@@ -20,6 +19,6 @@
 ## Impact
 
 - 影響ファイル: `.github/dependabot.yml`(新規)、`.github/workflows/dependabot-auto-merge.yml`(新規)
-- 影響設定: リポジトリの `allow_auto_merge` 設定、main ブランチ保護ルール(新規追加)
+- 影響設定: リポジトリの `allow_auto_merge` 設定(main の CI 必須化は既存の ruleset で対応済みのため変更なし)
 - 関連issue: #121(本体)、#89(tauri-action更新はDependabotのPRとして自動的に提起される見込み)
 - 依存関係・外部サービスへの影響なし(GitHub標準機能のみ使用)
