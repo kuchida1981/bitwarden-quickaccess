@@ -52,6 +52,15 @@ impl ClipboardGuard {
         }
     }
 
+    /// 現在保持している値のクローンを返す。lock()から、直近書き込んだ値を
+    /// expectedとして clear_clipboard_if_owned に渡すために使う。
+    pub fn last_value(&self) -> Option<String> {
+        self.last_written
+            .lock()
+            .expect("ClipboardGuard mutex poisoned")
+            .clone()
+    }
+
     /// 現在のクリップボードの中身(current)が、アプリが最後に書き込んだ値と
     /// 一致するかどうかを判定する。一致する場合のみクリアしてよい。
     /// 実際のクリップボードI/Oには一切触れない純粋な判定ロジックにすること
@@ -125,5 +134,26 @@ mod tests {
         guard.set("b".to_string());
         guard.clear_if_matches("a");
         assert!(guard.should_clear("b"));
+    }
+
+    #[test]
+    fn last_value_is_none_before_any_set() {
+        let guard = ClipboardGuard::new();
+        assert_eq!(guard.last_value(), None);
+    }
+
+    #[test]
+    fn last_value_is_some_after_set() {
+        let guard = ClipboardGuard::new();
+        guard.set("password123".to_string());
+        assert_eq!(guard.last_value(), Some("password123".to_string()));
+    }
+
+    #[test]
+    fn last_value_is_none_after_clear() {
+        let guard = ClipboardGuard::new();
+        guard.set("password123".to_string());
+        guard.clear();
+        assert_eq!(guard.last_value(), None);
     }
 }
