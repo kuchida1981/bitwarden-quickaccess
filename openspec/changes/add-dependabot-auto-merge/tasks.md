@@ -14,7 +14,7 @@
 
 ## 4. ドキュメント更新
 
-- [ ] 4.1 CONTRIBUTING.md または README.md に Dependabot 運用(cargo/github-actions週次更新、semver-patch/minorは自動マージ、semver-majorは手動レビュー)についての記載が必要か検討し、必要であれば追記する
+- [x] 4.1 CONTRIBUTING.md または README.md に Dependabot 運用(cargo/github-actions週次更新、semver-patch/minorは自動マージ、semver-majorは手動レビュー)についての記載が必要か検討し、必要であれば追記する
 
 ## 5. 動作確認
 
