@@ -84,14 +84,15 @@ impl AppState {
     }
 
     pub fn backend_state(&self) -> BackendState {
-        self.inner
-            .lock()
-            .expect("AppState mutex poisoned")
-            .backend
+        self.inner.lock().expect("AppState mutex poisoned").backend
     }
 
     pub fn last_error(&self) -> Option<String> {
-        self.inner.lock().expect("AppState mutex poisoned").last_error.clone()
+        self.inner
+            .lock()
+            .expect("AppState mutex poisoned")
+            .last_error
+            .clone()
     }
 
     pub fn set_port(&self, port: u16) {
@@ -103,11 +104,18 @@ impl AppState {
     }
 
     pub fn set_user_email(&self, email: Option<String>) {
-        self.inner.lock().expect("AppState mutex poisoned").user_email = email;
+        self.inner
+            .lock()
+            .expect("AppState mutex poisoned")
+            .user_email = email;
     }
 
     pub fn user_email(&self) -> Option<String> {
-        self.inner.lock().expect("AppState mutex poisoned").user_email.clone()
+        self.inner
+            .lock()
+            .expect("AppState mutex poisoned")
+            .user_email
+            .clone()
     }
 }
 

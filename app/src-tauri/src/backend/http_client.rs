@@ -140,12 +140,18 @@ impl BwServeClient {
                 .ok_or_else(|| ClientError::Api("成功レスポンスに data がありません".to_string()))
         } else {
             Err(ClientError::Api(
-                envelope.message.unwrap_or_else(|| "unknown error".to_string()),
+                envelope
+                    .message
+                    .unwrap_or_else(|| "unknown error".to_string()),
             ))
         }
     }
 
-    async fn post_and_check_success<B: Serialize>(&self, path: &str, body: Option<&B>) -> Result<(), ClientError> {
+    async fn post_and_check_success<B: Serialize>(
+        &self,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<(), ClientError> {
         let mut req = self.http.post(format!("{}{}", self.base_url, path));
         if let Some(body) = body {
             req = req.json(body);
@@ -157,7 +163,9 @@ impl BwServeClient {
             Ok(())
         } else {
             Err(ClientError::Api(
-                envelope.message.unwrap_or_else(|| "unknown error".to_string()),
+                envelope
+                    .message
+                    .unwrap_or_else(|| "unknown error".to_string()),
             ))
         }
     }
@@ -178,12 +186,14 @@ impl BwServeClient {
 
     /// `/unlock` にマスターパスワードを送り、成否を返す。
     pub async fn unlock(&self, password: &str) -> Result<(), ClientError> {
-        self.post_and_check_success("/unlock", Some(&UnlockBody { password })).await
+        self.post_and_check_success("/unlock", Some(&UnlockBody { password }))
+            .await
     }
 
     /// `/lock` を叩く。
     pub async fn lock(&self) -> Result<(), ClientError> {
-        self.post_and_check_success::<serde_json::Value>("/lock", None).await
+        self.post_and_check_success::<serde_json::Value>("/lock", None)
+            .await
     }
 
     /// `/list/object/items?search=...` を叩き、アイテム一覧を返す。
@@ -313,12 +323,16 @@ mod tests {
         let items = client.search_items("github").await.unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].name, "GitHub");
-        assert_eq!(items[0].login.as_ref().unwrap().username.as_deref(), Some("me"));
+        assert_eq!(
+            items[0].login.as_ref().unwrap().username.as_deref(),
+            Some("me")
+        );
     }
 
     #[tokio::test]
     async fn get_totp_returns_code() {
-        let base_url = spawn_mock(r#"{"success":true,"data":{"object":"totp","data":"123456"}}"#).await;
+        let base_url =
+            spawn_mock(r#"{"success":true,"data":{"object":"totp","data":"123456"}}"#).await;
         let client = BwServeClient::with_base_url(base_url);
         let code = client.get_totp("1").await.unwrap();
         assert_eq!(code, "123456");
@@ -333,7 +347,8 @@ mod tests {
 
     #[tokio::test]
     async fn unlock_failure_propagates_message() {
-        let base_url = spawn_mock(r#"{"success":false,"message":"Invalid master password."}"#).await;
+        let base_url =
+            spawn_mock(r#"{"success":false,"message":"Invalid master password."}"#).await;
         let client = BwServeClient::with_base_url(base_url);
         let err = client.unlock("wrong-password").await.unwrap_err();
         match err {
@@ -344,7 +359,8 @@ mod tests {
 
     #[tokio::test]
     async fn lock_success_returns_ok() {
-        let base_url = spawn_mock(r#"{"success":true,"data":{"title":"Your vault is locked."}}"#).await;
+        let base_url =
+            spawn_mock(r#"{"success":true,"data":{"title":"Your vault is locked."}}"#).await;
         let client = BwServeClient::with_base_url(base_url);
         client.lock().await.unwrap();
     }
@@ -374,7 +390,10 @@ mod tests {
                 uri: Some("http://sub.example.com/path/to/page".to_string()),
             }],
         };
-        assert_eq!(http_detail.icon_domain(), Some("sub.example.com".to_string()));
+        assert_eq!(
+            http_detail.icon_domain(),
+            Some("sub.example.com".to_string())
+        );
 
         let empty_uri_detail = LoginDetail {
             username: None,
@@ -387,7 +406,10 @@ mod tests {
                 },
             ],
         };
-        assert_eq!(empty_uri_detail.icon_domain(), Some("google.com".to_string()));
+        assert_eq!(
+            empty_uri_detail.icon_domain(),
+            Some("google.com".to_string())
+        );
 
         let no_uris_detail = LoginDetail {
             username: None,

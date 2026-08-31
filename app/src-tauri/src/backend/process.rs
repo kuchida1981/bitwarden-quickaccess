@@ -23,11 +23,17 @@ pub fn pick_free_port() -> io::Result<u16> {
 /// `bw serve` の起動用コマンドを組み立てる(`--hostname 127.0.0.1` でIPv4ループバックに固定)。
 pub fn build_bw_serve_command(port: u16) -> Command {
     let mut cmd = Command::new("bw");
-    cmd.args(["serve", "--hostname", "127.0.0.1", "--port", &port.to_string()])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .kill_on_drop(true);
+    cmd.args([
+        "serve",
+        "--hostname",
+        "127.0.0.1",
+        "--port",
+        &port.to_string(),
+    ])
+    .stdin(Stdio::null())
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .kill_on_drop(true);
     cmd
 }
 
@@ -53,7 +59,11 @@ impl ProcessHandle {
 /// 子プロセスの終了を待ち、「予期せぬ終了」であれば `state` にエラーとして記録する。
 /// `kill_rx` 経由の明示的なshutdownの場合は `state` を変更しない。
 /// `spawn_supervised_for_startup_with_command`(confirm受信後)から使われる。
-async fn supervise_until_exit(mut child: Child, state: AppState, mut kill_rx: oneshot::Receiver<()>) {
+async fn supervise_until_exit(
+    mut child: Child,
+    state: AppState,
+    mut kill_rx: oneshot::Receiver<()>,
+) {
     tokio::select! {
         _ = child.wait() => {
             state.set_error("bw serve プロセスが予期せず終了しました。アプリを再起動してください。");
@@ -199,9 +209,12 @@ mod tests {
 
         kill_tx.send(()).expect("kill_rx should still be alive");
 
-        tokio::time::timeout(Duration::from_secs(3), supervise_until_exit(child, state.clone(), kill_rx))
-            .await
-            .expect("supervise_until_exit should finish quickly after shutdown signal");
+        tokio::time::timeout(
+            Duration::from_secs(3),
+            supervise_until_exit(child, state.clone(), kill_rx),
+        )
+        .await
+        .expect("supervise_until_exit should finish quickly after shutdown signal");
 
         // 明示的なshutdownでは state は変更されない(呼び出し側がアプリ終了処理中のため)。
         assert_eq!(state.backend_state(), BackendState::Unlocked);

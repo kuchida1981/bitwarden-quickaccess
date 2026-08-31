@@ -21,7 +21,10 @@ pub async fn check_bw_cli() -> Result<(), PreflightError> {
 
 /// テスト用に `bw` 実行ファイルのパスを差し替え可能にしたバージョン。
 pub async fn check_bw_cli_with(bw_path: &str) -> Result<(), PreflightError> {
-    let output = Command::new(bw_path).args(["serve", "--help"]).output().await;
+    let output = Command::new(bw_path)
+        .args(["serve", "--help"])
+        .output()
+        .await;
 
     match output {
         Ok(output) if output.status.success() => Ok(()),
@@ -29,7 +32,10 @@ pub async fn check_bw_cli_with(bw_path: &str) -> Result<(), PreflightError> {
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
             Err(PreflightError::BwNotFound(bw_path.to_string()))
         }
-        Err(err) => Err(PreflightError::ExecutionFailed(bw_path.to_string(), err.to_string())),
+        Err(err) => Err(PreflightError::ExecutionFailed(
+            bw_path.to_string(),
+            err.to_string(),
+        )),
     }
 }
 
@@ -74,7 +80,8 @@ mod tests {
 
     #[tokio::test]
     async fn passes_when_serve_help_succeeds() {
-        let dir = std::env::temp_dir().join(format!("bwqa-preflight-test-ok-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("bwqa-preflight-test-ok-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let fake_bw = dir.join("bw");
         fs::write(&fake_bw, "#!/bin/sh\nexit 0\n").unwrap();
@@ -91,7 +98,8 @@ mod tests {
 
     #[tokio::test]
     async fn reports_execution_failed_when_permission_denied() {
-        let dir = std::env::temp_dir().join(format!("bwqa-preflight-test-perm-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("bwqa-preflight-test-perm-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let fake_bw = dir.join("bw");
         fs::write(&fake_bw, "#!/bin/sh\nexit 0\n").unwrap();

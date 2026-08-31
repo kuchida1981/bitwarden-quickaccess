@@ -16,10 +16,7 @@ pub const CLIPBOARD_CLEAR_DELAY: std::time::Duration = std::time::Duration::from
 /// クリップボードをクリアする。コピー後の遅延クリア、および手動/自動ロック時の
 /// 即時クリアの両方から呼ばれる共通処理。クリップボードの読み取りに失敗した
 /// 場合は安全側に倒して何もしない。
-pub fn clear_clipboard_if_owned(
-    app: &tauri::AppHandle,
-    guard: &ClipboardGuard,
-) {
+pub fn clear_clipboard_if_owned(app: &tauri::AppHandle, guard: &ClipboardGuard) {
     let Ok(current) = app.clipboard().read_text() else {
         return;
     };
@@ -74,7 +71,10 @@ pub async fn unlock(
 ) -> Result<(), String> {
     idle.reset();
     let client = client_for(&state)?;
-    client.unlock(&password).await.map_err(|err| err.to_string())?;
+    client
+        .unlock(&password)
+        .await
+        .map_err(|err| err.to_string())?;
     state.set_unlocked();
     Ok(())
 }
@@ -107,7 +107,11 @@ pub struct SearchResultItem {
 impl From<VaultItemSummary> for SearchResultItem {
     fn from(item: VaultItemSummary) -> Self {
         let username = item.login.as_ref().and_then(|l| l.username.clone());
-        let has_password = item.login.as_ref().and_then(|l| l.password.as_ref()).is_some();
+        let has_password = item
+            .login
+            .as_ref()
+            .and_then(|l| l.password.as_ref())
+            .is_some();
         let has_totp = item.login.as_ref().and_then(|l| l.totp.as_ref()).is_some();
         let has_url = item
             .login
@@ -137,7 +141,10 @@ pub async fn search_items(
 ) -> Result<Vec<SearchResultItem>, String> {
     idle.reset();
     let client = client_for(&state)?;
-    let items = client.search_items(&query).await.map_err(|err| err.to_string())?;
+    let items = client
+        .search_items(&query)
+        .await
+        .map_err(|err| err.to_string())?;
     Ok(items.into_iter().map(SearchResultItem::from).collect())
 }
 
@@ -157,23 +164,34 @@ pub async fn copy_field(
 
     let value = match field.as_str() {
         "username" => {
-            let item = client.get_item(&item_id).await.map_err(|err| err.to_string())?;
+            let item = client
+                .get_item(&item_id)
+                .await
+                .map_err(|err| err.to_string())?;
             item.login
                 .and_then(|login| login.username)
                 .ok_or_else(|| "ユーザー名が設定されていません。".to_string())?
         }
         "password" => {
-            let item = client.get_item(&item_id).await.map_err(|err| err.to_string())?;
+            let item = client
+                .get_item(&item_id)
+                .await
+                .map_err(|err| err.to_string())?;
             item.login
                 .and_then(|login| login.password)
                 .ok_or_else(|| "パスワードが設定されていません。".to_string())?
         }
-        "totp" => client.get_totp(&item_id).await.map_err(|err| err.to_string())?,
+        "totp" => client
+            .get_totp(&item_id)
+            .await
+            .map_err(|err| err.to_string())?,
         other => return Err(format!("不明なフィールドです: {other}")),
     };
 
     let value_for_guard = value.clone();
-    app.clipboard().write_text(value).map_err(|err| err.to_string())?;
+    app.clipboard()
+        .write_text(value)
+        .map_err(|err| err.to_string())?;
     guard.set(value_for_guard.clone());
 
     let app_for_clear = app.clone();
@@ -203,7 +221,10 @@ pub async fn open_in_browser(
 ) -> Result<(), String> {
     idle.reset();
     let client = client_for(&state)?;
-    let item = client.get_item(&item_id).await.map_err(|err| err.to_string())?;
+    let item = client
+        .get_item(&item_id)
+        .await
+        .map_err(|err| err.to_string())?;
     // 先頭の要素ではなく、値を持つ最初のURIを使う。`uris` は空のURI(値なし)を含む
     // ことがあり(design.md参照)、`SearchResultItem::from` の `has_url` 判定
     // (値を持つURIが1つでもあれば true)と一致させる必要がある。
