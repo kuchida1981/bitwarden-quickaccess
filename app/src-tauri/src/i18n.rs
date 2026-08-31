@@ -89,7 +89,6 @@ pub fn messages(lang: Lang) -> &'static Messages {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

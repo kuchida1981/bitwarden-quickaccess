@@ -62,8 +62,9 @@ fn popup_position_for_monitor(
     monitor_size_physical: (u32, u32),
     scale_factor: f64,
 ) -> (f64, f64) {
-    let position = tauri::PhysicalPosition::new(monitor_position_physical.0, monitor_position_physical.1)
-        .to_logical::<f64>(scale_factor);
+    let position =
+        tauri::PhysicalPosition::new(monitor_position_physical.0, monitor_position_physical.1)
+            .to_logical::<f64>(scale_factor);
     let size = tauri::PhysicalSize::new(monitor_size_physical.0, monitor_size_physical.1)
         .to_logical::<f64>(scale_factor);
     let x = position.x + ((size.width - WIDTH) / 2.0).max(0.0);
@@ -113,8 +114,7 @@ fn record_frontmost_app(app: &AppHandle) {
         .frontmostApplication()
         .map(|running_app| running_app.processIdentifier());
 
-    *app
-        .state::<PreviousFrontmostApp>()
+    *app.state::<PreviousFrontmostApp>()
         .0
         .lock()
         .expect("PreviousFrontmostApp mutex poisoned") = pid;

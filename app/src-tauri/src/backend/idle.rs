@@ -61,6 +61,9 @@ mod tests {
         std::thread::sleep(Duration::from_millis(100));
         timer.reset();
         std::thread::sleep(Duration::from_millis(100));
-        assert!(!timer.is_expired(), "reset直後からの経過時間はまだタイムアウトに達していないはず");
+        assert!(
+            !timer.is_expired(),
+            "reset直後からの経過時間はまだタイムアウトに達していないはず"
+        );
     }
 }

@@ -1,7 +1,7 @@
 use tauri::{
+    image::Image,
     menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    image::Image,
     AppHandle, Manager, Wry,
 };
 use tauri_plugin_autostart::ManagerExt;
@@ -49,14 +49,26 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
     let m = crate::i18n::messages(lang);
     let initial = state.backend_state();
 
-    let status_item = MenuItem::with_id(app, STATUS_ITEM_ID, status_label(m, initial), false, None::<&str>)?;
+    let status_item = MenuItem::with_id(
+        app,
+        STATUS_ITEM_ID,
+        status_label(m, initial),
+        false,
+        None::<&str>,
+    )?;
 
     // ホットキーが正常に登録できている場合、その旨は後述の「クイックアクセスを開く」項目の
     // ラベルに併記されるため冗長になる。未登録(失敗)の場合の警告のみメニューに表示する。
     let hotkey_item = hotkey_warning
         .map(|reason| {
             let hotkey_text = m.hotkey_unregistered_prefix.replace("{}", reason);
-            MenuItem::with_id(app, HOTKEY_STATUS_ITEM_ID, &hotkey_text, false, None::<&str>)
+            MenuItem::with_id(
+                app,
+                HOTKEY_STATUS_ITEM_ID,
+                &hotkey_text,
+                false,
+                None::<&str>,
+            )
         })
         .transpose()?;
 
@@ -96,7 +108,13 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
         None::<&str>,
     )?;
 
-    let repo_link_item = MenuItem::with_id(app, REPO_LINK_ITEM_ID, m.repo_link_label, true, None::<&str>)?;
+    let repo_link_item = MenuItem::with_id(
+        app,
+        REPO_LINK_ITEM_ID,
+        m.repo_link_label,
+        true,
+        None::<&str>,
+    )?;
 
     let separator1 = PredefinedMenuItem::separator(app)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
@@ -125,10 +143,10 @@ pub fn setup_tray(app: &AppHandle, hotkey_warning: Option<&str>) -> tauri::Resul
             QUIT_ITEM_ID => app.exit(0),
             OPEN_QUICKACCESS_ITEM_ID => crate::popup::toggle_popup(app),
             REPO_LINK_ITEM_ID => {
-                if let Err(err) = app
-                    .opener()
-                    .open_url("https://github.com/kuchida1981/bitwarden-quickaccess", None::<&str>)
-                {
+                if let Err(err) = app.opener().open_url(
+                    "https://github.com/kuchida1981/bitwarden-quickaccess",
+                    None::<&str>,
+                ) {
                     eprintln!("リポジトリページを開けませんでした: {err}");
                 }
             }

@@ -23,6 +23,9 @@ jobs:
         with:
           workspaces: app/src-tauri
 
+      - name: cargo fmt
+        run: cargo fmt --check
+
       - name: cargo build
         run: cargo build --verbose
 

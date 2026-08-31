@@ -43,7 +43,10 @@ impl ClipboardGuard {
     /// 保持している値が `expected` と一致する場合に限り、内部状態をクリアする。
     /// 一致しない場合(既に別の値で上書きされている場合)は何もしない。
     pub fn clear_if_matches(&self, expected: &str) {
-        let mut guard = self.last_written.lock().expect("ClipboardGuard mutex poisoned");
+        let mut guard = self
+            .last_written
+            .lock()
+            .expect("ClipboardGuard mutex poisoned");
         if guard.as_deref() == Some(expected) {
             *guard = None;
         }
@@ -124,4 +127,3 @@ mod tests {
         assert!(guard.should_clear("b"));
     }
 }
-

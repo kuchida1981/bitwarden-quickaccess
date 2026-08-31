@@ -118,7 +118,7 @@ fn main() {
     let idle_timer = IdleTimer::new(DEFAULT_IDLE_TIMEOUT);
     let clipboard_guard = ClipboardGuard::new();
     let lang = i18n::resolve_lang();
- 
+
     let app = tauri::Builder::default()
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -178,7 +178,13 @@ fn main() {
             let guard_for_idle = app.state::<ClipboardGuard>().inner().clone();
             let app_handle_for_idle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                watch_idle_timeout(state_for_idle, idle_for_watcher, app_handle_for_idle, guard_for_idle).await;
+                watch_idle_timeout(
+                    state_for_idle,
+                    idle_for_watcher,
+                    app_handle_for_idle,
+                    guard_for_idle,
+                )
+                .await;
             });
 
             let state_for_popup_notify = app.state::<AppState>().inner().clone();
@@ -186,7 +192,9 @@ fn main() {
             tauri::async_runtime::spawn(async move {
                 let mut rx = state_for_popup_notify.subscribe();
                 while rx.changed().await.is_ok() {
-                    if let Some(window) = app_handle_for_popup_notify.get_webview_window(popup::POPUP_LABEL) {
+                    if let Some(window) =
+                        app_handle_for_popup_notify.get_webview_window(popup::POPUP_LABEL)
+                    {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.emit(popup::BACKEND_STATE_CHANGED_EVENT, ());
                         }
@@ -251,7 +259,10 @@ where
             monitor: _monitor,
             exited,
             confirm,
-        } = match process::spawn_supervised_for_startup_with_command(build_command(port), state.clone()) {
+        } = match process::spawn_supervised_for_startup_with_command(
+            build_command(port),
+            state.clone(),
+        ) {
             Ok(handles) => handles,
             Err(err) => {
                 state.set_error(format!("bw serve の起動に失敗しました: {err}"));
@@ -442,7 +453,10 @@ mod fix_path_env_tests {
     #[test]
     fn extracts_path_after_marker() {
         let stdout = format!("{PATH_MARKER}/usr/bin:/opt/homebrew/bin");
-        assert_eq!(extract_path_from_marker(&stdout), Some("/usr/bin:/opt/homebrew/bin"));
+        assert_eq!(
+            extract_path_from_marker(&stdout),
+            Some("/usr/bin:/opt/homebrew/bin")
+        );
     }
 
     #[test]
@@ -459,7 +473,10 @@ mod fix_path_env_tests {
     #[test]
     fn ignores_login_shell_noise_before_marker() {
         let stdout = format!("Last login: Mon Jan 1\n{PATH_MARKER}/usr/bin:/opt/homebrew/bin\n");
-        assert_eq!(extract_path_from_marker(&stdout), Some("/usr/bin:/opt/homebrew/bin"));
+        assert_eq!(
+            extract_path_from_marker(&stdout),
+            Some("/usr/bin:/opt/homebrew/bin")
+        );
     }
 
     #[test]
@@ -467,11 +484,8 @@ mod fix_path_env_tests {
         let mut cmd = std::process::Command::new("sh");
         cmd.args(["-c", &format!("echo -n {PATH_MARKER}; printenv PATH")]);
 
-        let result = run_shell_and_capture_stdout(
-            cmd,
-            Duration::from_secs(1),
-            Duration::from_millis(5),
-        );
+        let result =
+            run_shell_and_capture_stdout(cmd, Duration::from_secs(1), Duration::from_millis(5));
         assert!(result.is_some());
         assert!(!result.unwrap().is_empty());
     }
@@ -482,11 +496,8 @@ mod fix_path_env_tests {
         cmd.args(["-c", "sleep 5"]);
 
         let start = std::time::Instant::now();
-        let result = run_shell_and_capture_stdout(
-            cmd,
-            Duration::from_millis(50),
-            Duration::from_millis(5),
-        );
+        let result =
+            run_shell_and_capture_stdout(cmd, Duration::from_millis(50), Duration::from_millis(5));
         let elapsed = start.elapsed();
 
         assert_eq!(result, None);
@@ -499,11 +510,8 @@ mod fix_path_env_tests {
     #[test]
     fn run_shell_spawn_failure_returns_none() {
         let cmd = std::process::Command::new("/nonexistent-shell-xyz-12345");
-        let result = run_shell_and_capture_stdout(
-            cmd,
-            Duration::from_millis(50),
-            Duration::from_millis(5),
-        );
+        let result =
+            run_shell_and_capture_stdout(cmd, Duration::from_millis(50), Duration::from_millis(5));
         assert_eq!(result, None);
     }
 }
