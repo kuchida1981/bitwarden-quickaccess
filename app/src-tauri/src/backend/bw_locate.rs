@@ -19,6 +19,7 @@ pub fn resolve_bw_path() -> String {
 /// `HOME`すら取得できない場合は`None`を返し、設定ファイルは使わず既知パス以降にフォールスルーする。
 fn config_file_path() -> Option<PathBuf> {
     let config_home = std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
     Some(config_home.join("bw-quickaccess").join("bw_path.txt"))
@@ -49,14 +50,42 @@ fn read_config_override(config_path: &Path) -> Option<String> {
     if path.is_empty() {
         return None;
     }
-    is_executable_file(Path::new(path)).then(|| path.to_string())
+    let target = Path::new(path);
+    if !target.is_absolute() || !is_executable_file(target) {
+        eprintln!(
+            "bw-quickaccess: 設定ファイル {} のパスは使用できません(絶対パスの実行可能ファイルではありません): {}",
+            config_path.display(),
+            path
+        );
+        return None;
+    }
+    Some(path.to_string())
 }
 
 #[cfg(unix)]
 fn is_executable_file(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+
+    let Ok(metadata) = std::fs::metadata(path) else {
+        return false;
+    };
+    if !metadata.is_file() {
+        return false;
+    }
+
+    let Ok(c_path) = CString::new(path.as_os_str().as_bytes()) else {
+        return false;
+    };
+
+    // SAFETY: c_path is a valid null-terminated C string.
+    unsafe { libc::access(c_path.as_ptr(), libc::X_OK) == 0 }
+}
+
+#[cfg(not(unix))]
+fn is_executable_file(path: &Path) -> bool {
     match std::fs::metadata(path) {
-        Ok(metadata) => metadata.is_file() && metadata.permissions().mode() & 0o111 != 0,
+        Ok(metadata) => metadata.is_file(),
         Err(_) => false,
     }
 }
@@ -73,6 +102,17 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
             let mut perms = fs::metadata(path).unwrap().permissions();
             perms.set_mode(0o755);
+            fs::set_permissions(path, perms).unwrap();
+        }
+    }
+
+    fn make_non_executable(path: &Path) {
+        fs::write(path, "#!/bin/sh\nexit 0\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(path).unwrap().permissions();
+            perms.set_mode(0o644);
             fs::set_permissions(path, perms).unwrap();
         }
     }
@@ -152,6 +192,36 @@ mod tests {
     }
 
     #[test]
+    fn falls_through_to_known_paths_when_config_path_relative() {
+        let dir = test_dir("config-relative");
+        let known_bw = dir.join("known-bw");
+        make_executable(&known_bw);
+        let config_path = dir.join("bw_path.txt");
+        fs::write(&config_path, "relative/path/bw").unwrap();
+
+        let result = resolve_bw_path_with(Some(&config_path), &[known_bw.to_str().unwrap()]);
+
+        assert_eq!(result, known_bw.to_str().unwrap());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn falls_through_to_known_paths_when_config_path_not_executable() {
+        let dir = test_dir("config-not-executable");
+        let non_exec_bw = dir.join("non-exec-bw");
+        make_non_executable(&non_exec_bw);
+        let known_bw = dir.join("known-bw");
+        make_executable(&known_bw);
+        let config_path = dir.join("bw_path.txt");
+        fs::write(&config_path, non_exec_bw.to_str().unwrap()).unwrap();
+
+        let result = resolve_bw_path_with(Some(&config_path), &[known_bw.to_str().unwrap()]);
+
+        assert_eq!(result, known_bw.to_str().unwrap());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn falls_through_to_known_paths_when_config_file_empty() {
         let dir = test_dir("config-empty");
         let known_bw = dir.join("known-bw");
@@ -197,6 +267,24 @@ mod tests {
         );
 
         assert_eq!(result, existing.to_str().unwrap());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn skips_known_path_that_is_not_executable() {
+        let dir = test_dir("known-non-executable");
+        let non_exec_bw = dir.join("non-exec-bw");
+        make_non_executable(&non_exec_bw);
+        let valid_bw = dir.join("valid-bw");
+        make_executable(&valid_bw);
+        let config_path = dir.join("does-not-exist.txt");
+
+        let result = resolve_bw_path_with(
+            Some(&config_path),
+            &[non_exec_bw.to_str().unwrap(), valid_bw.to_str().unwrap()],
+        );
+
+        assert_eq!(result, valid_bw.to_str().unwrap());
         fs::remove_dir_all(&dir).ok();
     }
 
