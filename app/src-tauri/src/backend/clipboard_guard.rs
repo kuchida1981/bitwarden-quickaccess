@@ -31,15 +31,6 @@ impl ClipboardGuard {
             .expect("ClipboardGuard mutex poisoned") = Some(value);
     }
 
-    /// クリア処理(遅延クリア・ロック時クリア)が完了した後に呼ぶ。
-    /// 保持している機微値をメモリ上から破棄する。
-    pub fn clear(&self) {
-        *self
-            .last_written
-            .lock()
-            .expect("ClipboardGuard mutex poisoned") = None;
-    }
-
     /// 保持している値が `expected` と一致する場合に限り、内部状態をクリアする。
     /// 一致しない場合(既に別の値で上書きされている場合)は何もしない。
     pub fn clear_if_matches(&self, expected: &str) {
@@ -52,8 +43,8 @@ impl ClipboardGuard {
         }
     }
 
-    /// 現在保持している値のクローンを返す。lock()から、直近書き込んだ値を
-    /// expectedとして clear_clipboard_if_owned に渡すために使う。
+    /// 現在保持している値のクローンを返す。`clear_clipboard_now` から、直近
+    /// 書き込んだ値をexpectedとして `clear_clipboard_if_owned` に渡すために使う。
     pub fn last_value(&self) -> Option<String> {
         self.last_written
             .lock()
@@ -84,14 +75,6 @@ mod tests {
         let guard = ClipboardGuard::new();
         guard.set("password1".to_string());
         assert_ne!(guard.last_value(), Some("other-value".to_string()));
-    }
-
-    #[test]
-    fn last_value_is_none_after_clear() {
-        let guard = ClipboardGuard::new();
-        guard.set("password123".to_string());
-        guard.clear();
-        assert_eq!(guard.last_value(), None);
     }
 
     #[test]

@@ -26,6 +26,16 @@ pub fn clear_clipboard_if_owned(app: &tauri::AppHandle, guard: &ClipboardGuard, 
     }
 }
 
+/// guardが直近書き込んだ値を expected として `clear_clipboard_if_owned` を呼ぶ。
+/// 手動ロック・アイドル自動ロックいずれも、guard自身の現在値を対象に即時
+/// クリアしたい場合に使う。guardに値が無い(何もコピーされていない)場合は
+/// 何もしない。
+pub fn clear_clipboard_now(app: &tauri::AppHandle, guard: &ClipboardGuard) {
+    if let Some(expected) = guard.last_value() {
+        clear_clipboard_if_owned(app, guard, &expected);
+    }
+}
+
 fn client_for(state: &AppState) -> Result<BwServeClient, String> {
     let port = state
         .port()
@@ -89,9 +99,7 @@ pub async fn lock(
     let client = client_for(&state)?;
     client.lock().await.map_err(|err| err.to_string())?;
     state.set_locked();
-    if let Some(expected) = guard.last_value() {
-        clear_clipboard_if_owned(&app, &guard, &expected);
-    }
+    clear_clipboard_now(&app, &guard);
     Ok(())
 }
 
