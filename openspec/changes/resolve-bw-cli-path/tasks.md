@@ -6,15 +6,15 @@
 
 ## 2. 既存呼び出し箇所の書き換え
 
-- [ ] 2.1 `app/src-tauri/src/backend/preflight.rs` の `PreflightError::BwNotFound` エラーメッセージを更新し、設定ファイルの場所(`$XDG_CONFIG_HOME/bw-quickaccess/bw_path.txt` または `~/.config/bw-quickaccess/bw_path.txt`)と書き方を案内する文言を含める。既存テスト(`reports_bw_not_found_when_command_missing` 等)を新しいメッセージに合わせて更新し、`cargo test` で通ることを確認する。
-- [ ] 2.2 `app/src-tauri/src/backend/process.rs` の `build_bw_serve_command(port: u16)` を `build_bw_serve_command(port: u16, bw_path: &str)` に変更し、`Command::new("bw")` を `Command::new(bw_path)` に置き換える。既存テスト `build_bw_serve_command_binds_to_ipv4_loopback` を新シグネチャに合わせて更新し、`cargo test` で通ることを確認する。
-- [ ] 2.3 `app/src-tauri/src/main.rs` の `start_backend()` 内で `bw_locate::resolve_bw_path()` を呼び出し、その結果を `preflight::check_bw_cli_with()` と `process::build_bw_serve_command()`(呼び出し元クロージャ)の両方に渡すよう変更する。`cargo build` が通ることを確認する。
-- [ ] 2.4 `app/src-tauri/src/main.rs` から `fix_path_env()` / `PATH_MARKER` / `extract_path_from_marker` / `run_shell_and_capture_stdout` および `main()` 冒頭の `fix_path_env();` 呼び出し、`mod fix_path_env_tests` を削除する。`cargo build` と `cargo clippy --all-targets -- -D warnings` が警告なく通ることを確認する。
+- [x] 2.1 `app/src-tauri/src/backend/preflight.rs` の `PreflightError::BwNotFound` エラーメッセージを更新し、設定ファイルの場所(`$XDG_CONFIG_HOME/bw-quickaccess/bw_path.txt` または `~/.config/bw-quickaccess/bw_path.txt`)と書き方を案内する文言を含める。既存テスト(`reports_bw_not_found_when_command_missing` 等)を新しいメッセージに合わせて更新し、`cargo test` で通ることを確認する。
+- [x] 2.2 `app/src-tauri/src/backend/process.rs` の `build_bw_serve_command(port: u16)` を `build_bw_serve_command(port: u16, bw_path: &str)` に変更し、`Command::new("bw")` を `Command::new(bw_path)` に置き換える。既存テスト `build_bw_serve_command_binds_to_ipv4_loopback` を新シグネチャに合わせて更新し、`cargo test` で通ることを確認する。
+- [x] 2.3 `app/src-tauri/src/main.rs` の `start_backend()` 内で `bw_locate::resolve_bw_path()` を呼び出し、その結果を `preflight::check_bw_cli_with()` と `process::build_bw_serve_command()`(呼び出し元クロージャ)の両方に渡すよう変更する。`cargo build` が通ることを確認する。
+- [x] 2.4 `app/src-tauri/src/main.rs` から `fix_path_env()` / `PATH_MARKER` / `extract_path_from_marker` / `run_shell_and_capture_stdout` および `main()` 冒頭の `fix_path_env();` 呼び出し、`mod fix_path_env_tests` を削除する。`cargo build` と `cargo clippy --all-targets -- -D warnings` が警告なく通ることを確認する。
 
 ## 3. ドキュメント更新
 
-- [ ] 3.1 `README.md` に、Homebrew以外の方法(nvm等のnode管理ツール経由のnpmインストール、ネイティブバイナリの手動配置)で `bw` をインストールした場合の設定ファイル手順(パス・書式の具体例)を追記する。
-- [ ] 3.2 `CONTRIBUTING.md` にこの変更に関連する開発者向け留意事項(該当箇所があれば)を確認し、必要な場合のみ追記する。
+- [x] 3.1 `README.md` に、Homebrew以外の方法(nvm等のnode管理ツール経由のnpmインストール、ネイティブバイナリの手動配置)で `bw` をインストールした場合の設定ファイル手順(パス・書式の具体例)を追記する。
+- [x] 3.2 `CONTRIBUTING.md`(確認の結果、PATH/bw検出に関する記述が無く、今回の変更で影響を受ける箇所も無いため追記不要と判断) にこの変更に関連する開発者向け留意事項(該当箇所があれば)を確認し、必要な場合のみ追記する。
 
 ## 4. 動作確認
 
