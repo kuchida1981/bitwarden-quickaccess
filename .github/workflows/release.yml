@@ -89,6 +89,13 @@ jobs:
         if: ${{ env.HOMEBREW_TAP_PAT_CONFIGURED == 'true' }}
         run: brew trust kuchida1981/bitwarden-quickaccess
 
+      # 既知のトレードオフ(コードレビューで指摘): このジョブを「Re-run jobs」
+      # で再実行すると、前回の実行で作成済みのtap側ブランチ/PRが残っている場合
+      # `brew bump-cask-pr` がその重複で失敗し、ジョブ全体が失敗表示になる。
+      # これは元々存在した問題(以前はcontinue-on-errorで無条件に握りつぶされて
+      # いただけ)であり、対処は他の失敗原因と同じくCONTRIBUTING.mdの手動
+      # フォールバック手順(tap側の該当ブランチ/PRを削除してから再実行、または
+      # 手動でCaskを更新)に従う。
       - name: Open a Homebrew tap update PR
         id: bump_cask_pr
         if: ${{ env.HOMEBREW_TAP_PAT_CONFIGURED == 'true' }}
