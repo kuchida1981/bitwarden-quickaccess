@@ -18,7 +18,7 @@
 
 ### 変数マッピング
 
-以下の8つの CSS カスタムプロパティを `:root` に定義し、既存のハードコード箇所を置き換える。
+以下の9つの CSS カスタムプロパティを `:root` に定義し、既存のハードコード箇所を置き換える。
 
 | CSS変数 | ライト(現状維持) | ダーク | 用途 / 根拠 |
 |---|---|---|---|
@@ -30,6 +30,9 @@
 | `--accent-color` | `#0071e3` | `#0a84ff` | ボタン背景、フォーカス項目背景、アバター背景。macOS System Blue(Light/Dark)に準拠 |
 | `--accent-text` | `#fff` | `#fff` | アクセント色上の文字。両モード共通で不変 |
 | `--danger-color` | `#d70015` | `#ff453a` | エラーテキスト。macOS System Red(Light/Dark)に準拠 |
+| `--field-bg` | `#fff` | `#2c2c2e` | `<input>` 要素(`#master-password`, `#search-box`)の背景。テキスト色は `--text-primary` を流用する |
+
+**`--field-bg` を追加した経緯**: `<input>` 要素は border 色のみ変数化しても、背景・文字色はブラウザ(WKWebView)の UA デフォルト(常に白背景・黒文字)が適用されるため、ダークモードでも入力欄だけ白いまま取り残されることが実機確認で判明した(ライトモードでの見た目は現状の白背景のままで変化なし)。ページ背景 `--bg-primary`(ダーク `#1e1e1e`)と同色にすると入力欄の輪郭が背景に溶け込むため、macOS のテキストフィールド(NSTextField)のダーク表示に近い、ページ背景よりわずかに明るい色(`#2c2c2e`、`--border-color-subtle` と同値)を採用し、入力欄であることが視覚的にわかるようにした。テキスト色は新規変数を追加せず既存の `--text-primary` を流用する(値が完全に一致するため)。
 
 **なぜ macOS System Blue/Red の専用ダーク値を採用するか**: ライトモードの `#0071e3` / `#d70015` をダークモードでもそのまま使い回す案も検討したが、ダーク背景上では彩度が沈んで見えづらく、ネイティブアプリとの統一感も薄れる。Apple の Human Interface Guidelines に沿った標準のダークバリアントを採用することで、追加のコントラスト調整なしに視認性と「ネイティブらしさ」を両立できる。
 
@@ -47,6 +50,7 @@
   --accent-color: #0071e3;
   --accent-text: #fff;
   --danger-color: #d70015;
+  --field-bg: #fff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,7 +62,14 @@
     --border-color-subtle: #2c2c2e;
     --accent-color: #0a84ff;
     --danger-color: #ff453a;
+    --field-bg: #2c2c2e;
   }
+}
+
+#master-password,
+#search-box {
+  background: var(--field-bg);
+  color: var(--text-primary);
 }
 ```
 
@@ -66,5 +77,5 @@
 
 ## Risks / Trade-offs
 
-- [ダーク値の視認性が実機で想定と異なる可能性] → 実装後に macOS のシステム外観設定を切り替えて全画面(アンロック・検索・エラー・ヘルプ)を目視確認する(tasks.md に確認タスクを含める)。
+- [ダーク値の視認性が実機で想定と異なる可能性] → 実装後に macOS のシステム外観設定を切り替えて全画面(アンロック・検索・エラー・ヘルプ)を目視確認する(tasks.md に確認タスクを含める)。実際、初回実装では `<input>` 要素の背景・文字色が UA デフォルトのまま残り、ダークモードでも白背景になる不具合が実機確認で見つかったため `--field-bg` を追加した。
 - [`prefers-color-scheme` は WKWebView が OS 設定を正しく反映することに依存] → Tauri/WKWebView は標準でこのメディアクエリをサポートしており追加設定不要。動作確認タスクで実機検証する。

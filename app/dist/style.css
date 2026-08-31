@@ -7,6 +7,7 @@
   --accent-color: #0071e3;
   --accent-text: #fff;
   --danger-color: #d70015;
+  --field-bg: #fff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +19,7 @@
     --border-color-subtle: #2c2c2e;
     --accent-color: #0a84ff;
     --danger-color: #ff453a;
+    --field-bg: #2c2c2e;
   }
 }
 
@@ -72,6 +74,8 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
+  background: var(--field-bg);
+  color: var(--text-primary);
 }
 
 #unlock-form button {
@@ -132,6 +136,8 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 14px;
+  background: var(--field-bg);
+  color: var(--text-primary);
 }
 
 #results {
