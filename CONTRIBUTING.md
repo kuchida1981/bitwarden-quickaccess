@@ -2,6 +2,21 @@
 
 開発環境のセットアップ・セルフビルド手順は [README.md](README.md#option-3-self-build-from-source) を参照してください。AIエージェント(Claude Code / Antigravity CLI)を使った開発ワークフロー(OpenSpecでの提案・実装フロー、ツールの役割分担)については [CLAUDE.md](CLAUDE.md) を参照してください。
 
+## Dependency updates
+
+Cargo(`app/src-tauri`)と GitHub Actions(`.github/workflows`)の依存関係更新は `.github/dependabot.yml` により週次で自動検出される。
+
+Dependabot が作成したプルリクエストのうち、`semver-patch` / `semver-minor` に分類される更新は `.github/workflows/dependabot-auto-merge.yml` により CI(`test`)通過後に自動マージされる(マージコミット方式)。`semver-major` は自動マージ対象外とし、手動でレビュー・マージする。
+
+CI必須化は classic branch protection ではなく ruleset(`default`)で設定されている。保護状態を確認する際は `gh api repos/{owner}/{repo}/branches/main/protection` ではなく、以下で確認すること(前者は ruleset を反映せず404を返す):
+
+```bash
+gh api repos/kuchida1981/bitwarden-quickaccess/rulesets
+gh api repos/kuchida1981/bitwarden-quickaccess/rulesets/<id>
+```
+
+スケジュール実行を待たずに更新チェックを手動で走らせたい場合は、GitHub上の Insights > Dependency graph > Dependabot タブから対象エコシステムの "Check for updates" を実行する(CLIからの相当操作は提供されていない)。
+
 ## Releasing
 
 新しいバージョンをリリースするときの手順。以下の順序で実行する。
