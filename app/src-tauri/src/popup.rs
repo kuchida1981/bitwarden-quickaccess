@@ -1,5 +1,7 @@
+#[cfg(target_os = "macos")]
 use std::sync::Mutex;
 
+#[cfg(target_os = "macos")]
 use objc2_app_kit::{NSApplicationActivationOptions, NSRunningApplication, NSWorkspace};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
@@ -93,22 +95,45 @@ fn compute_popup_position(app: &AppHandle) -> Option<(f64, f64)> {
 /// `NSRunningApplication` インスタンス自体(`Retained<T>`)は `Send + Sync` を満たさず
 /// Tauriの `.manage()` では扱えないため、PIDのみを保持し、フォーカス復帰時に
 /// `NSRunningApplication::runningApplicationWithProcessIdentifier` で再取得する
-/// (design.md 決定3)。
+/// (design.md 決定3)。macOS 専用実装。
+#[cfg(target_os = "macos")]
 pub struct PreviousFrontmostApp(Mutex<Option<libc::pid_t>>);
 
+#[cfg(target_os = "macos")]
 impl PreviousFrontmostApp {
     pub fn new() -> Self {
         Self(Mutex::new(None))
     }
 }
 
+#[cfg(target_os = "macos")]
 impl Default for PreviousFrontmostApp {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// ポップアップを表示する直前の最前面アプリケーションのPIDを記録する。
+/// 非macOS(Linux等)向けのno-op実装。フォーカス追跡の状態を保持しない
+/// (`linux-backend-build-support` design.md 決定2)。
+#[cfg(not(target_os = "macos"))]
+pub struct PreviousFrontmostApp;
+
+#[cfg(not(target_os = "macos"))]
+impl PreviousFrontmostApp {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+impl Default for PreviousFrontmostApp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// ポップアップを表示する直前の最前面アプリケーションのPIDを記録する。macOS専用実装。
+#[cfg(target_os = "macos")]
 fn record_frontmost_app(app: &AppHandle) {
     let pid = NSWorkspace::sharedWorkspace()
         .frontmostApplication()
@@ -120,11 +145,17 @@ fn record_frontmost_app(app: &AppHandle) {
         .expect("PreviousFrontmostApp mutex poisoned") = pid;
 }
 
+/// 非macOS(Linux等)向けのno-op実装。ウィンドウマネージャ/コンポジタの標準挙動に委ねる
+/// (`linux-backend-build-support` design.md Risks/Trade-offs)。
+#[cfg(not(target_os = "macos"))]
+fn record_frontmost_app(_app: &AppHandle) {}
+
 /// ポップアップを閉じた際に、表示直前にフォアグラウンドだったアプリケーションを
 /// 再度アクティブ化する(design.md 決定3)。記録が無い、または対象アプリが
 /// 既に終了している場合は何もしない。`toggle_popup` の明示的な非表示分岐と
 /// `commands::hide_popup` の両方から呼ばれるため冪等に作る(`take()` により
-/// 2回目の呼び出しは常に `None` になる)。
+/// 2回目の呼び出しは常に `None` になる)。macOS専用実装。
+#[cfg(target_os = "macos")]
 pub(crate) fn restore_previous_focus(app: &AppHandle) {
     let pid = app
         .state::<PreviousFrontmostApp>()
@@ -141,6 +172,11 @@ pub(crate) fn restore_previous_focus(app: &AppHandle) {
         running_app.activateWithOptions(NSApplicationActivationOptions::empty());
     }
 }
+
+/// 非macOS(Linux等)向けのno-op実装。ウィンドウマネージャ/コンポジタの標準挙動に委ねる
+/// (`linux-backend-build-support` design.md Risks/Trade-offs)。
+#[cfg(not(target_os = "macos"))]
+pub(crate) fn restore_previous_focus(_app: &AppHandle) {}
 
 /// ポップアップウィンドウの表示/非表示をトグルする。ホットキー押下時に呼ばれる。
 pub fn toggle_popup(app: &AppHandle) {
