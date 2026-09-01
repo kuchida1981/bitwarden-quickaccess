@@ -27,9 +27,9 @@ Issue #145 のマージにより Rust バックエンドが Linux でもビル�
     if: runner.os == 'Linux'
     run: |
       sudo apt-get update
-      sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev libssl-dev
   ```
-- **理由**: Tauri v2 およびトレイ・アイコン機能に必要なライブラリを最小限かつ確実に導入するため。
+- **理由**: Tauri v2、トレイ・アイコン機能、およびグローバルショートカット／クリップボード連携プラグイン（`tauri-plugin-global-shortcut`, `tauri-plugin-clipboard-manager`）に必要なライブラリを確実に導入するため。
 
 ### 3. キャッシュ設定
 - **決定**: `Swatinem/rust-cache@v2` は OS ごとに自動でキーが分離されるため、既存のキャッシュ設定をそのまま維持する。
