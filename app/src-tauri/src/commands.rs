@@ -72,6 +72,17 @@ pub fn get_ui_locale(lang: tauri::State<'_, crate::i18n::Lang>) -> &'static str 
     }
 }
 
+/// 実行プラットフォームを返す。フロントエンド側でモディファイアキー判定
+/// (macOS: metaKey, それ以外: ctrlKey)を切り替えるために使用する。
+#[tauri::command]
+pub fn get_platform() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "macos"
+    } else {
+        "linux"
+    }
+}
+
 /// アンロックフォームの送信から呼ばれる。成功時はアプリ内部状態も更新する。
 #[tauri::command]
 pub async fn unlock(

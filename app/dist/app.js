@@ -19,6 +19,7 @@ const helpOverlay = document.getElementById("help-overlay");
 
 const SEARCH_DEBOUNCE_MS = 150;
 let SHORTCUT_HINTS = "";
+let currentPlatform = "macos";
 
 let currentItems = [];
 let focusedIndex = -1;
@@ -200,10 +201,45 @@ searchBox.addEventListener("input", () => {
   debounceTimer = setTimeout(() => runSearch(query), SEARCH_DEBOUNCE_MS);
 });
 
+// macOSでは⌘(metaKey)、それ以外(Linux等)ではCtrl(ctrlKey)をプライマリの
+// モディファイアキーとして扱う(design.md 決定2)。ヘルプ/手動ロック/コピー系
+// ショートカットの判定箇所すべてから共通で参照する。
+function isPrimaryMod(event) {
+  return currentPlatform === "macos" ? event.metaKey : event.ctrlKey;
+}
+
+// macOS表記(⌘/⇧/⌥)を基準の正規形として保持し、macOS以外ではCtrl+/Shift+/Alt+
+// 表記に変換する(design.md 決定3)。⌘→⇧→⌥の置換順によらず結果は一意に定まる。
+function formatShortcutForPlatform(macLabel) {
+  if (currentPlatform === "macos") {
+    return macLabel;
+  }
+  return macLabel.replace(/⌘/g, "Ctrl+").replace(/⌥/g, "Alt+").replace(/⇧/g, "Shift+");
+}
+
+// 実行プラットフォームを取得し、以降のモディファイアキー判定・ショートカット表記
+// 生成に用いる(design.md 決定1)。取得に失敗した場合は既定(macos)のまま続行する。
+async function initPlatform() {
+  try {
+    currentPlatform = await invoke("get_platform");
+  } catch {
+    // 既定(macos)のまま続行する
+  }
+}
+
+// ヘルプオーバーレイ内の`data-mod-kbd`付き<kbd>バッジをプラットフォームに応じた
+// 表記に更新する(design.md 決定3)。グローバルホットキー(⇧⌘Space)の行は本changeの
+// スコープ外(Issue #147)のため対象外とし、`data-mod-kbd`属性を付与していない。
+function updateHelpOverlayKbd() {
+  document.querySelectorAll("[data-mod-kbd]").forEach((kbd) => {
+    kbd.textContent = formatShortcutForPlatform(kbd.getAttribute("data-mod-kbd"));
+  });
+}
+
 // event.key ではなく event.code(物理キー位置)で判定する(handleActionShortcutの
 // ⌘Cと同じ理由)。ヘルプの開閉どちらからも参照するため共通関数にしておく。
 function isHelpToggleShortcut(event) {
-  return event.metaKey && event.code === "Slash" && !event.shiftKey && !event.altKey;
+  return isPrimaryMod(event) && event.code === "Slash" && !event.shiftKey && !event.altKey;
 }
 
 // フォーカス要素(検索ボックス/パスワード入力欄等)に関わらずEscapeキーで
@@ -238,7 +274,7 @@ searchBox.addEventListener("keydown", (event) => {
     openHelp();
     return;
   }
-  if (event.metaKey && event.code === "KeyL") {
+  if (isPrimaryMod(event) && event.code === "KeyL") {
     event.preventDefault();
     performLock();
     return;
@@ -292,9 +328,24 @@ function moveFocus(delta) {
 // フィールドを持たない項目は結果配列から除外する(#52)。
 function buildActionsForItem(item) {
   const actions = [
-    { key: "username", labelKey: "actionCopyUsername", shortcutHint: "⌘C", enabled: !!item.username },
-    { key: "password", labelKey: "actionCopyPassword", shortcutHint: "⌘⇧C", enabled: item.has_password },
-    { key: "totp", labelKey: "actionCopyTotp", shortcutHint: "⌥⌘C", enabled: item.has_totp },
+    {
+      key: "username",
+      labelKey: "actionCopyUsername",
+      shortcutHint: formatShortcutForPlatform("⌘C"),
+      enabled: !!item.username,
+    },
+    {
+      key: "password",
+      labelKey: "actionCopyPassword",
+      shortcutHint: formatShortcutForPlatform("⌘⇧C"),
+      enabled: item.has_password,
+    },
+    {
+      key: "totp",
+      labelKey: "actionCopyTotp",
+      shortcutHint: formatShortcutForPlatform("⌥⌘C"),
+      enabled: item.has_totp,
+    },
     { key: "browser", labelKey: "actionOpenBrowser", shortcutHint: "Enter", enabled: item.has_url },
   ];
   return actions.filter((action) => action.enabled);
@@ -432,7 +483,7 @@ function handleActionShortcut(event) {
   // event.key ではなく event.code(物理キー位置)で判定する。
   // macOSではOptionキーを押しながら文字キーを押すと、event.key の値が
   // 合成された特殊文字(例: Option+C -> "ç")になり、"c" と一致しなくなるため。
-  if (!event.metaKey || event.code !== "KeyC") {
+  if (!isPrimaryMod(event) || event.code !== "KeyC") {
     return;
   }
 
@@ -678,8 +729,9 @@ listen("backend-state-changed", () => {
   syncScreenWithBackend();
 });
 
-initI18n().then(() => {
-  SHORTCUT_HINTS = t("shortcutHints");
+Promise.all([initI18n(), initPlatform()]).then(() => {
+  SHORTCUT_HINTS = formatShortcutForPlatform(t("shortcutHints"));
   footerHints.textContent = SHORTCUT_HINTS;
+  updateHelpOverlayKbd();
   handleShown();
 });

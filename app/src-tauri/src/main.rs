@@ -59,6 +59,7 @@ fn main() {
             commands::get_backend_error,
             commands::get_current_user,
             commands::get_ui_locale,
+            commands::get_platform,
             commands::lock,
             commands::unlock,
             commands::search_items,
