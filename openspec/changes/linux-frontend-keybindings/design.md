@@ -34,11 +34,16 @@
 
 ### 3. ショートカット表記の動的解決
 - **決定**:
-  - `i18n.js`: `shortcutHints` メッセージ定義で `{mod}` プレースホルダを用いるか、またはプラットフォーム別の置換（macOS: `⌘`, Linux: `Ctrl+`）を行う。
-  - `app.js` の `buildActionsForItem`: `isMac ? "⌘C" : "Ctrl+C"` のようにプラットフォームに応じて生成。
-  - `index.html` のヘルプオーバーレイ: `<kbd data-shortcut="copy-username">` 等の属性、または初期化スクリプトで `<kbd>` 要素を OS に応じた文字（`⌘` → `Ctrl+`, `⌥` → `Alt+`, `⇧` → `Shift+`）に置換。
+  - `shortcutHint` 表記規則:
+    - macOS: `⌘C`, `⌘⇧C`, `⌥⌘C`, `⌘L`, `⌘/`, `⇧⌘Space`
+    - Linux: `Ctrl+C`, `Ctrl+Shift+C`, `Ctrl+Alt+C`, `Ctrl+L`, `Ctrl+/`, `Shift+Ctrl+Space`
+  - `app.js` の `buildActionsForItem`: プラットフォーム判定に基づいて適切な `shortcutHint` 文字列を生成する。
+  - `i18n.js` / `app.js`: フッターヒント（`shortcutHints`）は `i18n.js` 側で `{mod}`, `{shiftMod}`, `{altMod}` 等の統一トークン置換、またはプラットフォーム別の定義により動的生成する。
+  - `index.html` のヘルプオーバーレイ: 初期化時に `<kbd>` 要素内の macOS 固有記号（`⌘` → `Ctrl`, `⌥` → `Alt`, `⇧` → `Shift`）をプラットフォームに応じた表記に一括置換する。ヘルプ内の `⇧⌘Space` も Linux では `Shift+Ctrl+Space`（Issue #147 の予定挙動）に合わせる。
 
 ## Risks / Trade-offs
 
 - **[Risk]** Linux 環境で `Ctrl+C` によるフィールドコピーを行う際、検索ボックス内のテキスト選択コピーと衝突する可能性。
-  → **Mitigation**: 既存の `hasTextSelectionInSearchBox()` ガードが `isPrimaryMod` にも適用されるため、テキスト選択がある場合は標準のクリップボードコピー（選択文字列コピー）が優先される。
+  → **Mitigation**: 既存の `hasTextSelectionInSearchBox()` ガード（`selectionStart !== selectionEnd`）により、テキスト選択がある場合は `handleActionShortcut` が早期リターンして標準のクリップボードコピーが優先される。
+- **[Risk]** WebKitGTK (Linux) 固有のデフォルトキーバインド（例: Ctrl+L でフォーカス移動等）との競合。
+  → **Mitigation**: イベントハンドラ内で `event.preventDefault()` を適切に呼び出して WebKit 側のデフォルト動作を抑制する。実機検証で確認する。

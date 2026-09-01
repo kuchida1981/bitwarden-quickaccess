@@ -6,7 +6,7 @@
 ## 2. フロントエンド キーイベント判定の改修
 
 - [ ] 2.1 `app/dist/app.js` で初期化時に `get_platform` を呼び出してプラットフォームを保持する
-- [ ] 2.2 `app/dist/app.js` に `isPrimaryMod(event)` ヘルパーを追加し、`isHelpToggleShortcut`, 手動ロック（`KeyL`）、`handleActionShortcut`（`KeyC`）、`hasTextSelectionInSearchBox` ガードを `isPrimaryMod` を使用するように更新する
+- [ ] 2.2 `app/dist/app.js` に `isPrimaryMod(event)` ヘルパーを追加し、`isHelpToggleShortcut`, 手動ロック（`KeyL`）、`handleActionShortcut`（`KeyC`）のモディファイアキー判定を `isPrimaryMod` を使用するように更新する（テキスト選択がある場合のコピー非干渉ガードが維持されることを確認）
 
 ## 3. ショートカット表記の動的切り替え
 
